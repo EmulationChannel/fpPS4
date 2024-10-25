@@ -16,6 +16,7 @@ var
  p_cpuid              :DWORD=CPUID_BASE_MODE; //base mode = 0x710f13 / neo mode = 0x740f00
  p_base_ps4_mode      :DWORD=1; //[0..1]
  p_neomode            :DWORD=0; //[0..1]
+ p_cpumode            :DWORD=5; //NORMAL
 
  p_halt_on_exit       :Boolean=False;
  p_print_guest_syscall:Boolean=False;
