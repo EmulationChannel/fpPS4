@@ -1204,6 +1204,8 @@ begin
 end;
 
 function ps4_sceAudioOutOutputs(param:PSceAudioOutOutputParam;num:DWORD):Integer;
+label
+ _unlock;
 var
  handle   :Integer;
  port_id  :Integer;
@@ -1256,6 +1258,8 @@ begin
   end;
  end;
 
+ Result:=0;
+
  rw_wlock(g_port_lock);
 
   //test opened
@@ -1279,8 +1283,8 @@ begin
        Writeln(stderr,'[AudioOut] use same handles (handle[',i,']:0x',HexStr(handle,8),
                       ' handle[',f,']:0x',HexStr(handle,8),')');
 
-       rw_wunlock(g_port_lock);
-       Exit(SCE_AUDIO_OUT_ERROR_INVALID_PORT);
+       Result:=SCE_AUDIO_OUT_ERROR_INVALID_PORT;
+       goto _unlock;
       end;
     end;
     //
@@ -1288,8 +1292,8 @@ begin
     params[i].ptr   :=param[i].ptr;
    end else
    begin
-    rw_wunlock(g_port_lock);
-    Exit(SCE_AUDIO_OUT_ERROR_NOT_OPENED);
+    Result:=SCE_AUDIO_OUT_ERROR_NOT_OPENED;
+    goto _unlock;
    end;
 
   end;
@@ -1297,9 +1301,10 @@ begin
   //output all
   g_audioout_interface.Outputs(@params,num);
 
+ _unlock:
+
  rw_wunlock(g_port_lock);
 
- Result:=0;
 end;
 
 function ps4_sceAudioOutGetSystemState(state:pSceAudioOutSystemState):Integer;
