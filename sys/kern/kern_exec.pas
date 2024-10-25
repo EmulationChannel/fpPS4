@@ -1827,7 +1827,7 @@ begin
 
  if (Result=0) then
  begin
-  jit_prepare(curkthread,0);
+  set_pcb_flags(curkthread,PCB_IS_JIT); //force JIT mode
   ipi_sigreturn;
   Writeln(stderr,'I''m a teapot!');
  end;

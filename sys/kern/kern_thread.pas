@@ -91,7 +91,6 @@ function  kern_umtx_wake(td:p_kthread;umtx:Pointer;n_wake,priv:Integer):Integer;
 function  umtx_copyin_timeout(addr:Pointer;tsp:p_timespec):Integer; external;
 
 procedure jit_ctx_free(td:p_kthread);  external;
-procedure switch_to_jit(td:p_kthread); external;
 
 function  msleep(ident   :Pointer;
                  lock    :p_mtx;
@@ -565,10 +564,6 @@ begin
   fpuinit(newtd);
  end;
 
- //jit wrapper
- switch_to_jit(newtd);
- //jit wrapper
-
  //seh wrapper
  wrap:=@before_start;
  seh_wrapper_after(newtd,wrap);
@@ -672,10 +667,6 @@ begin
 
  //init FPU
  fpuinit(newtd);
-
- //jit wrapper
- switch_to_jit(newtd);
- //jit wrapper
 
  //seh wrapper
  wrap:=@before_start_kern;

@@ -601,6 +601,8 @@ begin
  NtTestAlert();
 end;
 
+procedure switch_to_jit(td:p_kthread); external;
+
 procedure ipi_sigreturn;
 var
  td:p_kthread;
@@ -618,6 +620,8 @@ begin
  //teb stack
  teb_set_kernel(td);
  //teb stack
+
+ switch_to_jit(td);
 
  regs:=@td^.td_frame;
 

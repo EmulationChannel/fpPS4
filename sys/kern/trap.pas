@@ -97,8 +97,6 @@ procedure sig_unlock;
 procedure fast_syscall;
 procedure amd64_syscall;
 
-procedure jit_prepare(td:p_kthread;rip:QWORD);
-
 procedure host_sigcode;
 procedure host_sigipi;
 
@@ -121,10 +119,6 @@ uses
  kern_proc,
  sys_bootparam,
  subr_backtrace;
-
-//
-
-procedure switch_to_jit(td:p_kthread); external;
 
 //
 
@@ -344,36 +338,14 @@ begin
 
  cpu_set_syscall_retval(td,error);
 
- jit_prepare(td,rip);
+ if (rip<>td^.td_frame.tf_rip) then
+ begin
+  set_pcb_flags(td,PCB_FULL_IRET); //call ipi_sigreturn
+ end;
 
  //move to pcb?
  Set8087CW(FPUCW);
  SetMXCSR (MXCSR);
-end;
-
-procedure jit_prepare(td:p_kthread;rip:QWORD);
-var
- is_jit:Boolean;
-begin
- if (td=nil) then Exit;
-
- is_jit:=((td^.pcb_flags and PCB_IS_JIT)<>0);
-
- if (rip<>td^.td_frame.tf_rip) or
-    ((td^.pcb_flags and (PCB_FULL_IRET or PCB_IS_JIT))=(PCB_FULL_IRET or PCB_IS_JIT)) then
- begin
-  switch_to_jit(curkthread);
-
-  //if internal
-  if ((td^.pcb_flags and PCB_IS_JIT)=0) then
-  if is_jit then //prev is jit
-  begin
-   //teb stack
-   teb_set_user(td);
-   //teb stack
-  end;
-
- end;
 end;
 
 procedure fast_syscall; assembler; nostackframe;

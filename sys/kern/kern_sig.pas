@@ -1745,8 +1745,6 @@ end;
 
 //
 
-procedure switch_to_jit(td:p_kthread); external;
-
 procedure ast; public;
 var
  td:p_kthread;
@@ -1878,10 +1876,6 @@ begin
  end;
  //teb stack
 
- if ((td^.pcb_flags and PCB_IS_JIT)<>0) then
- begin
-  switch_to_jit(td);
- end;
 end;
 
 //

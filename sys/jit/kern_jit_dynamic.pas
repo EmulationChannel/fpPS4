@@ -279,18 +279,21 @@ var
 begin
  if (td=nil) then Exit;
 
- if is_guest_addr(td^.td_frame.tf_rip) then
+ if ((td^.pcb_flags and PCB_IS_JIT)<>0) then
  begin
-  //host->jit
-  //jit->jit
- end else
- begin
-  if ((td^.pcb_flags and PCB_IS_JIT)<>0) then
+  //jit mode
+
+  if is_guest_addr(td^.td_frame.tf_rip) then
+  begin
+   //jit->jit
+  end else
   begin
    //jit->host
 
    if ((td^.td_pflags and TDP_KTHREAD)<>0) then
    begin
+    //system thread
+
     //clear jit flag
     td^.pcb_flags:=td^.pcb_flags and (not PCB_IS_JIT);
 
@@ -302,12 +305,23 @@ begin
     Assert(false,'forbidden jump to 0x'+HexStr(td^.td_frame.tf_rip,16));
    end;
 
+  end;
+
+ end else
+ begin
+  //host mode
+
+  if is_guest_addr(td^.td_frame.tf_rip) then
+  begin
+   //host->jit
+   set_pcb_flags(td,PCB_IS_JIT);
   end else
   begin
    //host->host
 
    Exit; //internal?
   end;
+
  end;
 
  _start:
