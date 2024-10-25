@@ -216,6 +216,16 @@ type
   field_0x28:Word;
  end;
 
+ p_motion_scale_param=^t_motion_scale_param;
+ t_motion_scale_param=packed record
+  field0_0x0:Word;
+  field1_0x2:Word;
+  field2_0x4:Word;
+  field3_0x6:Word;
+  field4_0x8:Word;
+  field4_0x10:array[0..15] of Byte;
+ end;
+
 procedure fill_device_info(var device_info:t_pad_device_info);
 begin
  device_info:=Default(t_pad_device_info);
@@ -245,6 +255,7 @@ var
    0:(pad_device_info:t_pad_device_info);
    1:(pad_state:t_pad_state);
    2:(motion_calib_state:t_motion_calib_state);
+   3:(motion_scale_param:t_motion_scale_param);
  end;
 begin
  Result:=0;
@@ -319,6 +330,18 @@ begin
       u.motion_calib_state:=Default(t_motion_calib_state);
 
       Result:=copyout(@u.motion_calib_state,state,sizeof(t_motion_calib_state));
+     end;
+    end;
+
+  $80104831: //sceHidControllerGetMotionScaleParamForUser
+    begin
+     with p_pad_state_args(data)^ do
+     begin
+      Writeln('device_id=0x',HexStr(id,8));
+
+      u.motion_scale_param:=Default(t_motion_scale_param);
+
+      Result:=copyout(@u.motion_scale_param,state,sizeof(t_motion_scale_param));
      end;
     end;
 
