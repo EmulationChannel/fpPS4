@@ -956,8 +956,7 @@ end;
 
 procedure op_invalid(var ctx:t_jit_context2);
 begin
- ctx.builder.int3;
- ctx.builder.ud2;
+ op_ud2(ctx);
 end;
 
 {
@@ -1577,6 +1576,11 @@ begin
      ctx.builder.int3;
      ctx.builder.ud2;
 
+     if debug_info then
+     begin
+      op_set_r14_imm(ctx,Int64(ctx.ptr_curr));
+     end;
+
      link_curr:=ctx.builder.get_curr_label.before;
      link_next:=ctx.builder.get_curr_label.after;
 
@@ -1881,6 +1885,11 @@ begin
  ctx.builder.int3;
  ctx.builder.int3;
  ctx.builder.ud2;
+
+ if debug_info then
+ begin
+  op_set_r14_imm(ctx,Int64(ctx.ptr_curr));
+ end;
 
  build(ctx);
 

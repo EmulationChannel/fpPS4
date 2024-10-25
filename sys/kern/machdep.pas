@@ -390,6 +390,11 @@ end;
 
 procedure host_sigcode; external;
 
+function IS_SYSTEM_STACK(td:p_kthread;rsp:qword):Boolean; inline;
+begin
+ Result:=(rsp<=QWORD(td^.td_kstack.stack)) and (rsp>(QWORD(td^.td_kstack.sttop)));
+end;
+
 procedure sendsig(catcher:sig_t;ksi:p_ksiginfo;mask:p_sigset_t);
 var
  td:p_kthread;
@@ -470,6 +475,12 @@ begin
   sp:=regs^.tf_rsp-128;
  end;
 
+ if ((td^.pcb_flags and PCB_IS_JIT)<>0) then
+ if IS_SYSTEM_STACK(td,sp) then
+ begin
+  Assert(false,'System stack on guest context?');
+ end;
+
  sp:=sp-sizeof(sigframe);
 
  sfp:=p_sigframe(sp and (not $1F));
@@ -530,6 +541,12 @@ begin
 
  Result:=copyin(sigcntxp,@uc,sizeof(ucontext_t));
  if (Result<>0) then Exit;
+
+ if ((td^.pcb_flags and PCB_IS_JIT)<>0) then
+ if IS_SYSTEM_STACK(td,uc.uc_mcontext.mc_rsp) then
+ begin
+  Assert(false,'System stack on guest context?');
+ end;
 
  ucp:=@uc;
  if ((ucp^.uc_mcontext.mc_flags and (not _MC_FLAG_MASK))<>0) then

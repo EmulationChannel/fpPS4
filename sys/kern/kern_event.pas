@@ -434,6 +434,8 @@ begin
 
  if (Integer(kn^.kn_id)<>p_proc.p_pid) then Exit(ESRCH);
 
+ PROC_LOCK();
+
  if ((p_proc.p_flag and P_WEXIT)<>0) then
  begin
   immediate:=1;

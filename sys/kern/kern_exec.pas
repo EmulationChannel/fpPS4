@@ -336,11 +336,19 @@ begin
    copyout(sv_sigcode,shared_page_base,sv_szsigcode^);
   end;
 
+ //set max prot
  vm_map_protect(map,
                 QWORD(shared_page_base),
                 QWORD(shared_page_base)+shared_page_len,
                 VM_PROT_READ or VM_PROT_EXECUTE,
                 True);
+
+ //set prot
+ vm_map_protect(map,
+                QWORD(shared_page_base),
+                QWORD(shared_page_base)+shared_page_len,
+                VM_PROT_READ or VM_PROT_EXECUTE,
+                False);
 
  {
  obj:=sv^.sv_shared_page_obj;

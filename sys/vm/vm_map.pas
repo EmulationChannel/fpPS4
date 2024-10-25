@@ -1219,8 +1219,8 @@ charged:
  new_entry^.offset:=offset;
  new_entry^.avail_ssize:=0;
 
- new_entry^.inheritance:=inheritance;
- new_entry^.protection:=prot;
+ new_entry^.inheritance   :=inheritance;
+ new_entry^.protection    :=prot;
  new_entry^.max_protection:=max;
 
  //new_entry^.wired_count = 0;
@@ -1852,8 +1852,8 @@ begin
 
   if set_max then
   begin
-   current^.protection:=new_prot and old_prot;
-   current^.max_protection:=current^.protection;
+   current^.max_protection:=new_prot;
+   current^.protection    :=current^.max_protection and old_prot;
   end else
   begin
    current^.protection:=new_prot;

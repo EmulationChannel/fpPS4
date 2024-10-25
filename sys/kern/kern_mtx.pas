@@ -123,6 +123,7 @@ end;
 
 procedure mtx_unlock(var m:mtx); {$IFNDEF DEBUG_MTX} inline; {$ENDIF}
 begin
+ mtx_assert(m);
  {$IFDEF DEBUG_MTX}
  m.debug_own[0]:=nil;
  m.debug_own[1]:=nil;
@@ -136,9 +137,12 @@ begin
  Result:=m.c.OwningThread=GetCurrentThreadId;
 end;
 
-procedure mtx_assert(var m:mtx); inline;
+procedure mtx_assert(var m:mtx); //inline;
 begin
- Assert(mtx_owned(m),'mtx_assert:'+IntToStr(m.c.OwningThread)+'<>'+IntToStr(GetCurrentThreadId));
+ if not mtx_owned(m) then
+ begin
+  Assert(false,'mtx_assert:'+IntToStr(m.c.OwningThread)+'<>'+IntToStr(GetCurrentThreadId));
+ end;
 end;
 
 end.
