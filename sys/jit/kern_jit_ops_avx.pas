@@ -1288,6 +1288,8 @@ begin
  jit_cbs[OPPv,OPcvtps2 ,OPSx_pd]:=@op_avx2_reg_mem_wo;
  jit_cbs[OPPv,OPcvtps2 ,OPSx_dq]:=@op_avx2_reg_mem_wo;
 
+ jit_cbs[OPPv,OPphminposuw,OPSnone]:=@op_avx2_reg_mem_wo;
+
  jit_cbs[OPPv,OPcvtps2 ,OPSx_ph]:=@op_avx3_mri;
 
  jit_cbs[OPPnone,OPvcvtph2ps,OPSnone]:=@op_avx2_reg_mem_wo;
