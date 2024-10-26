@@ -480,6 +480,8 @@ asm
   //Restore full.
   call  ipi_sigreturn
   hlt
+ //marker
+ .quad 0xDEADC0DEDEADC0DE
 end;
 
 procedure host_sigcode; assembler; nostackframe; public;
@@ -529,11 +531,32 @@ end;
 
 ////
 
+function IndexMarker(pbuf:Pointer):Pointer;
+begin
+ Result:=nil;
+ while True do
+ begin
+
+  if (PQWORD(pbuf)^=QWORD($DEADC0DEDEADC0DE)) then
+  begin
+   Break;
+  end;
+
+  Inc(pbuf);
+ end;
+ Result:=pbuf;
+end;
+
+var
+ fast_syscall_end:Pointer=nil;
+
 function IS_TRAP_FUNC(rip:qword):Boolean; public;
 begin
+ if (fast_syscall_end=nil) then fast_syscall_end:=IndexMarker(@fast_syscall);
+
  Result:=(
           (rip>=QWORD(@fast_syscall)) and
-          (rip<=(QWORD(@fast_syscall)+$1A2)) //fast_syscall func size
+          (rip<=QWORD(fast_syscall_end)) //fast_syscall func size
          );
 end;
 

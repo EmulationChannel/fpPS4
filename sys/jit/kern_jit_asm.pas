@@ -262,6 +262,8 @@ asm
   //Restore full.
   call  ipi_sigreturn
   hlt
+ //marker
+ .quad 0xDEADC0DEDEADC0DE
 end;
 
 procedure jit_save_to_sys_save(td:p_kthread); public;
@@ -469,6 +471,8 @@ asm
  leaq 8(%rbp),%rbp
 
  jmp jit_jmp_dispatch
+ //marker
+ .quad 0xDEADC0DEDEADC0DE
 end;
 
 //in:r14(addr) r15(plt) out:r14(addr)
@@ -499,6 +503,8 @@ asm
 
  //interrupt
  jmp %gs:teb.jit_trp
+ //marker
+ .quad 0xDEADC0DEDEADC0DE
 end;
 
 procedure stack_set_user; assembler; nostackframe;
@@ -774,19 +780,44 @@ procedure jit_interrupt_nop; assembler; nostackframe;
 asm
 end;
 
+function IndexMarker(pbuf:Pointer):Pointer;
+begin
+ Result:=nil;
+ while True do
+ begin
+
+  if (PQWORD(pbuf)^=QWORD($DEADC0DEDEADC0DE)) then
+  begin
+   Break;
+  end;
+
+  Inc(pbuf);
+ end;
+ Result:=pbuf;
+end;
+
+var
+ jit_syscall_end      :Pointer=nil;
+ jit_jmp_dispatch_end :Pointer=nil;
+ jit_jmp_plt_cache_end:Pointer=nil;
+
 function IS_JIT_FUNC(rip:qword):Boolean; public;
 begin
+ if (jit_syscall_end      =nil) then jit_syscall_end      :=IndexMarker(@jit_syscall);
+ if (jit_jmp_dispatch_end =nil) then jit_jmp_dispatch_end :=IndexMarker(@jit_jmp_dispatch);
+ if (jit_jmp_plt_cache_end=nil) then jit_jmp_plt_cache_end:=IndexMarker(@jit_jmp_plt_cache);
+
  Result:=(
           (rip>=QWORD(@jit_syscall)) and
-          (rip<=(QWORD(@jit_syscall)+$1A5)) //jit_syscall func size
+          (rip<=(QWORD(jit_syscall_end))) //jit_syscall func size
          ) or
          (
           (rip>=QWORD(@jit_jmp_dispatch)) and
-          (rip<=(QWORD(@jit_jmp_dispatch)+$2C)) //jit_jmp_dispatch func size
+          (rip<=(QWORD(jit_jmp_dispatch_end))) //jit_jmp_dispatch func size
          ) or
          (
           (rip>=QWORD(@jit_jmp_plt_cache)) and
-          (rip<=(QWORD(@jit_jmp_plt_cache)+$33)) //jit_jmp_plt_cache func size
+          (rip<=(QWORD(jit_jmp_plt_cache_end))) //jit_jmp_plt_cache func size
          );
 end;
 
