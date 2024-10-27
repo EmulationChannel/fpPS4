@@ -52,6 +52,8 @@ var
 begin
  if( param_sfo_lazy_init=2) then Exit;
 
+ Writeln('PARAM_SFO_INIT');
+
  if CAS(param_sfo_lazy_init,0,1) then
  begin
   rw_wlock(param_sfo_lock);

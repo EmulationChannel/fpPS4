@@ -343,8 +343,6 @@ var
 begin
  Result:=EXCEPTION_CONTINUE_SEARCH;
 
- Writeln('UnhandledException:0x',HexStr(get_exception(p),8));
-
  case get_exception(p) of
   FPC_EXCEPTION_CODE       :Exit;
   FPC_SET_EH_HANDLER       :Exit(EXCEPTION_CONTINUE_EXECUTION);
@@ -353,6 +351,8 @@ begin
   DBG_PRINTEXCEPTION_C     :Exit(EXCEPTION_CONTINUE_EXECUTION);
   DBG_PRINTEXCEPTION_WIDE_C:Exit(EXCEPTION_CONTINUE_EXECUTION); //RenderDoc issuse
  end;
+
+ Writeln('UnhandledException:0x',HexStr(get_exception(p),8));
 
  if (curkthread=nil) then Exit;
 
