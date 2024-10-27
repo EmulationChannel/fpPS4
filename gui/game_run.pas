@@ -264,6 +264,47 @@ begin
 
 end;
 
+function NtTerminateProcessTrap(ProcessHandle:THANDLE;ExitStatus:DWORD):DWORD; MS_ABI_Default;
+begin
+ Result:=0;
+ Writeln(stderr,'NtTerminateProcess:0x',HexStr(ExitStatus,8));
+ print_backtrace(StdErr,Get_pc_addr,get_frame,0);
+ print_backtrace_td(StdErr);
+ asm
+  mov ProcessHandle,%R10
+  mov ExitStatus   ,%EDX
+  mov $0x2c        ,%EAX
+  syscall
+ end;
+end;
+
+//FF 25 00 00 00 00 jmp 0(%rip)
+
+type
+ t_jmp_rop=packed record
+  cmd:WORD;  //FF 25
+  ofs:DWORD; //00 00 00 00
+  adr:QWORD;
+ end;
+
+Procedure CreateNtTerminateTrap;
+var
+ rop:t_jmp_rop;
+ adr:Pointer;
+ num:PTRUINT;
+ R:Boolean;
+begin
+ rop.cmd:=$25FF;
+ rop.ofs:=0;
+ rop.adr:=QWORD(@NtTerminateProcessTrap);
+
+ adr:=GetProcAddress(GetModuleHandle('ntdll.dll'),'NtTerminateProcess');
+
+ num:=0;
+ R:=WriteProcessMemory(GetCurrentProcess,adr,@rop,SizeOf(rop),num);
+ Writeln('CreateNtTerminateTrap:0x',HexStr(adr),' ',R,' ',num);
+end;
+
 procedure fork_process(data:Pointer;size:QWORD); SysV_ABI_CDecl;
 var
  td:p_kthread;
@@ -300,6 +341,8 @@ begin
  p_host_ipc    :=kipc;
  p_host_handler:=THostIpcHandler.Create;
  p_host_ipc    .FHandler:=p_host_handler;
+
+ CreateNtTerminateTrap;
 
  td:=nil;
  r:=kthread_add(@prepare,GameStartupInfo,@td,0,'[main]');

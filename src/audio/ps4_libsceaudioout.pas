@@ -1056,7 +1056,7 @@ var
 begin
  Result:=0;
 
- Writeln('sceAudioOutOutput->');
+ //Writeln('sceAudioOutOutput->');
 
  if (_lazy_init=0) then
  begin
@@ -1096,7 +1096,7 @@ begin
 
  mtx_unlock(g_port_lock);
 
- Writeln('sceAudioOutOutput<-');
+ //Writeln('sceAudioOutOutput<-');
 
  {
  if (HAudioOuts=nil) then Exit(SCE_AUDIO_OUT_ERROR_NOT_INIT);
@@ -1225,7 +1225,7 @@ var
 begin
  Result:=0;
 
- Writeln('sceAudioOutOutputs->');
+ //Writeln('sceAudioOutOutputs->');
 
  if (_lazy_init=0) or (g_audioout_interface=nil) then
  begin
@@ -1313,7 +1313,7 @@ begin
 
  _unlock:
 
- Writeln('sceAudioOutOutputs<-');
+ //Writeln('sceAudioOutOutputs<-');
 
  mtx_unlock(g_port_lock);
 

@@ -344,6 +344,13 @@ begin
  Result:=EXCEPTION_CONTINUE_SEARCH;
 
  case get_exception(p) of
+  DBG_PRINTEXCEPTION_C     :;
+  DBG_PRINTEXCEPTION_WIDE_C:;
+  else
+    Writeln('UnhandledException:0x',HexStr(get_exception(p),8));
+ end;
+
+ case get_exception(p) of
   FPC_EXCEPTION_CODE       :Exit;
   FPC_SET_EH_HANDLER       :Exit(EXCEPTION_CONTINUE_EXECUTION);
   EXCEPTION_BREAKPOINT     :Exit;
@@ -351,8 +358,6 @@ begin
   DBG_PRINTEXCEPTION_C     :Exit(EXCEPTION_CONTINUE_EXECUTION);
   DBG_PRINTEXCEPTION_WIDE_C:Exit(EXCEPTION_CONTINUE_EXECUTION); //RenderDoc issuse
  end;
-
- Writeln('UnhandledException:0x',HexStr(get_exception(p),8));
 
  if (curkthread=nil) then Exit;
 
@@ -459,7 +464,7 @@ var
 begin
  prev_assert:=AssertErrorProc;
  AssertErrorProc:=@_Assert;
- //UEHandler:=SetUnhandledExceptionFilter(@UnhandledException);
+ UEHandler:=SetUnhandledExceptionFilter(@UnhandledException);
  VEHandler:=AddVectoredExceptionHandler(1,@ProcessException);
  V2Handler:=AddVectoredExceptionHandler(0,@UnhandledException);
  eh.ptr:=@ExceptionDispatcher;
