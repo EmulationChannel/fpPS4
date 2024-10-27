@@ -263,6 +263,8 @@ begin
  Result:=EXCEPTION_CONTINUE_SEARCH;
  if (curkthread=nil) then Exit;
 
+ Writeln('ProcessException:0x',HexStr(get_exception(p),8));
+
  case get_exception(p) of
   FPC_EXCEPTION_CODE       :Exit;
   FPC_SET_EH_HANDLER       :Exit(EXCEPTION_CONTINUE_EXECUTION);
@@ -340,6 +342,8 @@ var
  ExObj:Exception;
 begin
  Result:=EXCEPTION_CONTINUE_SEARCH;
+
+ Writeln('UnhandledException:0x',HexStr(get_exception(p),8));
 
  case get_exception(p) of
   FPC_EXCEPTION_CODE       :Exit;
