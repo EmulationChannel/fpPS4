@@ -1056,6 +1056,8 @@ var
 begin
  Result:=0;
 
+ Writeln('sceAudioOutOutput->');
+
  if (_lazy_init=0) then
  begin
   Exit(SCE_AUDIO_OUT_ERROR_NOT_INIT);
@@ -1093,6 +1095,8 @@ begin
   end;
 
  mtx_unlock(g_port_lock);
+
+ Writeln('sceAudioOutOutput<-');
 
  {
  if (HAudioOuts=nil) then Exit(SCE_AUDIO_OUT_ERROR_NOT_INIT);
@@ -1221,6 +1225,8 @@ var
 begin
  Result:=0;
 
+ Writeln('sceAudioOutOutputs->');
+
  if (_lazy_init=0) or (g_audioout_interface=nil) then
  begin
   Exit(SCE_AUDIO_OUT_ERROR_NOT_INIT);
@@ -1306,6 +1312,8 @@ begin
   g_audioout_interface.Outputs(@params,num);
 
  _unlock:
+
+ Writeln('sceAudioOutOutputs<-');
 
  mtx_unlock(g_port_lock);
 
