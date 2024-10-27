@@ -463,7 +463,7 @@ begin
  VEHandler:=AddVectoredExceptionHandler(1,@ProcessException);
  V2Handler:=AddVectoredExceptionHandler(0,@UnhandledException);
  eh.ptr:=@ExceptionDispatcher;
- RaiseException(FPC_SET_EH_HANDLER,0,2,@eh);
+ //RaiseException(FPC_SET_EH_HANDLER,0,2,@eh);
 end;
 
 procedure UninstallExceptionHandler;
