@@ -489,10 +489,6 @@ begin
  newtd:=thread_alloc(0);
  if (newtd=nil) then Exit(ENOMEM);
 
- writeln('create_thread[',name,']'#13#10,
-         ' newtd:0x',HexStr(newtd)
-        );
-
  thread0_param(newtd);
 
  //user stack
@@ -517,6 +513,11 @@ begin
   thread_free(newtd);
   Exit(EINVAL);
  end;
+
+ writeln('create_thread[',name,']'#13#10,
+         ' newtd:0x',HexStr(newtd),#13#10,
+         '   tid:',newtd^.td_tid
+        );
 
  if (child_tid<>nil) then
  begin

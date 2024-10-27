@@ -145,20 +145,22 @@ end;
 
 function BaseQueryInfo(td:p_kthread):Integer;
 var
- TBI:THREAD_BASIC_INFORMATION;
+ data:array[0..SizeOf(THREAD_BASIC_INFORMATION)-1+7] of Byte;
+ P_TBI:PTHREAD_BASIC_INFORMATION;
 begin
- TBI:=Default(THREAD_BASIC_INFORMATION);
+ P_TBI:=Align(@data,8);
+ P_TBI^:=Default(THREAD_BASIC_INFORMATION);
 
  Result:=NtQueryInformationThread(
            td^.td_handle,
            ThreadBasicInformation,
-           @TBI,
+           P_TBI,
            SizeOf(THREAD_BASIC_INFORMATION),
            nil);
  if (Result<>0) then Exit;
 
- td^.td_teb   :=TBI.TebBaseAddress;
- td^.td_cpuset:=TBI.AffinityMask;
+ td^.td_teb   :=P_TBI^.TebBaseAddress;
+ td^.td_cpuset:=P_TBI^.AffinityMask;
 
  td^.td_teb^.thread:=td; //self
 end;
@@ -319,6 +321,8 @@ function cpuset_setaffinity(td:p_kthread;new:Ptruint):Integer;
 var
  info:SYSTEM_INFO;
  i,m,t,n:Integer;
+ data:array[0..SizeOf(Ptruint)-1+7] of Byte;
+ p_mask:PPtruint;
 begin
  if (td=nil) then Exit;
  if (td^.td_handle=0) or (td^.td_handle=THandle(-1)) then Exit(-1);
@@ -342,10 +346,17 @@ begin
  end;
 
  td^.td_cpuset:=new;
- Result:=NtSetInformationThread(td^.td_handle,ThreadAffinityMask,@new,SizeOf(Ptruint));
+
+ p_mask:=Align(@data,8);
+ p_mask^:=new;
+
+ Result:=NtSetInformationThread(td^.td_handle,ThreadAffinityMask,p_mask,SizeOf(Ptruint));
 end;
 
 function cpu_set_priority(td:p_kthread;prio:Integer):Integer;
+var
+ data:array[0..SizeOf(Integer)-1+7] of Byte;
+ p_prio:PInteger;
 begin
  if (td=nil) then Exit;
  if (td^.td_handle=0) or (td^.td_handle=THandle(-1)) then Exit(-1);
@@ -363,28 +374,39 @@ begin
            prio:=-16;
  end;
 
- Result:=NtSetInformationThread(td^.td_handle,ThreadBasePriority,@prio,SizeOf(Integer));
+ p_prio:=Align(@data,8);
+ p_prio^:=prio;
+
+ Result:=NtSetInformationThread(td^.td_handle,ThreadBasePriority,p_prio,SizeOf(Integer));
 end;
 
 function cpu_thread_set_name(td:p_kthread;const name:shortstring):Integer;
+Const
+ MAX_LEN=256;
 var
- W:array[0..255] of WideChar;
- UNAME:UNICODE_STRING;
+ W:array[0..MAX_LEN-1+7] of WideChar;
+ P_W:PWideChar;
+ data:array[0..SizeOf(UNICODE_STRING)-1+7] of Byte;
+ P_UNAME:PUNICODE_STRING;
  L:DWORD;
 begin
  Result:=0;
  if (td=nil) then Exit;
  if (td^.td_handle=0) or (td^.td_handle=THandle(-1)) then Exit;
 
- L:=Utf8ToUnicode(@W,length(W),@name[1],length(name));
+ P_W:=Align(@W,8);
 
- W:=UTF8Decode(name);
+ FillWord(P_W^,MAX_LEN,0);
+ L:=Utf8ToUnicode(P_W,MAX_LEN,@name[1],length(name));
 
- UNAME.Length       :=L*SizeOf(WideChar);
- UNAME.MaximumLength:=UNAME.Length;
- UNAME.Buffer       :=PWideChar(W);
+ P_UNAME:=Align(@data,8);
 
- Result:=NtSetInformationThread(td^.td_handle,ThreadNameInformation,@UNAME,SizeOf(UNAME));
+ P_UNAME^.Length       :=L*SizeOf(WideChar);
+ P_UNAME^.MaximumLength:=P_UNAME^.Length;
+ P_UNAME^._Align       :=0;
+ P_UNAME^.Buffer       :=P_W;
+
+ Result:=NtSetInformationThread(td^.td_handle,ThreadNameInformation,P_UNAME,SizeOf(UNICODE_STRING));
 end;
 
 function md_suspend(td:p_kthread):Integer;
