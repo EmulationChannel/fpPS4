@@ -682,6 +682,8 @@ begin
  teb_set_user(td);
  //teb stack
 
+ Writeln('ipi_sigreturn');
+
  R:=NtContinue(Context,False);
 
  Writeln(stderr,'NtContinue:0x',HexStr(R,8));
