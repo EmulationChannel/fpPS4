@@ -207,6 +207,14 @@ begin
  Context^.ContextFlags:=CONTEXT_THREAD;
 end;
 
+type
+ t_GetProcAddressForCaller=function(hModule   :HINST;
+                                    lpProcName:LPCSTR;
+                                    Param3    :Pointer):Pointer; //KernelBase.dll
+
+ t_CsrCreateRemoteThread=function(hThread :THANDLE;
+                                  ClientId:PCLIENT_ID):DWORD; //csrsrv
+
 function cpu_thread_create(td:p_kthread;
                            stack_base:Pointer;
                            stack_size:QWORD;
@@ -222,6 +230,9 @@ var
  Context   :PCONTEXT;
 
  Stack:Pointer;
+
+ GetProcAddressForCaller:t_GetProcAddressForCaller;
+ CsrCreateRemoteThread  :t_CsrCreateRemoteThread;
 begin
  if (td=nil) then Exit(-1);
 
@@ -243,6 +254,10 @@ begin
                        start_func,
                        Stack);
 
+ Writeln('NtCreateThread');
+
+ //windows.CreateThread();
+
  Result:=NtCreateThread(
           @td^.td_handle,
           THREAD_ALL_ACCESS,
@@ -257,7 +272,36 @@ begin
  begin
   td^.td_tid:=DWORD(ClientId^.UniqueThread);
 
-  Result:=BaseQueryInfo(td);
+  //CSRSRV
+  Pointer(GetProcAddressForCaller):=GetProcAddress(GetModuleHandle('kernelbase.dll'),'GetProcAddressForCaller');
+  CsrCreateRemoteThread  :=nil;
+
+  Writeln('csrsrv.dll:0x',HexStr(GetModuleHandle('csrsrv.dll'),16));
+  Writeln('csrsrv:0x',HexStr(GetModuleHandle('csrsrv'),16));
+
+  if (GetProcAddressForCaller<>nil) then
+  begin
+   Pointer(CsrCreateRemoteThread):=GetProcAddressForCaller(GetModuleHandle('csrsrv.dll'),'CsrCreateRemoteThread',nil);
+  end;
+
+  if (CsrCreateRemoteThread=nil) then
+  begin
+   Pointer(CsrCreateRemoteThread):=GetProcAddress(GetModuleHandle('csrsrv.dll'),'CsrCreateRemoteThread');
+  end;
+
+  if (CsrCreateRemoteThread<>nil) then
+  begin
+   Result:=CsrCreateRemoteThread(td^.td_handle,ClientId)
+  end;
+  //CSRSRV
+
+  Writeln('GetProcAddressForCaller:0x',HexStr(GetProcAddressForCaller));
+  Writeln('CsrCreateRemoteThread  :0x',HexStr(CsrCreateRemoteThread));
+
+  if (Result=0) then
+  begin
+   Result:=BaseQueryInfo(td);
+  end;
 
   if (Result<>0) then
   begin
