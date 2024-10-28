@@ -264,6 +264,7 @@ begin
 
 end;
 
+{
 function NtTerminateProcessTrap(ProcessHandle:THANDLE;ExitStatus:DWORD):DWORD; MS_ABI_Default;
 begin
  Result:=0;
@@ -277,8 +278,6 @@ begin
   syscall
  end;
 end;
-
-//FF 25 00 00 00 00 jmp 0(%rip)
 
 type
  t_jmp_rop=packed record
@@ -304,6 +303,7 @@ begin
  R:=WriteProcessMemory(GetCurrentProcess,adr,@rop,SizeOf(rop),num);
  Writeln('CreateNtTerminateTrap:0x',HexStr(adr),' ',R,' ',num);
 end;
+}
 
 procedure fork_process(data:Pointer;size:QWORD); SysV_ABI_CDecl;
 var
@@ -342,7 +342,7 @@ begin
  p_host_handler:=THostIpcHandler.Create;
  p_host_ipc    .FHandler:=p_host_handler;
 
- CreateNtTerminateTrap;
+ //CreateNtTerminateTrap;
 
  td:=nil;
  r:=kthread_add(@prepare,GameStartupInfo,@td,0,'[main]');

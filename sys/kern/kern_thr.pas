@@ -139,13 +139,14 @@ type
   stack  :Pointer;
   sttop  :Pointer;
   _align1:array[0..28] of QWORD;
-  jitcall:Pointer;                 //0x100
+  WOW64  :Pointer;                 //0x100
   _align2:array[0..18] of QWORD;
   _resrv1:array[0..3] of QWORD;
   thread :Pointer;                 //0x1C0
   fsbase :Pointer;                 //0x1C8
   gsbase :Pointer;                 //0x1D0
-  _resrv2:array[0..21] of QWORD;
+  jitcall:Pointer;                 //0x1D8
+  _resrv2:array[0..20] of QWORD;
   _align3:array[0..7] of QWORD;
   actctx :Pointer;                 //0x2C8
   _align4:array[0..180] of QWORD;
@@ -165,7 +166,7 @@ const
  teb_jit_trp=ptruint(@teb(nil^).jit_trp);
  teb_iflag  =ptruint(@teb(nil^).iflag  );
 
- {$IF teb_jitcall<>$100}{$STOP teb_jitcall<>$100}{$ENDIF}
+ {$IF teb_jitcall<>$1D8}{$STOP teb_jitcall<>$1D8}{$ENDIF}
  {$IF teb_thread <>$1C0}{$STOP teb_thread <>$1C0}{$ENDIF}
  {$IF teb_actctx <>$2C8}{$STOP teb_actctx <>$2C8}{$ENDIF}
  {$IF teb_jit_trp<>$878}{$STOP teb_jit_trp<>$878}{$ENDIF}

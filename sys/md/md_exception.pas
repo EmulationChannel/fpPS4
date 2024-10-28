@@ -263,7 +263,7 @@ begin
  Result:=EXCEPTION_CONTINUE_SEARCH;
  if (curkthread=nil) then Exit;
 
- Writeln('ProcessException:0x',HexStr(get_exception(p),8));
+ //Writeln('ProcessException:0x',HexStr(get_exception(p),8));
 
  case get_exception(p) of
   FPC_EXCEPTION_CODE       :Exit;
@@ -343,12 +343,14 @@ var
 begin
  Result:=EXCEPTION_CONTINUE_SEARCH;
 
+ {
  case get_exception(p) of
   DBG_PRINTEXCEPTION_C     :;
   DBG_PRINTEXCEPTION_WIDE_C:;
   else
     Writeln('UnhandledException:0x',HexStr(get_exception(p),8));
  end;
+ }
 
  case get_exception(p) of
   FPC_EXCEPTION_CODE       :Exit;

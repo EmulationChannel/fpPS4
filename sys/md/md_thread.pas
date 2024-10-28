@@ -235,8 +235,8 @@ begin
  Pointer(GetProcAddressForCaller):=GetProcAddress(GetModuleHandle('kernelbase.dll'),'GetProcAddressForCaller');
  CsrCreateRemoteThread  :=nil;
 
- Writeln('csrsrv.dll:0x',HexStr(GetModuleHandle('csrsrv.dll'),16));
- Writeln('csrsrv:0x',HexStr(GetModuleHandle('csrsrv'),16));
+ //Writeln('csrsrv.dll:0x',HexStr(GetModuleHandle('csrsrv.dll'),16));
+ //Writeln('csrsrv:0x',HexStr(GetModuleHandle('csrsrv'),16));
 
  if (GetProcAddressForCaller<>nil) then
  begin
@@ -253,8 +253,8 @@ begin
   Result:=CsrCreateRemoteThread(hThread,ClientId);
  end;
 
- Writeln('GetProcAddressForCaller:0x',HexStr(GetProcAddressForCaller));
- Writeln('CsrCreateRemoteThread  :0x',HexStr(CsrCreateRemoteThread));
+ //Writeln('GetProcAddressForCaller:0x',HexStr(GetProcAddressForCaller));
+ //Writeln('CsrCreateRemoteThread  :0x',HexStr(CsrCreateRemoteThread));
 end;
 {$ENDIF}
 
@@ -299,7 +299,7 @@ begin
  {$ENDIF}
 
  {$IFDEF NT_THREAD}
-  Writeln('NtCreateThread');
+  //Writeln('NtCreateThread');
   Result:=NtCreateThread(
            @td^.td_handle,
            THREAD_ALL_ACCESS,
@@ -310,7 +310,7 @@ begin
            InitialTeb,
            True);
  {$ELSE}
-  Writeln('CreateThread');
+  //Writeln('CreateThread');
   td^.td_handle:=CreateThread(nil,4*1024,start_func,arg,CREATE_SUSPENDED,PDWORD(@td^.td_tid)^);
 
   if (td^.td_handle<>0) then

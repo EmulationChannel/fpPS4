@@ -682,7 +682,7 @@ begin
  teb_set_user(td);
  //teb stack
 
- Writeln('ipi_sigreturn');
+ //Writeln('ipi_sigreturn');
 
  R:=NtContinue(Context,False);
 
