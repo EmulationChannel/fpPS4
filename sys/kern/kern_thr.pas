@@ -138,16 +138,20 @@ type
   SEH    :Pointer;
   stack  :Pointer;
   sttop  :Pointer;
-  _align1:array[0..20] of QWORD;
-  jitcall:Pointer;                 //0x0C0
-  _align2:array[0..30] of QWORD;
+  _align1:array[0..28] of QWORD;
+  jitcall:Pointer;                 //0x100
+  _align2:array[0..18] of QWORD;
+  _resrv1:array[0..3] of QWORD;
   thread :Pointer;                 //0x1C0
   fsbase :Pointer;                 //0x1C8
   gsbase :Pointer;                 //0x1D0
-  _align3:array[0..164] of QWORD;
-  jit_trp:Pointer;                 //0x700
-  jit____:Pointer;                 //0x708
-  iflag  :Integer;                 //0x710
+  _resrv2:array[0..21] of QWORD;
+  _align3:array[0..7] of QWORD;
+  actctx :Pointer;                 //0x2C8
+  _align4:array[0..180] of QWORD;
+  jit_trp:Pointer;                 //0x878
+  jit____:Pointer;                 //0x880
+  iflag  :Integer;                 //0x888
  end;
 
 const
@@ -157,13 +161,15 @@ const
  teb_thread =ptruint(@teb(nil^).thread );
  teb_fsbase =ptruint(@teb(nil^).fsbase );
  teb_gsbase =ptruint(@teb(nil^).gsbase );
+ teb_actctx =ptruint(@teb(nil^).actctx );
  teb_jit_trp=ptruint(@teb(nil^).jit_trp);
  teb_iflag  =ptruint(@teb(nil^).iflag  );
 
- {$IF teb_jitcall<>$0C0}{$STOP teb_jitcall<>$0C0}{$ENDIF}
+ {$IF teb_jitcall<>$100}{$STOP teb_jitcall<>$100}{$ENDIF}
  {$IF teb_thread <>$1C0}{$STOP teb_thread <>$1C0}{$ENDIF}
- {$IF teb_jit_trp<>$700}{$STOP teb_jit_trp<>$700}{$ENDIF}
- {$IF teb_iflag  <>$710}{$STOP teb_iflag  <>$710}{$ENDIF}
+ {$IF teb_actctx <>$2C8}{$STOP teb_actctx <>$2C8}{$ENDIF}
+ {$IF teb_jit_trp<>$878}{$STOP teb_jit_trp<>$878}{$ENDIF}
+ {$IF teb_iflag  <>$888}{$STOP teb_iflag  <>$888}{$ENDIF}
 
 type
  t_td_name=array[0..31] of AnsiChar;

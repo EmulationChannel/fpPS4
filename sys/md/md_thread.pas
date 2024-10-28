@@ -3,7 +3,16 @@ unit md_thread;
 {$mode ObjFPC}{$H+}
 {$CALLING SysV_ABI_CDecl}
 
+{$DEFINE NT_THREAD}
+{$DEFINE CSRSRV}
+
 interface
+
+{$IFDEF NT_THREAD}
+ //
+{$ELSE}
+ {$UNDEF CSRSRV}
+{$ENDIF}
 
 uses
  ntapi,
@@ -207,6 +216,7 @@ begin
  Context^.ContextFlags:=CONTEXT_THREAD;
 end;
 
+{$IFDEF CSRSRV}
 type
  t_GetProcAddressForCaller=function(hModule   :HINST;
                                     lpProcName:LPCSTR;
@@ -215,11 +225,45 @@ type
  t_CsrCreateRemoteThread=function(hThread :THANDLE;
                                   ClientId:PCLIENT_ID):DWORD; //csrsrv
 
+function _CsrCreateRemoteThread(hThread:THANDLE;ClientId:PCLIENT_ID):DWORD;
+var
+ GetProcAddressForCaller:t_GetProcAddressForCaller;
+ CsrCreateRemoteThread  :t_CsrCreateRemoteThread;
+begin
+ Result:=0;
+
+ Pointer(GetProcAddressForCaller):=GetProcAddress(GetModuleHandle('kernelbase.dll'),'GetProcAddressForCaller');
+ CsrCreateRemoteThread  :=nil;
+
+ Writeln('csrsrv.dll:0x',HexStr(GetModuleHandle('csrsrv.dll'),16));
+ Writeln('csrsrv:0x',HexStr(GetModuleHandle('csrsrv'),16));
+
+ if (GetProcAddressForCaller<>nil) then
+ begin
+  Pointer(CsrCreateRemoteThread):=GetProcAddressForCaller(GetModuleHandle('csrsrv.dll'),'CsrCreateRemoteThread',nil);
+ end;
+
+ if (CsrCreateRemoteThread=nil) then
+ begin
+  Pointer(CsrCreateRemoteThread):=GetProcAddress(GetModuleHandle('csrsrv.dll'),'CsrCreateRemoteThread');
+ end;
+
+ if (CsrCreateRemoteThread<>nil) then
+ begin
+  Result:=CsrCreateRemoteThread(hThread,ClientId);
+ end;
+
+ Writeln('GetProcAddressForCaller:0x',HexStr(GetProcAddressForCaller));
+ Writeln('CsrCreateRemoteThread  :0x',HexStr(CsrCreateRemoteThread));
+end;
+{$ENDIF}
+
 function cpu_thread_create(td:p_kthread;
                            stack_base:Pointer;
                            stack_size:QWORD;
                            start_func:Pointer;
                            arg       :Pointer):Integer;
+{$IFDEF NT_THREAD}
 var
  _ClientId  :array[0..SizeOf(TCLIENT_ID  )+14] of Byte;
  _InitialTeb:array[0..SizeOf(TINITIAL_TEB)+14] of Byte;
@@ -230,83 +274,65 @@ var
  Context   :PCONTEXT;
 
  Stack:Pointer;
-
- GetProcAddressForCaller:t_GetProcAddressForCaller;
- CsrCreateRemoteThread  :t_CsrCreateRemoteThread;
+{$ENDIF}
 begin
  if (td=nil) then Exit(-1);
 
- ClientId  :=Align(@_ClientId  ,16);
- InitialTeb:=Align(@_InitialTeb,16);
- Context   :=Align(@_Context   ,16);
+ {$IFDEF NT_THREAD}
+  ClientId  :=Align(@_ClientId  ,16);
+  InitialTeb:=Align(@_InitialTeb,16);
+  Context   :=Align(@_Context   ,16);
 
- ClientId^.UniqueProcess:=NtCurrentProcess;
- ClientId^.UniqueThread :=NtCurrentThread;
+  ClientId^.UniqueProcess:=NtCurrentProcess;
+  ClientId^.UniqueThread :=NtCurrentThread;
 
- BaseInitializeStack(InitialTeb,stack_base,stack_size);
+  BaseInitializeStack(InitialTeb,stack_base,stack_size);
 
- //use kernel stack to init
- Stack:=td^.td_kstack.stack;
- Stack:=Pointer((ptruint(Stack) and (not $F)));
+  //use kernel stack to init
+  Stack:=td^.td_kstack.stack;
+  Stack:=Pointer((ptruint(Stack) and (not $F)));
 
- BaseInitializeContext(Context,
-                       arg,
-                       start_func,
-                       Stack);
+  BaseInitializeContext(Context,
+                        arg,
+                        start_func,
+                        Stack);
+ {$ENDIF}
 
- Writeln('NtCreateThread');
+ {$IFDEF NT_THREAD}
+  Writeln('NtCreateThread');
+  Result:=NtCreateThread(
+           @td^.td_handle,
+           THREAD_ALL_ACCESS,
+           nil,
+           NtCurrentProcess,
+           ClientId,
+           Context,
+           InitialTeb,
+           True);
+ {$ELSE}
+  Writeln('CreateThread');
+  td^.td_handle:=CreateThread(nil,4*1024,start_func,arg,CREATE_SUSPENDED,PDWORD(@td^.td_tid)^);
 
- td^.td_handle:=CreateThread(nil,4*1024,start_func,arg,CREATE_SUSPENDED,PDWORD(@ClientId^.UniqueThread)^);
-
- if (td^.td_handle<>0) then
- begin
-  Result:=0;
- end else
- begin
-  Result:=-1;
- end;
-
- {
- Result:=NtCreateThread(
-          @td^.td_handle,
-          THREAD_ALL_ACCESS,
-          nil,
-          NtCurrentProcess,
-          ClientId,
-          Context,
-          InitialTeb,
-          True);
- }
+  if (td^.td_handle<>0) then
+  begin
+   Result:=0;
+  end else
+  begin
+   Result:=-1;
+  end;
+ {$ENDIF}
 
  if (Result=0) then
  begin
+  {$IFDEF NT_THREAD}
   td^.td_tid:=DWORD(ClientId^.UniqueThread);
+  {$ENDIF}
 
   //CSRSRV
-  Pointer(GetProcAddressForCaller):=GetProcAddress(GetModuleHandle('kernelbase.dll'),'GetProcAddressForCaller');
-  CsrCreateRemoteThread  :=nil;
-
-  Writeln('csrsrv.dll:0x',HexStr(GetModuleHandle('csrsrv.dll'),16));
-  Writeln('csrsrv:0x',HexStr(GetModuleHandle('csrsrv'),16));
-
-  if (GetProcAddressForCaller<>nil) then
-  begin
-   Pointer(CsrCreateRemoteThread):=GetProcAddressForCaller(GetModuleHandle('csrsrv.dll'),'CsrCreateRemoteThread',nil);
-  end;
-
-  if (CsrCreateRemoteThread=nil) then
-  begin
-   Pointer(CsrCreateRemoteThread):=GetProcAddress(GetModuleHandle('csrsrv.dll'),'CsrCreateRemoteThread');
-  end;
-
-  if (CsrCreateRemoteThread<>nil) then
-  begin
-   Result:=CsrCreateRemoteThread(td^.td_handle,ClientId)
-  end;
+  {$IFDEF CSRSRV}
+  Result:=_CsrCreateRemoteThread(td^.td_handle,ClientId);
+  {$ENDIF}
   //CSRSRV
-
-  Writeln('GetProcAddressForCaller:0x',HexStr(GetProcAddressForCaller));
-  Writeln('CsrCreateRemoteThread  :0x',HexStr(CsrCreateRemoteThread));
 
   if (Result=0) then
   begin
