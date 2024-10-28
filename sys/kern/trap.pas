@@ -350,6 +350,8 @@ end;
 
 procedure fast_syscall; assembler; nostackframe;
 label
+ _align,
+ _restore,
  _after_call,
  _doreti,
  _fail,
@@ -370,10 +372,15 @@ asm
  test  %rax,%rax
  jz    _fail
 
+ testl PCB_IS_HLE,kthread.pcb_flags(%rax)
+ jne _align
+
  movqq kthread.td_kstack.stack(%rax),%rsp //td_kstack (Implicit lock interrupt)
- andq  $-16,%rsp //align stack
 
  andl  NOT_PCB_FULL_IRET,kthread.pcb_flags(%rax) //clear PCB_FULL_IRET
+
+ _align:
+ andq  $-16,%rsp //align stack
 
  movqq $0  ,kthread.td_frame.tf_rflags(%rax) //clear
  movb  %ch ,kthread.td_frame.tf_rflags(%rax) //save flags
@@ -417,10 +424,15 @@ asm
  testl PCB_FULL_IRET,kthread.pcb_flags(%rcx)
  jnz _doreti
 
+ testl PCB_IS_HLE,kthread.pcb_flags(%rcx)
+ jne _restore
+
  testl TDF_AST,kthread.td_flags(%rcx)
  jne _ast
 
  //Restore preserved registers.
+
+ _restore:
 
  //get flags
  movqq kthread.td_frame.tf_rflags(%rcx),%rax
@@ -467,6 +479,9 @@ asm
 
  //doreti
  _doreti:
+
+  testl PCB_IS_HLE,kthread.pcb_flags(%rcx)
+  jne _doreti_exit
 
   //%rcx=curkthread
   testl TDF_AST,kthread.td_flags(%rcx)

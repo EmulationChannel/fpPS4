@@ -994,32 +994,31 @@ begin
 end;
 
 procedure op_jit2native(var ctx:t_jit_context2;pcb:Boolean);
-const
- and_desc:t_op_type=(op:$80;index:4);
 begin
  with ctx.builder do
  begin
-  //reset PCB_IS_JIT
+
+  //set PCB_IS_HLE
   if pcb then
   begin
-   _MI8(and_desc,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],not Byte(PCB_IS_JIT));
+   ori([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_HLE));
   end;
 
-  //save internal stack
-  movq([r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)],rsp);
-  movq([r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)],rbp);
-
-  //load guest stack
-  movq(r14,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_ustack.stack)]);
-  movq(r15,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_ustack.sttop)]);
-
-  //set teb
-  movq([GS+teb_stack],r14);
-  movq([GS+teb_sttop],r15);
+  ////save internal stack
+  //movq([r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)],rsp);
+  //movq([r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)],rbp);
+  //
+  ////load guest stack
+  //movq(r14,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_ustack.stack)]);
+  //movq(r15,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_ustack.sttop)]);
+  //
+  ////set teb
+  //movq([GS+teb_stack],r14);
+  //movq([GS+teb_sttop],r15);
 
   //load rsp,rbp,r14,r15,r13
-  movq(rsp,[r13+Integer(@p_jit_frame(nil)^.tf_rsp)]);
-  movq(rbp,[r13+Integer(@p_jit_frame(nil)^.tf_rbp)]);
+  //movq(rsp,[r13+Integer(@p_jit_frame(nil)^.tf_rsp)]);
+  //movq(rbp,[r13+Integer(@p_jit_frame(nil)^.tf_rbp)]);
   movq(r14,[r13+Integer(@p_jit_frame(nil)^.tf_r14)]);
   movq(r15,[r13+Integer(@p_jit_frame(nil)^.tf_r15)]);
   movq(r13,[r13+Integer(@p_jit_frame(nil)^.tf_r13)]);
@@ -1027,17 +1026,16 @@ begin
 end;
 
 procedure op_native2jit(var ctx:t_jit_context2;pcb:Boolean);
-const
- or_desc:t_op_type=(op:$80;index:1);
 begin
  with ctx.builder do
  begin
+
   //save r13
   movq([GS+Integer(teb_jitcall)],r13);
 
   //load curkthread,jit ctx
   movq(r13,[GS +Integer(teb_thread)]);
-  leaq(r13,[r13+jit_frame_offset  ]);
+  leaq(r13,[r13+jit_frame_offset   ]);
 
   //load r14,r15
   movq([r13+Integer(@p_jit_frame(nil)^.tf_r14)],r14);
@@ -1048,26 +1046,27 @@ begin
   movq([r13+Integer(@p_jit_frame(nil)^.tf_r13)],r14);
 
   //load rsp,rbp
-  movq([r13+Integer(@p_jit_frame(nil)^.tf_rsp)],rsp);
-  movq([r13+Integer(@p_jit_frame(nil)^.tf_rbp)],rbp);
+  //movq([r13+Integer(@p_jit_frame(nil)^.tf_rsp)],rsp);
+  //movq([r13+Integer(@p_jit_frame(nil)^.tf_rbp)],rbp);
 
   //load host stack
-  movq(r14,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_kstack.stack)]);
-  movq(r15,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_kstack.sttop)]);
+  //movq(r14,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_kstack.stack)]);
+  //movq(r15,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_kstack.sttop)]);
 
   //set teb
-  movq([GS+teb_stack],r14);
-  movq([GS+teb_sttop],r15);
+  //movq([GS+teb_stack],r14);
+  //movq([GS+teb_sttop],r15);
 
   //load internal stack
-  movq(rsp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)]);
-  movq(rbp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)]);
+  //movq(rsp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)]);
+  //movq(rbp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)]);
 
-  //set PCB_IS_JIT
+  //reset PCB_IS_HLE
   if pcb then
   begin
-   _MI8(or_desc,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_JIT));
+   andi([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],not Byte(PCB_IS_HLE));
   end;
+
  end;
 end;
 
@@ -1382,7 +1381,6 @@ begin
  //debug
 end;
 
-
 procedure pick_locked_internal(var ctx:t_jit_context2);
 var
  node:t_jit_context2.p_export_point;
@@ -1415,10 +1413,13 @@ begin
   link_curr:=ctx.builder.get_curr_label.after;
   //
   op_jit2native(ctx,true);
+  //[JIT->HLE]
+
   ctx.builder.call_far(node^.native);
 
   op_debug_info_addr(ctx,node^.native);
 
+  //[HLE->JIT]
   op_native2jit(ctx,true);
   //
   op_pop_rip_part0(ctx,0); //out:r14

@@ -130,6 +130,7 @@ const
 
  PCB_FULL_IRET=1;
  PCB_IS_JIT   =2;
+ PCB_IS_HLE   =4;
 
 type
  p_teb=^teb;
@@ -381,7 +382,7 @@ end;
 
 procedure set_pcb_flags(td:p_kthread;f:Integer);
 begin
- td^.pcb_flags:=f or (td^.pcb_flags and PCB_IS_JIT);
+ td^.pcb_flags:=f or (td^.pcb_flags and (PCB_IS_JIT or PCB_IS_HLE));
 end;
 
 function TD_IS_SLEEPING(td:p_kthread):Boolean;

@@ -379,20 +379,26 @@ type
   procedure addq    (reg:TRegValue  ;mem:t_jit_leas);
   procedure addq    (reg0:TRegValue ;reg1:TRegValue);
   procedure addi    (reg:TRegValue  ;imm:Int64);
-  procedure addi8   (reg:TRegValue  ;imm:Byte);
-  procedure addi8   (mem:t_jit_leas ;imm:Byte);
+  procedure addi8se (reg:TRegValue  ;imm:ShortInt);
+  procedure addi8se (mem:t_jit_leas ;imm:ShortInt);
   procedure subq    (mem:t_jit_leas ;reg:TRegValue);
   procedure subq    (reg:TRegValue  ;mem:t_jit_leas);
   procedure subq    (reg0:TRegValue ;reg1:TRegValue);
   procedure subi    (reg:TRegValue  ;imm:Int64);
-  procedure subi8   (reg:TRegValue  ;imm:Byte);
-  procedure subi8   (mem:t_jit_leas ;imm:Byte);
+  procedure subi8se (reg:TRegValue  ;imm:ShortInt);
+  procedure subi8se (mem:t_jit_leas ;imm:ShortInt);
   procedure shli8   (reg:TRegValue  ;imm:Byte);
   procedure shri8   (reg:TRegValue  ;imm:Byte);
   procedure andi    (reg:TRegValue  ;imm:Int64);
-  procedure andi8   (reg:TRegValue  ;imm:Byte);
+  procedure andi    (mem:t_jit_leas;imm:Int64);
+  procedure andi8se (reg:TRegValue  ;imm:ShortInt);
+  procedure andi8se (mem:t_jit_leas ;imm:ShortInt);
   procedure andq    (reg0:TRegValue ;reg1:TRegValue);
   procedure orq     (reg0:TRegValue ;reg1:TRegValue);
+  procedure ori     (reg:TRegValue  ;imm:Int64);
+  procedure ori     (mem:t_jit_leas ;imm:Int64);
+  procedure ori8se  (reg:TRegValue  ;imm:ShortInt);
+  procedure ori8se  (mem:t_jit_leas ;imm:ShortInt);
   procedure xorq    (reg0:TRegValue ;reg1:TRegValue);
   procedure notq    (reg:TRegValue);
   procedure cmpq    (mem:t_jit_leas ;reg:TRegValue);
@@ -3695,14 +3701,14 @@ begin
  _RI(desc,reg,imm);
 end;
 
-procedure t_jit_builder.addi8(reg:TRegValue;imm:Byte);
+procedure t_jit_builder.addi8se(reg:TRegValue;imm:ShortInt);
 const
  desc:t_op_type=(op:$83;index:0);
 begin
  _RI8(desc,reg,imm);
 end;
 
-procedure t_jit_builder.addi8(mem:t_jit_leas;imm:Byte);
+procedure t_jit_builder.addi8se(mem:t_jit_leas;imm:ShortInt);
 const
  desc:t_op_type=(op:$83;index:0);
 begin
@@ -3739,14 +3745,14 @@ begin
  _RI(desc,reg,imm);
 end;
 
-procedure t_jit_builder.subi8(reg:TRegValue;imm:Byte);
+procedure t_jit_builder.subi8se(reg:TRegValue;imm:ShortInt);
 const
  desc:t_op_type=(op:$83;index:5);
 begin
  _RI8(desc,reg,imm);
 end;
 
-procedure t_jit_builder.subi8(mem:t_jit_leas;imm:Byte);
+procedure t_jit_builder.subi8se(mem:t_jit_leas;imm:ShortInt);
 const
  desc:t_op_type=(op:$83;index:5);
 begin
@@ -3778,11 +3784,25 @@ begin
  _RI(desc,reg,imm);
 end;
 
-procedure t_jit_builder.andi8(reg:TRegValue;imm:Byte);
+procedure t_jit_builder.andi(mem:t_jit_leas;imm:Int64);
+const
+ desc:t_op_type=(op:$81;index:4);
+begin
+ _MI(desc,mem,imm);
+end;
+
+procedure t_jit_builder.andi8se(reg:TRegValue;imm:ShortInt);
 const
  desc:t_op_type=(op:$83;index:4);
 begin
  _RI8(desc,reg,imm);
+end;
+
+procedure t_jit_builder.andi8se(mem:t_jit_leas;imm:ShortInt);
+const
+ desc:t_op_type=(op:$83;index:4);
+begin
+ _MI8(desc,mem,imm);
 end;
 
 procedure t_jit_builder.andq(reg0:TRegValue;reg1:TRegValue);
@@ -3790,6 +3810,34 @@ const
  desc:t_op_type=(op:$21;index:0);
 begin
  _RR(desc,reg0,reg1);
+end;
+
+procedure t_jit_builder.ori(reg:TRegValue;imm:Int64);
+const
+ desc:t_op_type=(op:$81;index:1);
+begin
+ _RI(desc,reg,imm);
+end;
+
+procedure t_jit_builder.ori(mem:t_jit_leas;imm:Int64);
+const
+ desc:t_op_type=(op:$81;index:1);
+begin
+ _MI(desc,mem,imm);
+end;
+
+procedure t_jit_builder.ori8se(reg:TRegValue;imm:ShortInt);
+const
+ desc:t_op_type=(op:$83;index:1);
+begin
+ _RI8(desc,reg,imm);
+end;
+
+procedure t_jit_builder.ori8se(mem:t_jit_leas;imm:ShortInt);
+const
+ desc:t_op_type=(op:$83;index:1);
+begin
+ _MI8(desc,mem,imm);
 end;
 
 procedure t_jit_builder.orq(reg0:TRegValue;reg1:TRegValue);

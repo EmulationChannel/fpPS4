@@ -256,8 +256,17 @@ begin
 
  Writeln('NtCreateThread');
 
- //windows.CreateThread();
+ td^.td_handle:=CreateThread(nil,4*1024,start_func,arg,CREATE_SUSPENDED,PDWORD(@ClientId^.UniqueThread)^);
 
+ if (td^.td_handle<>0) then
+ begin
+  Result:=0;
+ end else
+ begin
+  Result:=-1;
+ end;
+
+ {
  Result:=NtCreateThread(
           @td^.td_handle,
           THREAD_ALL_ACCESS,
@@ -267,6 +276,7 @@ begin
           Context,
           InitialTeb,
           True);
+ }
 
  if (Result=0) then
  begin

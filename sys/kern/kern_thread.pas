@@ -356,6 +356,8 @@ end;
 
 procedure before_start(td:p_kthread);
 begin
+ td:=curkthread;
+
  InitThread(td^.td_ustack.stack-td^.td_ustack.sttop);
 
  Set8087CW(__INITIAL_FPUCW__);
@@ -367,6 +369,7 @@ begin
  end;
 
   //switch
+ set_pcb_flags(curkthread,PCB_IS_JIT); //force JIT mode
  ipi_sigreturn;
  Writeln(stderr,'I''m a teapot!');
 end;
@@ -375,6 +378,8 @@ procedure before_start_kern(td:p_kthread);
 type
  t_cb=procedure(arg:QWORD);
 begin
+ td:=curkthread;
+
  InitThread(td^.td_ustack.stack-td^.td_ustack.sttop);
 
  Set8087CW(__INITIAL_FPUCW__);
