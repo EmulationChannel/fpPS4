@@ -993,7 +993,7 @@ begin
  //debug
 end;
 
-procedure op_jit2native(var ctx:t_jit_context2;pcb,stack:Boolean);
+procedure op_jit2native(var ctx:t_jit_context2;pcb,switch_stack:Boolean);
 begin
  with ctx.builder do
  begin
@@ -1004,7 +1004,7 @@ begin
    ori([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_HLE));
   end;
 
-  if stack then
+  if switch_stack then
   begin
    //save internal stack
    movq([r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)],rsp);
@@ -1021,6 +1021,11 @@ begin
    //load rsp,rbp
    movq(rsp,[r13+Integer(@p_jit_frame(nil)^.tf_rsp)]);
    movq(rbp,[r13+Integer(@p_jit_frame(nil)^.tf_rbp)]);
+  end else
+  begin
+   //save rsp,rbp
+   push([r13+Integer(@p_jit_frame(nil)^.tf_rsp),os64]);
+   push([r13+Integer(@p_jit_frame(nil)^.tf_rbp),os64]);
   end;
 
   //load r14,r15,r13
@@ -1030,7 +1035,7 @@ begin
  end;
 end;
 
-procedure op_native2jit(var ctx:t_jit_context2;pcb,stack:Boolean);
+procedure op_native2jit(var ctx:t_jit_context2;pcb,switch_stack:Boolean);
 begin
  with ctx.builder do
  begin
@@ -1050,7 +1055,7 @@ begin
   movq(r14,[GS+Integer(teb_jitcall)]);
   movq([r13+Integer(@p_jit_frame(nil)^.tf_r13)],r14);
 
-  if stack then
+  if switch_stack then
   begin
    //load rsp,rbp
    movq([r13+Integer(@p_jit_frame(nil)^.tf_rsp)],rsp);
@@ -1067,6 +1072,11 @@ begin
    //load internal stack
    movq(rsp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)]);
    movq(rbp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)]);
+  end else
+  begin
+   //restore rbp,rsp
+   pop([r13+Integer(@p_jit_frame(nil)^.tf_rbp),os64]);
+   pop([r13+Integer(@p_jit_frame(nil)^.tf_rsp),os64]);
   end;
 
   //reset PCB_IS_HLE
@@ -1428,7 +1438,16 @@ begin
   op_debug_info_addr(ctx,node^.native);
 
   //[HLE->JIT]
-  op_native2jit(ctx,true,false);
+  op_native2jit(ctx,true,false); //TODO: [HLE->JIT] combine with [ret]
+
+  //save last call
+  if debug_info then
+  with ctx.builder do
+  begin
+   ctx.builder.movi64(r14,QWORD(node^.native));
+   ctx.builder.movq  ([GS+$100],r14);
+  end;
+
   //
   op_pop_rip_part0(ctx,0); //out:r14
   ctx.imm:=0;
