@@ -1510,6 +1510,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ps4_libSceNpWebApi2"/>
       </Unit>
+      <Unit>
+        <Filename Value="src\ps4_libscemove.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceMove"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

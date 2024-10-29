@@ -1200,7 +1200,8 @@ begin
  For i:=0 to 255 do
  begin
   if not g_ime_event_queue.dequeue(event) then Break;
-  handler(g_cb_arg,@event);
+  //TODO: ExecuteGuest
+  //handler(g_cb_arg,@event);
  end;
 
  Result:=0;

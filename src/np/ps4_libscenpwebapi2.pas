@@ -126,7 +126,6 @@ begin
  Result:=obj_new_int('libSceNpWebApi2');
 
  lib:=Result^.add_lib('libSceNpWebApi2');
-
  lib.set_proc($FA8F7CD7A61086A4,@ps4_sceNpWebApi2Initialize);
  lib.set_proc($DC423F39227AE577,@ps4_sceNpWebApi2CreateRequest);
  lib.set_proc($95038217CE25BF3C,@ps4_sceNpWebApi2SendRequest);

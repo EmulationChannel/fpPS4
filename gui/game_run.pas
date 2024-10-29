@@ -87,6 +87,7 @@ uses
  ps4_libSceIme,
  ps4_libSceNpWebApi,
  ps4_libSceNpWebApi2,
+ ps4_libSceMove,
  //ps4_libSceDiscMap,
  //internal libs
 

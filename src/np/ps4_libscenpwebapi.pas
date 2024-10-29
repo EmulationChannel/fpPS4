@@ -261,7 +261,6 @@ begin
  Result:=obj_new_int('libSceNpWebApi');
 
  lib:=Result^.add_lib('libSceNpWebApi');
-
  lib.set_proc($1B70272CD7510631,@ps4_sceNpWebApiInitialize);
  lib.set_proc($6ACCF74ED22A185F,@ps4_sceNpWebApiTerminate);
  lib.set_proc($C7563BCA261293B7,@ps4_sceNpWebApiCreateContext);
