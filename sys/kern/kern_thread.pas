@@ -214,6 +214,7 @@ procedure thread_dec_ref(td:p_kthread); public;
 begin
  if (System.InterlockedDecrement(td^.td_ref)=0) then
  begin
+  thread_free_local_buffer(td);
   thread_zombie(td);
  end;
 end;

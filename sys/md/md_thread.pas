@@ -69,6 +69,7 @@ var
  td:p_kthread;
  stack_size:ULONG_PTR;
  headr_size:ULONG_PTR;
+ padding   :ULONG_PTR;
  data:Pointer;
  size:ULONG_PTR;
  R:DWORD;
@@ -82,7 +83,9 @@ begin
  end;
 
  headr_size:=SizeOf(kthread)+size_of_umtx_q;
- headr_size:=System.Align(headr_size,4*1024);
+ size      :=System.Align(headr_size,4*1024);
+ padding   :=size-headr_size;
+ headr_size:=size;
 
  size:=headr_size+SYS_GUARD_SIZE+stack_size;
  size:=System.Align(size,64*1024);
@@ -130,6 +133,9 @@ begin
 
  td^.td_kstack.sttop:=data;
  td^.td_kstack.stack:=data+stack_size;
+
+ td^.td_padding.addr:=Pointer(td)+(headr_size-padding);
+ td^.td_padding.size:=padding;
 
  Result:=td;
 end;

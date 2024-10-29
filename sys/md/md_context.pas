@@ -562,7 +562,11 @@ begin
 
  if (SPtr>td^.td_kstack.sttop) and (SPtr<=td^.td_kstack.stack) then
  begin
-  if ((Result+size)>=SPtr) then Exit(nil);
+  if ((Result+size)>=SPtr) then
+  begin
+   Result:=thread_get_local_buffer(td,size+align-1);
+   Result:=System.Align(Result,align);
+  end;
  end;
 end;
 

@@ -180,6 +180,11 @@ type
   sttop:Pointer;
  end;
 
+ t_td_buffer=packed record
+  addr:Pointer;
+  size:QWORD;
+ end;
+
  p_td_jctx=^t_td_jctx;
  t_td_jctx=packed record
   block:Pointer;
@@ -255,6 +260,8 @@ type
   pcb_fsbase      :Pointer;
   pcb_gsbase      :Pointer;
   pcb_onfault     :Pointer;
+  td_temp         :t_td_buffer;
+  td_padding      :t_td_buffer;
  end;
 
 const
@@ -354,6 +361,9 @@ procedure thread_resume_all (exclude:p_kthread); external;
 
 function  kthread_add(func,arg:Pointer;newtdp:pp_kthread;pages:Word;name:PChar):Integer; external;
 procedure kthread_exit(); external;
+
+function  thread_get_local_buffer(td:p_kthread;size:QWORD):Pointer;
+procedure thread_free_local_buffer(td:p_kthread);
 
 implementation
 
@@ -593,6 +603,42 @@ begin
  td^.pcb_onfault:=v;
 end;
 
+//
+
+function thread_get_local_buffer(td:p_kthread;size:QWORD):Pointer;
+begin
+ if (td=nil) then Exit(nil);
+
+ if (size<=td^.td_padding.size) then
+ begin
+  Result:=td^.td_padding.addr;
+ end else
+ if (size<=td^.td_temp.size) then
+ begin
+  Result:=td^.td_temp.addr;
+ end else
+ begin
+  if (td^.td_temp.addr<>nil) then
+  begin
+   FreeMem(td^.td_temp.addr);
+  end;
+  Result:=GetMem(size);
+  td^.td_temp.addr:=Result;
+  td^.td_temp.size:=MemSize(Result);
+ end;
+
+end;
+
+procedure thread_free_local_buffer(td:p_kthread);
+begin
+ if (td=nil) then Exit;
+
+ if (td^.td_temp.addr<>nil) then
+ begin
+  FreeMem(td^.td_temp.addr);
+ end;
+ td^.td_temp:=Default(t_td_buffer);
+end;
 
 end.
 

@@ -993,7 +993,7 @@ begin
  //debug
 end;
 
-procedure op_jit2native(var ctx:t_jit_context2;pcb:Boolean);
+procedure op_jit2native(var ctx:t_jit_context2;pcb,stack:Boolean);
 begin
  with ctx.builder do
  begin
@@ -1004,28 +1004,33 @@ begin
    ori([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_HLE));
   end;
 
-  ////save internal stack
-  //movq([r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)],rsp);
-  //movq([r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)],rbp);
-  //
-  ////load guest stack
-  //movq(r14,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_ustack.stack)]);
-  //movq(r15,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_ustack.sttop)]);
-  //
-  ////set teb
-  //movq([GS+teb_stack],r14);
-  //movq([GS+teb_sttop],r15);
+  if stack then
+  begin
+   //save internal stack
+   movq([r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)],rsp);
+   movq([r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)],rbp);
 
-  //load rsp,rbp,r14,r15,r13
-  //movq(rsp,[r13+Integer(@p_jit_frame(nil)^.tf_rsp)]);
-  //movq(rbp,[r13+Integer(@p_jit_frame(nil)^.tf_rbp)]);
+   //load guest stack
+   movq(r14,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_ustack.stack)]);
+   movq(r15,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_ustack.sttop)]);
+
+   //set teb
+   movq([GS+teb_stack],r14);
+   movq([GS+teb_sttop],r15);
+
+   //load rsp,rbp
+   movq(rsp,[r13+Integer(@p_jit_frame(nil)^.tf_rsp)]);
+   movq(rbp,[r13+Integer(@p_jit_frame(nil)^.tf_rbp)]);
+  end;
+
+  //load r14,r15,r13
   movq(r14,[r13+Integer(@p_jit_frame(nil)^.tf_r14)]);
   movq(r15,[r13+Integer(@p_jit_frame(nil)^.tf_r15)]);
   movq(r13,[r13+Integer(@p_jit_frame(nil)^.tf_r13)]);
  end;
 end;
 
-procedure op_native2jit(var ctx:t_jit_context2;pcb:Boolean);
+procedure op_native2jit(var ctx:t_jit_context2;pcb,stack:Boolean);
 begin
  with ctx.builder do
  begin
@@ -1033,7 +1038,7 @@ begin
   //save r13
   movq([GS+Integer(teb_jitcall)],r13);
 
-  //load curkthread,jit ctx
+  //load curkthread,jit_ctx
   movq(r13,[GS +Integer(teb_thread)]);
   leaq(r13,[r13+jit_frame_offset   ]);
 
@@ -1045,21 +1050,24 @@ begin
   movq(r14,[GS+Integer(teb_jitcall)]);
   movq([r13+Integer(@p_jit_frame(nil)^.tf_r13)],r14);
 
-  //load rsp,rbp
-  //movq([r13+Integer(@p_jit_frame(nil)^.tf_rsp)],rsp);
-  //movq([r13+Integer(@p_jit_frame(nil)^.tf_rbp)],rbp);
+  if stack then
+  begin
+   //load rsp,rbp
+   movq([r13+Integer(@p_jit_frame(nil)^.tf_rsp)],rsp);
+   movq([r13+Integer(@p_jit_frame(nil)^.tf_rbp)],rbp);
 
-  //load host stack
-  //movq(r14,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_kstack.stack)]);
-  //movq(r15,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_kstack.sttop)]);
+   //load host stack
+   movq(r14,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_kstack.stack)]);
+   movq(r15,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_kstack.sttop)]);
 
-  //set teb
-  //movq([GS+teb_stack],r14);
-  //movq([GS+teb_sttop],r15);
+   //set teb
+   movq([GS+teb_stack],r14);
+   movq([GS+teb_sttop],r15);
 
-  //load internal stack
-  //movq(rsp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)]);
-  //movq(rbp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)]);
+   //load internal stack
+   movq(rsp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rsp)]);
+   movq(rbp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)]);
+  end;
 
   //reset PCB_IS_HLE
   if pcb then
@@ -1131,11 +1139,11 @@ begin
   Exit(True);
  end;
 
- op_jit2native(ctx,false);
+ op_jit2native(ctx,false,true);
 
  add_orig(ctx);
 
- op_native2jit(ctx,false);
+ op_native2jit(ctx,false,true);
 
  Result:=True;
 end;
@@ -1412,7 +1420,7 @@ begin
 
   link_curr:=ctx.builder.get_curr_label.after;
   //
-  op_jit2native(ctx,true);
+  op_jit2native(ctx,true,false);
   //[JIT->HLE]
 
   ctx.builder.call_far(node^.native);
@@ -1420,7 +1428,7 @@ begin
   op_debug_info_addr(ctx,node^.native);
 
   //[HLE->JIT]
-  op_native2jit(ctx,true);
+  op_native2jit(ctx,true,false);
   //
   op_pop_rip_part0(ctx,0); //out:r14
   ctx.imm:=0;
