@@ -3276,6 +3276,7 @@ begin
  begin
   if (StrLComp(obj^.lib_path,path,$400)=0) then
   begin
+   pobj:=obj;
    Exit(0);
   end;
   //
@@ -3307,7 +3308,7 @@ begin
   end;
 
   init_dag(obj);
-  ref_dag(obj);
+  ref_dag (obj);
 
   err:=relocate_object(obj);
   if (err<>0) then
@@ -3544,7 +3545,7 @@ begin
  while (obj<>nil) do
  begin
   init_dag(obj);
-  ref_dag(obj);
+  ref_dag (obj);
   //
   obj:=TAILQ_NEXT(obj,@obj^.link);
  end;

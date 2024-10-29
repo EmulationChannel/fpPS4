@@ -255,6 +255,8 @@ begin
  td:=curkthread;
  td^.td_pflags:=td^.td_pflags and (not TDP_KTHREAD);
 
+ Writeln('main_thread:',HexStr(td));
+
  //
  FreeAndNil(GameStartupInfo);
  //

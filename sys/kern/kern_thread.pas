@@ -225,8 +225,19 @@ begin
 end;
 
 procedure thread_lock(td:p_kthread); public;
+var
+ m:p_mtx;
 begin
- mtx_lock(td^.td_lock^);
+ repeat
+  m:=td^.td_lock;
+  Assert(m<>nil,'thread_lock');
+  mtx_lock(m^);
+  if (m=td^.td_lock) then
+  begin
+   Break;
+  end;
+  mtx_unlock(m^);
+ until false;
 end;
 
 procedure thread_unlock(td:p_kthread); public;
