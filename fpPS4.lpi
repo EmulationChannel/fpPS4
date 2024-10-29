@@ -1495,6 +1495,21 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="CharStream"/>
       </Unit>
+      <Unit>
+        <Filename Value="src\ps4_libsceime.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceIme"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\np\ps4_libscenpwebapi.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceNpWebApi"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\np\ps4_libscenpwebapi2.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceNpWebApi2"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

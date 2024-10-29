@@ -84,6 +84,9 @@ uses
  ps4_libSceNetCtl,
  ps4_libSceGameLiveStreaming,
  ps4_libSceVideoRecording,
+ ps4_libSceIme,
+ ps4_libSceNpWebApi,
+ ps4_libSceNpWebApi2,
  //ps4_libSceDiscMap,
  //internal libs
 
