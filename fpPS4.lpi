@@ -1530,6 +1530,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ps4_libSceNpTus"/>
       </Unit>
+      <Unit>
+        <Filename Value="src\ps4_libscediscmap.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceDiscMap"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

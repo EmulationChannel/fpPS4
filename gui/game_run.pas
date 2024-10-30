@@ -66,6 +66,7 @@ uses
  vDevice,
 
  //internal libs
+ ps4_libSceDiscMap,
  ps4_libSceSystemService,
  ps4_libSceUserService,
  ps4_libSceAppContent,
