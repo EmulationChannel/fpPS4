@@ -121,7 +121,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceMove.prx',@Load_libSceMove);
+ RegisteredInternalFile(stub,'libSceMove.prx',@Load_libSceMove);
 
 end.
 

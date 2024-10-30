@@ -141,7 +141,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceNpTus.prx',@Load_libSceNpTus);
+ RegisteredInternalFile(stub,'libSceNpTus.prx',@Load_libSceNpTus);
 
 end.
 

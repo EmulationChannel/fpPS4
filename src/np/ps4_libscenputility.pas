@@ -62,7 +62,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceNpUtility.prx',@Load_libSceNpUtility);
+ RegisteredInternalFile(stub,'libSceNpUtility.prx',@Load_libSceNpUtility);
 
 end.
 

@@ -756,7 +756,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceSaveData.prx',@Load_libSceSaveData);
+ RegisteredInternalFile(stub,'libSceSaveData.prx',@Load_libSceSaveData);
 
 end.
 

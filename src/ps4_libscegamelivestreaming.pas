@@ -225,7 +225,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceGameLiveStreaming.prx',@Load_libSceGameLiveStreaming);
+ RegisteredInternalFile(stub,'libSceGameLiveStreaming.prx',@Load_libSceGameLiveStreaming);
 
 end.
 

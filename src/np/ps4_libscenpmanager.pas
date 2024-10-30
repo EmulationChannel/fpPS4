@@ -517,7 +517,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceNpManager.prx',@Load_libSceNpManager);
+ RegisteredInternalFile(stub,'libSceNpManager.prx',@Load_libSceNpManager);
 
 end.
 

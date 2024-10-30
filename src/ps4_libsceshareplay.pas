@@ -103,7 +103,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceSharePlay.prx',@Load_libSceSharePlay);
+ RegisteredInternalFile(stub,'libSceSharePlay.prx',@Load_libSceSharePlay);
 
 end.
 

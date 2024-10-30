@@ -234,7 +234,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceAppContent.prx',@Load_libSceAppContent);
+ RegisteredInternalFile(stub,'libSceAppContent.prx',@Load_libSceAppContent);
 
 end.
 

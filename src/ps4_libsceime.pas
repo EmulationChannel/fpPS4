@@ -1267,7 +1267,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceIme.prx',@Load_libSceIme);
+ RegisteredInternalFile(stub,'libSceIme.prx',@Load_libSceIme);
 
 end.
 

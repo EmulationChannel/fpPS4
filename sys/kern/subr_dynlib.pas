@@ -360,7 +360,7 @@ var
 
  dynlibs_intf:SLIST_HEAD=(slh_first:nil);
 
-Procedure reg_int_file(var stub:t_int_file;name:pchar;icbs:t_int_load;flag:ptruint=IF_PRELOAD);
+Procedure RegisteredInternalFile(var stub:t_int_file;name:pchar;icbs:t_int_load;flag:ptruint=IF_PRELOAD);
 
 implementation
 
@@ -413,7 +413,7 @@ begin
  sx_xunlock(@dynlibs_info.lock);
 end;
 
-Procedure reg_int_file(var stub:t_int_file;name:pchar;icbs:t_int_load;flag:ptruint=IF_PRELOAD);
+Procedure RegisteredInternalFile(var stub:t_int_file;name:pchar;icbs:t_int_load;flag:ptruint=IF_PRELOAD);
 begin
  stub.name:=name;
  stub.icbs:=icbs;

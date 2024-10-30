@@ -141,7 +141,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceNpWebApi2.prx',@Load_libSceNpWebApi2);
+ RegisteredInternalFile(stub,'libSceNpWebApi2.prx',@Load_libSceNpWebApi2);
 
 end.
 

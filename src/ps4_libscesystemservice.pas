@@ -507,7 +507,7 @@ var
  stub:t_int_file;
 
 initialization
- reg_int_file(stub,'libSceSystemService.prx',@Load_libSceSystemService);
+ RegisteredInternalFile(stub,'libSceSystemService.prx',@Load_libSceSystemService);
 
 end.
 
