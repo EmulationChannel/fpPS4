@@ -77,6 +77,8 @@ uses
  ps4_libSceNpManager,
  ps4_libSceNpTrophy,
  ps4_libSceNpScoreRanking,
+ ps4_libSceNpUtility,
+ ps4_libSceNpTus,
  ps4_libSceScreenShot,
  ps4_libSceSaveData,
  ps4_libSceAudioOut,
@@ -88,6 +90,7 @@ uses
  ps4_libSceNpWebApi,
  ps4_libSceNpWebApi2,
  ps4_libSceMove,
+ ps4_libSceSharePlay,
  //ps4_libSceDiscMap,
  //internal libs
 

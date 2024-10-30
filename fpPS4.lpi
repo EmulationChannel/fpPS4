@@ -1515,6 +1515,21 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ps4_libSceMove"/>
       </Unit>
+      <Unit>
+        <Filename Value="src\ps4_libsceshareplay.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceSharePlay"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\np\ps4_libscenputility.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceNpUtility"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\np\ps4_libscenptus.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceNpTus"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
