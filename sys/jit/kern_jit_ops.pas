@@ -1657,37 +1657,71 @@ procedure init_cbs;
 begin
  //
 
- jit_rep_cbs[repOPmovs]:=@op_rep_movs;
- jit_rep_cbs[repOPlods]:=nil;
- jit_rep_cbs[repOPstos]:=@op_rep_stos;
- jit_rep_cbs[repOPcmps]:=@op_rep_cmps;
- jit_rep_cbs[repOPscas]:=nil;
+ if jit_memory_guard then
+ begin
+  jit_rep_cbs[repOPmovs]:=@op_rep_movs;
+  jit_rep_cbs[repOPlods]:=nil;
+  jit_rep_cbs[repOPstos]:=@op_rep_stos;
+  jit_rep_cbs[repOPcmps]:=@op_rep_cmps;
+  jit_rep_cbs[repOPscas]:=nil;
 
- jit_cbs[OPPnone,OPcmps,OPSx_b]:=@op_cmps;
- jit_cbs[OPPnone,OPcmps,OPSx_w]:=@op_cmps;
- jit_cbs[OPPnone,OPcmps,OPSx_d]:=@op_cmps;
- jit_cbs[OPPnone,OPcmps,OPSx_q]:=@op_cmps;
+  jit_cbs[OPPnone,OPcmps,OPSx_b]:=@op_cmps;
+  jit_cbs[OPPnone,OPcmps,OPSx_w]:=@op_cmps;
+  jit_cbs[OPPnone,OPcmps,OPSx_d]:=@op_cmps;
+  jit_cbs[OPPnone,OPcmps,OPSx_q]:=@op_cmps;
 
+  jit_cbs[OPPnone,OPmovs,OPSx_b]:=@op_movs;
+  jit_cbs[OPPnone,OPmovs,OPSx_w]:=@op_movs;
+  jit_cbs[OPPnone,OPmovs,OPSx_d]:=@op_movs;
+  jit_cbs[OPPnone,OPmovs,OPSx_q]:=@op_movs;
 
- jit_cbs[OPPnone,OPmovs,OPSx_b]:=@op_movs;
- jit_cbs[OPPnone,OPmovs,OPSx_w]:=@op_movs;
- jit_cbs[OPPnone,OPmovs,OPSx_d]:=@op_movs;
- jit_cbs[OPPnone,OPmovs,OPSx_q]:=@op_movs;
+  jit_cbs[OPPnone,OPstos,OPSx_b]:=@op_stos;
+  jit_cbs[OPPnone,OPstos,OPSx_w]:=@op_stos;
+  jit_cbs[OPPnone,OPstos,OPSx_d]:=@op_stos;
+  jit_cbs[OPPnone,OPstos,OPSx_q]:=@op_stos;
 
- jit_cbs[OPPnone,OPstos,OPSx_b]:=@op_stos;
- jit_cbs[OPPnone,OPstos,OPSx_w]:=@op_stos;
- jit_cbs[OPPnone,OPstos,OPSx_d]:=@op_stos;
- jit_cbs[OPPnone,OPstos,OPSx_q]:=@op_stos;
+  jit_cbs[OPPnone,OPlods,OPSx_b]:=@op_lods;
+  jit_cbs[OPPnone,OPlods,OPSx_w]:=@op_lods;
+  jit_cbs[OPPnone,OPlods,OPSx_d]:=@op_lods;
+  jit_cbs[OPPnone,OPlods,OPSx_q]:=@op_lods;
 
- jit_cbs[OPPnone,OPlods,OPSx_b]:=@op_lods;
- jit_cbs[OPPnone,OPlods,OPSx_w]:=@op_lods;
- jit_cbs[OPPnone,OPlods,OPSx_d]:=@op_lods;
- jit_cbs[OPPnone,OPlods,OPSx_q]:=@op_lods;
+  jit_cbs[OPPnone,OPscas,OPSx_b]:=@op_scas;
+  jit_cbs[OPPnone,OPscas,OPSx_w]:=@op_scas;
+  jit_cbs[OPPnone,OPscas,OPSx_d]:=@op_scas;
+  jit_cbs[OPPnone,OPscas,OPSx_q]:=@op_scas;
+ end else
+ begin
+  jit_rep_cbs[repOPmovs]:=@add_orig;
+  jit_rep_cbs[repOPlods]:=nil;
+  jit_rep_cbs[repOPstos]:=@add_orig;
+  jit_rep_cbs[repOPcmps]:=@add_orig;
+  jit_rep_cbs[repOPscas]:=nil;
 
- jit_cbs[OPPnone,OPscas,OPSx_b]:=@op_scas;
- jit_cbs[OPPnone,OPscas,OPSx_w]:=@op_scas;
- jit_cbs[OPPnone,OPscas,OPSx_d]:=@op_scas;
- jit_cbs[OPPnone,OPscas,OPSx_q]:=@op_scas;
+  jit_cbs[OPPnone,OPcmps,OPSx_b]:=@add_orig;
+  jit_cbs[OPPnone,OPcmps,OPSx_w]:=@add_orig;
+  jit_cbs[OPPnone,OPcmps,OPSx_d]:=@add_orig;
+  jit_cbs[OPPnone,OPcmps,OPSx_q]:=@add_orig;
+
+  jit_cbs[OPPnone,OPmovs,OPSx_b]:=@add_orig;
+  jit_cbs[OPPnone,OPmovs,OPSx_w]:=@add_orig;
+  jit_cbs[OPPnone,OPmovs,OPSx_d]:=@add_orig;
+  jit_cbs[OPPnone,OPmovs,OPSx_q]:=@add_orig;
+
+  jit_cbs[OPPnone,OPstos,OPSx_b]:=@add_orig;
+  jit_cbs[OPPnone,OPstos,OPSx_w]:=@add_orig;
+  jit_cbs[OPPnone,OPstos,OPSx_d]:=@add_orig;
+  jit_cbs[OPPnone,OPstos,OPSx_q]:=@add_orig;
+
+  jit_cbs[OPPnone,OPlods,OPSx_b]:=@add_orig;
+  jit_cbs[OPPnone,OPlods,OPSx_w]:=@add_orig;
+  jit_cbs[OPPnone,OPlods,OPSx_d]:=@add_orig;
+  jit_cbs[OPPnone,OPlods,OPSx_q]:=@add_orig;
+
+  jit_cbs[OPPnone,OPscas,OPSx_b]:=@add_orig;
+  jit_cbs[OPPnone,OPscas,OPSx_w]:=@add_orig;
+  jit_cbs[OPPnone,OPscas,OPSx_d]:=@add_orig;
+  jit_cbs[OPPnone,OPscas,OPSx_q]:=@add_orig;
+ end;
 
  //
 
