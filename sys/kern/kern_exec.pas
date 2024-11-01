@@ -1269,7 +1269,7 @@ begin
 
   ET_SCE_REPLAY_EXEC:
     begin
-     p_proc.p_sce_replay_exec:=1;
+     g_appinfo.mmap_flags:=g_appinfo.mmap_flags or 2; //is_system ???
     end;
 
   ET_SCE_DYNEXEC:
@@ -1688,10 +1688,6 @@ begin
  g_appinfo.AppId:=$60000100;
 
  g_appinfo.mmap_flags:=g_appinfo.mmap_flags or 1; //is_big_app ???
- if (p_proc.p_sce_replay_exec<>0) then
- begin
-  g_appinfo.mmap_flags:=g_appinfo.mmap_flags or 2; //is_system ???
- end;
 
  if (p_proc.p_budget_ptype=PTYPE_BIG_APP) then
  if ((g_appinfo.mmap_flags and 1)<>0) then

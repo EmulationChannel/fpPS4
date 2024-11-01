@@ -82,14 +82,14 @@ begin
 
   if (paddr=0) and ((g_appinfo.mmap_flags and 2)<>0) then
   begin
-   paddr:=QWORD($fc0000000);
+   paddr:=SCE_REPLAY_EXEC_START;
   end;
 
   Result:=vm_mmap2(map,
                    @paddr,psize,
                    prot,prot,
                    MAP_ANON or MAP_SYSTEM or MAP_SHARED,OBJT_DEFAULT,
-                   nil,0);
+                   nil,0,nil);
 
   if (Result=0) then
   begin

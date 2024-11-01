@@ -33,6 +33,8 @@ function  md_copyout(hProcess:THandle;kaddr,udaddr:Pointer;len:ptruint;lencopied
 function  md_copyin (udaddr,kaddr:Pointer;len:ptruint;lencopied:pptruint):Integer;
 function  md_copyout(kaddr,udaddr:Pointer;len:ptruint;lencopied:pptruint):Integer;
 
+function  md_fuword(var base:Pointer):Pointer;
+
 function  md_getppid:DWORD;
 function  md_pidfd_getfd(pidfd,targetfd:THandle):THandle;
 function  md_pidfd_open (pid:DWORD):THandle;
@@ -97,6 +99,14 @@ end;
 function md_copyout(kaddr,udaddr:Pointer;len:ptruint;lencopied:pptruint):Integer;
 begin
  Result:=md_copyout(NtCurrentProcess,kaddr,udaddr,len,lencopied);
+end;
+
+function md_fuword(var base:Pointer):Pointer;
+begin
+ if (md_copyin(@base,@Result,SizeOf(base),nil)<>0) then
+ begin
+  Result:=Pointer(QWORD(-1));
+ end;
 end;
 
 function md_getppid:DWORD;

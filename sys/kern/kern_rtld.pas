@@ -620,12 +620,12 @@ var
 begin
  map:=p_proc.p_vmspace;
 
- if (p_proc.p_sce_replay_exec<>0) then
+ if (addr^=0) and ((g_appinfo.mmap_flags and 2)<>0) then
  begin
   addr^:=SCE_REPLAY_EXEC_START;
  end;
 
- Result:=vm_mmap2(map,addr,size,0,0,MAP_ANON or MAP_PRIVATE or (21 shl MAP_ALIGNMENT_BIT),OBJT_DEFAULT,nil,0);
+ Result:=vm_mmap2(map,addr,size,0,0,MAP_ANON or MAP_PRIVATE or (21 shl MAP_ALIGNMENT_BIT),OBJT_DEFAULT,nil,0,nil);
 end;
 
 procedure rtld_munmap(base:Pointer;size:QWORD);
