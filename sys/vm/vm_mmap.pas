@@ -800,12 +800,21 @@ begin
 _map:
  td^.td_fpop:=fp;
  maxprot:=maxprot and cap_maxprot;
+
  Result:=Pointer(vm_mmap2(map,@addr,size,prot,maxprot,flags,handle_type,handle,pos));
  td^.td_fpop:=nil;
 
  td^.td_retval[0]:=(addr+pageoff);
 
- Writeln(' sys_mmap=0x',HexStr(td^.td_retval[0],16),'..0x',HexStr(td^.td_retval[0]+size,16));
+ Writeln('sys_mmap(','0x',HexStr(QWORD(vaddr),10),
+                    ',0x',HexStr(vlen,10),
+                    ',0x',HexStr(prot,1),
+                    ',0x',HexStr(flags,6),
+                      ',',fd,
+                    ',0x',HexStr(pos,10),
+                     '):',Integer(Result),
+                    ':0x',HexStr(td^.td_retval[0],10),'..0x',HexStr(td^.td_retval[0]+size,10));
+
 
 _done:
  if (fp<>nil) then

@@ -2852,7 +2852,7 @@ begin
 
   vm_map_delete(map,vaddr_lo,vaddr_hi,True);
 
-  error:=vm_map_insert(map,nil,0,vaddr_lo,vaddr_hi,VM_PROT_RW,VM_PROT_RWX,0,false);
+  error:=vm_map_insert(map,nil,0,vaddr_lo,vaddr_hi,VM_PROT_RW,VM_PROT_RWX,MAP_COW_NO_BUDGET,false);
   if (error<>0) then
   begin
    vm_map_unlock(map);

@@ -320,7 +320,7 @@ begin
          QWORD(shared_page_base), shared_page_len,
          VM_PROT_RW,
          VM_PROT_ALL,
-         MAP_INHERIT_SHARE or MAP_ACC_NO_CHARGE,
+         MAP_INHERIT_SHARE or MAP_ACC_NO_CHARGE or MAP_COW_NO_BUDGET,
          0);
 
  if (error<>0) then
@@ -373,7 +373,7 @@ begin
 
  stack_addr:=QWORD(vmspace^.sv_usrstack) - ssiz;
 
- Writeln('vm_map_stack:0x',HexStr(stack_addr,11),'..0x',HexStr(stack_addr+ssiz,11));
+ Writeln('vm_map_stack:0x',HexStr(stack_addr,10),'..0x',HexStr(stack_addr+ssiz,10));
 
  error:=vm_map_stack(map,stack_addr,ssiz,VM_PROT_RW,VM_PROT_ALL,MAP_STACK_GROWS_DOWN);
 
