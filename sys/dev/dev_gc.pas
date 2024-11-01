@@ -157,6 +157,15 @@ type
   nextStartOffsetInDw:DWORD;
  end;
 
+ p_set_wave_limit_multipliers=^t_set_wave_limit_multipliers;
+ t_set_wave_limit_multipliers=packed record
+  bitset:Integer;
+  values:array[0..7] of Integer;
+  unk1  :Integer;
+  unk2  :Integer;
+  unk3  :Integer;
+ end;
+
 var
  ring_gfx      :t_pm4_ring;
  ring_gfx_lock :Pointer=nil;
@@ -772,8 +781,10 @@ begin
 
   $C00C8110: //sceGnmSetGsRingSizes
             begin
-             Writeln('SetGsRingSizes(0x',HexStr(p_SetGsRingSizes(data)^.esgsRingSize,8),',0x'
-                                        ,HexStr(p_SetGsRingSizes(data)^.gsvsRingSize,8),')');
+             with p_SetGsRingSizes(data)^ do
+              Writeln('SetGsRingSizes(0x',HexStr(esgsRingSize,8),',0x'
+                                         ,HexStr(gsvsRingSize,8),')');
+
              pfp_ctx.set_esgs_gsvs_ring_size(p_SetGsRingSizes(data)^.esgsRingSize,
                                              p_SetGsRingSizes(data)^.gsvsRingSize);
             end;
@@ -783,9 +794,10 @@ begin
              case PInteger(data)^ of
               $10001:
                      begin
-                      Writeln('MipStatsReport(0x',HexStr(p_SetMipStatsReport(data)^.param1,8),',0x'
-                                                 ,HexStr(p_SetMipStatsReport(data)^.param2,8),',0x'
-                                                 ,HexStr(p_SetMipStatsReport(data)^.param3,8),')');
+                      with p_SetMipStatsReport(data)^ do
+                       Writeln('MipStatsReport(0x',HexStr(param1,8),',0x'
+                                                  ,HexStr(param2,8),',0x'
+                                                  ,HexStr(param3,8),')');
                      end;
 
               $18001:; //diag?
@@ -976,6 +988,21 @@ begin
              begin
               retrigger_watchdog;
              end;
+            end;
+
+  $C030811E: //sceGnmSetWaveLimitMultipliers
+            begin
+             with p_set_wave_limit_multipliers(data)^ do
+              Writeln('SetWaveLimitMultipliers(b',BinStr(bitset,8),',',
+                                               values[0],',',
+                                               values[1],',',
+                                               values[2],',',
+                                               values[3],',',
+                                               values[4],',',
+                                               values[5],',',
+                                               values[6],',',
+                                               values[7],')'
+                                              );
             end;
 
   else
