@@ -20,6 +20,8 @@ type
  end;
  {$IF sizeof(t_query_memory_prot)<>24}{$STOP sizeof(t_query_memory_prot)<>24}{$ENDIF}
 
+ function sys_mlock(addr:Pointer;len:QWORD):Integer;
+
  function sys_mmap(vaddr:Pointer;
                    vlen :QWORD;
                    prot :Integer;
@@ -76,6 +78,37 @@ uses
  vnode_if,
  sys_conf,
  vm_pager;
+
+function sys_mlock(addr:Pointer;len:QWORD):Integer;
+var
+ _adr,_end,last,start,size:vm_offset_t;
+ map:vm_map_t;
+ error:Integer;
+begin
+ _adr :=vm_offset_t(addr);
+ size :=len;
+ last :=_adr + size;
+ start:=trunc_page(_adr);
+ _end :=round_page(last);
+
+ if (last < _adr) or (_end < _adr) then
+ begin
+  Exit(EINVAL);
+ end;
+
+ map:=p_proc.p_vmspace;
+
+ error:=0;
+ //error:=vm_map_wire(map, start, _end, VM_MAP_WIRE_USER or VM_MAP_WIRE_NOHOLES);
+
+ if (error=KERN_SUCCESS) then
+ begin
+  Result:=0;
+ end else
+ begin
+  Result:=ENOMEM;
+ end;
+end;
 
 function vm_mmap_cdev(objsize     :vm_size_t;
                       prot        :vm_prot_t;
