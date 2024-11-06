@@ -217,7 +217,11 @@ begin
  kern_reserve_2mb_page(0,M2MB_DEFAULT);
  ///
 
- Writeln(Item.FGameInfo.Exec);
+ Writeln(Item.FGameInfo.Name   );
+ Writeln(Item.FGameInfo.TitleId);
+ Writeln(Item.FGameInfo.Version);
+ Writeln(Item.FGameInfo.Exec   );
+
  Writeln(Item.FMountList.app0);
  Writeln(Item.FMountList.system);
  Writeln(Item.FMountList.data);
