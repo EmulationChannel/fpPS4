@@ -260,7 +260,7 @@ begin
 
   v_end:=vaddr+length;
 
-  if (v_end <= map^.max_offset) and
+  if (v_end <=map^.max_offset) and
      ( ((flags and MAP_SANITIZER)<>0) or
        ((vaddr shr 47) <> 0) or
        (v_end < QWORD($fc00000001)) or
@@ -285,7 +285,7 @@ begin
     if (err=0) then
     begin
 
-     if ((flags and MAP_NO_OVERWRITE)=0) then
+     if (align=0) and ((flags and MAP_NO_OVERWRITE)=0) then
      begin
       vm_map_delete(map, vaddr, v_end, True);
      end;

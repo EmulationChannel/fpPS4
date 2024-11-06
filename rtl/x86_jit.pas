@@ -325,6 +325,7 @@ type
   function  loop(op:TOpCodeSuffix;_label_id:t_jit_i_link;size:TAddressSize):t_jit_i_link;
   function  jcxz(_label_id:t_jit_i_link;size:TAddressSize):t_jit_i_link;
   function  movj(reg:TRegValue;mem:t_jit_leas;_label_id:t_jit_i_link):t_jit_i_link;
+  function  movp(reg:TRegValue;P:Pointer):t_jit_i_link;
   function  leaj(reg:TRegValue;mem:t_jit_leas;_label_id:t_jit_i_link):t_jit_i_link;
   function  leap(reg:TRegValue):t_jit_i_link;
   //
@@ -1500,39 +1501,68 @@ begin
 end;
 
 function t_jit_builder.movj(reg:TRegValue;mem:t_jit_leas;_label_id:t_jit_i_link):t_jit_i_link;
+var
+ jt:p_jit_instruction;
 begin
  movq(reg,mem);
 
- Result.ALink:=last_instruction;
+ jt:=last_instruction;
 
- p_jit_instruction(Result.ALink)^.ALink.AType:=_label_id.AType;
- p_jit_instruction(Result.ALink)^.ALink.ALink:=_label_id.ALink;
+ jt^.ALink.AType:=_label_id.AType;
+ jt^.ALink.ALink:=_label_id.ALink;
+
+ Result.ALink:=jt;
+ Result.AType:=lnkLabelBefore;
+
+ LinkLabel(Result.ALink);
+end;
+
+function t_jit_builder.movp(reg:TRegValue;P:Pointer):t_jit_i_link;
+var
+ jt:p_jit_instruction;
+begin
+ movq(reg,[rip+$7FFFFFFF]);
+
+ jt:=last_instruction;
+
+ jt^.ALink.AType:=lnkData;
+ jt^.ALink.ALink:=_add_data(P);
+
+ Result.ALink:=jt;
  Result.AType:=lnkLabelBefore;
 
  LinkLabel(Result.ALink);
 end;
 
 function t_jit_builder.leaj(reg:TRegValue;mem:t_jit_leas;_label_id:t_jit_i_link):t_jit_i_link;
+var
+ jt:p_jit_instruction;
 begin
  leaq(reg,mem);
 
- Result.ALink:=last_instruction;
+ jt:=last_instruction;
 
- p_jit_instruction(Result.ALink)^.ALink.AType:=_label_id.AType;
- p_jit_instruction(Result.ALink)^.ALink.ALink:=_label_id.ALink;
+ jt^.ALink.AType:=_label_id.AType;
+ jt^.ALink.ALink:=_label_id.ALink;
+
+ Result.ALink:=jt;
  Result.AType:=lnkLabelBefore;
 
  LinkLabel(Result.ALink);
 end;
 
 function t_jit_builder.leap(reg:TRegValue):t_jit_i_link;
+var
+ jt:p_jit_instruction;
 begin
  leaq(reg,[rip+$7FFFFFFF]);
 
- Result.ALink:=last_instruction;
+ jt:=last_instruction;
 
- p_jit_instruction(Result.ALink)^.ALink.AType:=lnkPlt;
- p_jit_instruction(Result.ALink)^.ALink.ALink:=Pointer(_add_plt);
+ jt^.ALink.AType:=lnkPlt;
+ jt^.ALink.ALink:=Pointer(_add_plt);
+
+ Result.ALink:=jt;
  Result.AType:=lnkLabelBefore;
 
  LinkLabel(Result.ALink);

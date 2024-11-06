@@ -509,7 +509,7 @@ begin
   id2:=ctx.builder.jmp(nil_link,os8);
    id1._label:=ctx.builder.get_curr_label.after;
    op_set_r14_imm(ctx,Int64(dst));
-   op_jmp_dispatcher(ctx);
+   op_jmp_dispatcher(ctx,nil);
   id2._label:=ctx.builder.get_curr_label.after;
   }
  end;
@@ -1004,6 +1004,7 @@ begin
    ori([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_HLE));
   end;
 
+  //switch_stack:=True;
   if switch_stack then
   begin
    //save internal stack
@@ -1055,6 +1056,7 @@ begin
   movq(r14,[GS+Integer(teb_jitcall)]);
   movq([r13+Integer(@p_jit_frame(nil)^.tf_r13)],r14);
 
+  //switch_stack:=True;
   if switch_stack then
   begin
    //load rsp,rbp
@@ -1088,9 +1090,30 @@ begin
  end;
 end;
 
+function is_push_op(Opcode:TOpcode):Boolean; inline;
+begin
+ case Opcode of
+  OPpush,
+  OPpop,
+  OPpushf,
+  OPpopf:
+   Result:=True;
+  else
+   Result:=False;
+ end;
+end;
+
+const
+ use_lazy_jit=False;
+
 function op_lazy_jit(var ctx:t_jit_context2):Boolean;
 begin
  Result:=False;
+
+ if use_lazy_jit then
+ begin
+  Exit;
+ end;
 
  if (jit_cbs[ctx.din.OpCode.Prefix,ctx.din.OpCode.Opcode,ctx.din.OpCode.Suffix]=@op_invalid) then
  begin
@@ -1107,12 +1130,12 @@ begin
   OPjcxz,
   OPjecxz,
   OPjrcxz,
-  OPpush,
-  OPpop,
-  OPpushf,
+  //OPpush,
+  //OPpop,
+  //OPpushf,
+  //OPpopf,
   OPenter,
   OPleave,
-  OPpopf,
   OPsyscall,
   OPint,
   OPint1,
@@ -1137,7 +1160,7 @@ begin
   Exit;
  end;
 
- if is_preserved(ctx.din) then
+ if is_push_op(ctx.din.OpCode.Opcode) or is_preserved(ctx.din) then
  begin
   if is_rip(ctx.din) then
   begin
@@ -1275,6 +1298,7 @@ begin
   end;
 
   if (adec.Instr.Flags * [ifOnly32, ifOnly64, ifOnlyVex] <> []) or
+     (adec.Instr.ParseFlags * [preF3,preF2] <> []) or
      is_invalid(adec.Instr) then
   begin
    Result:=False;
@@ -1714,7 +1738,6 @@ begin
    movq([GS+Integer(teb_jitcall)],r14);
   }
 
-  {
   if op_lazy_jit(ctx) then
   begin
    //
@@ -1722,7 +1745,6 @@ begin
   begin
    cb(ctx);
   end;
-  }
 
   {
   The main idea of interrupting JIT code:
@@ -1742,7 +1764,7 @@ begin
 
   //op_jit_interrupt(ctx);
 
-  cb(ctx);
+  //cb(ctx);
 
   link_next:=ctx.builder.get_curr_label.after;
   node_next:=link_next._node;
@@ -1751,7 +1773,7 @@ begin
   if (node_curr<>node_next) and
      (node_curr<>nil) then
   begin
-   node:=TAILQ_NEXT(node_curr,@node_curr^.link);
+   node:=TAILQ_NEXT(node_curr,@node_curr^.entry);
 
    while (node<>nil) do
    begin
@@ -1763,7 +1785,7 @@ begin
     end;
 
 
-    node:=TAILQ_NEXT(node,@node^.link);
+    node:=TAILQ_NEXT(node,@node^.entry);
    end;
   end;
   }
@@ -1800,7 +1822,7 @@ begin
 
 
   {
-  if (qword(ctx.ptr_curr) and $FFFFF) = $2f1f6 then
+  if (qword(ctx.ptr_curr) and $FFFFF) = $4d5b8 then
   begin
    //print_asm:=true;
    ctx.builder.int3;

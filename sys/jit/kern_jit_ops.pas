@@ -1177,8 +1177,10 @@ const
  );
 
 procedure op_mov(var ctx:t_jit_context2);
+type
+ tdata16=array[0..15] of Byte;
 var
- data:array[0..15] of Byte;
+ data:tdata16;
  Code:Pointer;
  Operand:TOperand;
  i:Byte;
@@ -1193,15 +1195,17 @@ begin
   if is_preserved(ctx.din) or is_memory(ctx.din) then
   begin
    i:=ctx.dis.CodeIdx;
+
+   data:=Default(tdata16);
    Move(ctx.Code^,data,i);
 
-   data[i]:=get_segment_value(ctx.din.Operand[2]);
+   data[i+0]:=get_segment_value(ctx.din.Operand[2]);
 
    Code:=ctx.Code;
    Operand:=ctx.din.Operand[2];
 
-   ctx.din.Operand[2].RegValue:=Default(TRegValues);
-   ctx.din.Operand[2].Size:=os8;
+   ctx.din.Operand[2].RegValue :=Default(TRegValues);
+   ctx.din.Operand[2].Size     :=ctx.din.Operand[1].Size;
    ctx.din.Operand[2].ByteCount:=i;
 
    op_emit2(ctx,mov_desc);

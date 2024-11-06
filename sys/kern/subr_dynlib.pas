@@ -1679,6 +1679,12 @@ begin
  Inc(dynlibs_info.obj_count);
 end;
 
+procedure dynlibs_del_obj(obj:p_lib_info);
+begin
+ TAILQ_REMOVE(@dynlibs_info.obj_list,obj,@obj^.link);
+ Dec(dynlibs_info.obj_count);
+end;
+
 procedure init_relo_bits(obj:p_lib_info);
 var
  count:Integer;
@@ -2788,9 +2794,7 @@ begin
   //
   rtld_munmap(obj^.map_base, obj^.map_size);
 
-  TAILQ_REMOVE(@dynlibs_info.obj_list,obj,@obj^.link);
-
-  Dec(dynlibs_info.obj_count);
+  dynlibs_del_obj(obj);
 
   //dynlib_notify_event(td,lib->id,0x80);
 
