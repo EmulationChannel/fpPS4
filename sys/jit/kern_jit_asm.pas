@@ -482,9 +482,9 @@ asm
  push %rbp
  movq %rsp,%rbp
 
- andq  $-16,%rsp //align stack
+ call jit_save_ctx // -> pushf
 
- call jit_save_ctx
+ andq  $-16,%rsp //align stack
 
  //rdi,rsi,rdx
  mov    %r14,%rdi
@@ -495,7 +495,7 @@ asm
 
  mov  %rax,%r14
 
- call jit_load_ctx
+ call jit_load_ctx // -> popf
 
  //epilog
  movq %rbp,%rsp
