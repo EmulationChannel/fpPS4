@@ -949,6 +949,46 @@ begin
  end;
 end;
 
+procedure op_rdtscp(var ctx:t_jit_context2);
+begin
+ if time.strict_ps4_freq then
+ begin
+  ctx.builder.call_far(@strict_ps4_rdtscp_jit);
+ end else
+ with ctx.builder do
+ begin
+  //rdx //result0
+  //rax //result1
+  //rcx //result3
+  //rbx //backup -> CPUID_LOCAL_APIC_ID 0xff000000 0..7
+
+  movq(r_tmp0,rbx); //save rbx
+
+  movi(eax,1);
+  _O($0FA2);    //cpuid
+
+  //load flags to al,ah
+  seto(al);
+  lahf;
+
+  shri8  (ebx,6); //cpu_id
+  andi8se(ebx,7); //0..7
+
+  movi   (ecx,7);
+  subq   (ecx,ebx); //7-cpu_id
+
+  //store flags from al,ah
+  addi(al,127);
+  sahf;
+
+  movq(rbx,r_tmp0); //restore rbx
+
+  _O($0FAEE8); //lfence
+  _O($0F31);   //rdtsc
+  _O($0FAEE8); //lfence
+ end;
+end;
+
 procedure op_nop(var ctx:t_jit_context2);
 begin
  //align?
@@ -1001,7 +1041,7 @@ begin
   //set PCB_IS_HLE
   if pcb then
   begin
-   ori([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_HLE));
+   ori8se([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_HLE));
   end;
 
   //switch_stack:=True;
@@ -1084,7 +1124,7 @@ begin
   //reset PCB_IS_HLE
   if pcb then
   begin
-   andi([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],not Byte(PCB_IS_HLE));
+   andi8se([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],not Byte(PCB_IS_HLE));
   end;
 
  end;
@@ -1249,6 +1289,7 @@ begin
 
  jit_cbs[OPPnone,OPcpuid,OPSnone]:=@op_cpuid;
  jit_cbs[OPPnone,OPrdtsc,OPSnone]:=@op_rdtsc;
+ jit_cbs[OPPnone,OPrdtsc,OPSx_p ]:=@op_rdtscp;
 
  jit_cbs[OPPnone,OPnop,OPSnone]:=@op_nop;
 

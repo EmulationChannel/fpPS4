@@ -68,7 +68,8 @@ procedure sys_save_to_jit_save(td:p_kthread);
 
 procedure jit_cpuid; assembler;
 
-procedure strict_ps4_rdtsc_jit; assembler;
+procedure strict_ps4_rdtsc_jit;  assembler;
+procedure strict_ps4_rdtscp_jit; assembler;
 
 procedure jit_interrupt_nop; assembler;
 
@@ -774,6 +775,47 @@ asm
  addb $127, %al
  sahf
  movq %r14, %rax
+end;
+
+procedure strict_ps4_rdtscp_jit; assembler; nostackframe;
+asm
+ //
+ seto %al
+ lahf
+ movq %rax, %r15
+ //
+ movq %rbx, %r14
+ //
+ mov  $1, %eax
+ cpuid
+ //
+ shr $6, %ebx
+ and $7, %ebx
+ //
+ mov $7  , %ecx
+ sub %ebx, %ecx
+ //
+ mov %r14, %rbx
+ //
+ lfence
+ rdtsc
+ lfence
+ //
+ shl  $32, %rdx
+ or  %rdx, %rax
+ //
+ mulq    tsc_freq(%rip)
+ divq md_tsc_freq(%rip)
+ //
+ mov %rax, %rdx
+ shr  $32, %rdx
+ shl  $32, %rax
+ shr  $32, %rax
+ //
+ xchg %r15, %rax
+ addb $127, %al
+ sahf
+ movq %r15, %rax
 end;
 
 procedure jit_interrupt_nop; assembler; nostackframe;

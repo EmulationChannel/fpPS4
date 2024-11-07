@@ -391,7 +391,7 @@ type
   procedure shli8   (reg:TRegValue  ;imm:Byte);
   procedure shri8   (reg:TRegValue  ;imm:Byte);
   procedure andi    (reg:TRegValue  ;imm:Int64);
-  procedure andi    (mem:t_jit_leas;imm:Int64);
+  procedure andi    (mem:t_jit_leas ;imm:Int64);
   procedure andi8se (reg:TRegValue  ;imm:ShortInt);
   procedure andi8se (mem:t_jit_leas ;imm:ShortInt);
   procedure andq    (reg0:TRegValue ;reg1:TRegValue);
