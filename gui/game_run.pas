@@ -92,7 +92,7 @@ uses
  ps4_libSceNpWebApi2,
  ps4_libSceMove,
  ps4_libSceSharePlay,
- //ps4_libSceDiscMap,
+ ps4_libScePlayGo,
  //internal libs
 
  kern_rtld,
