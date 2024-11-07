@@ -694,10 +694,10 @@ asm
 //                    0x07080800
 //CPUID_BRAND_INDEX   0x000000ff
 //CPUID_CLFUSH_SIZE   0x0000ff00
-//CPUID_HTT_CORES     0x00ff0000  //sceKernelGetCurrentCpu 0..7
-//CPUID_LOCAL_APIC_ID 0xff000000
+//CPUID_HTT_CORES     0x00ff0000
+//CPUID_LOCAL_APIC_ID 0xff000000  //sceKernelGetCurrentCpu 0..7
 
- and $0xFF000000,%ebx //filter CPUID_LOCAL_APIC_ID
+ and $0x07000000,%ebx //filter CPUID_LOCAL_APIC_ID 0..7
 
  or  $0x00080800,%ebx //cpu_procinfo
 
