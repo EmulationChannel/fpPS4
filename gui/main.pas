@@ -402,7 +402,6 @@ end;
 function TfrmMain.OnParamSfoInit(mlen:DWORD;buf:Pointer):Ptruint; //PARAM_SFO_INIT
 var
  ParamSfo:TParamSfoFile;
- mem:TMemoryStream;
  V:RawByteString;
 begin
  Result:=Ptruint(-1);
@@ -433,11 +432,7 @@ begin
  if (FGameProcess<>nil) then
  if (FGameProcess.g_ipc<>nil) then
  begin
-  mem:=TMemoryStream.Create;
-  ParamSfo.Serialize(mem);
-  FreeAndNil(ParamSfo);
-
-  FGameProcess.g_ipc.SendSync(HashIpcStr('PARAM_SFO_LOAD'),mem.Size,mem.Memory);
+  FGameProcess.g_ipc.SendSync('PARAM_SFO_LOAD',ParamSfo);
  end;
 
  FreeAndNil(ParamSfo);
