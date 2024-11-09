@@ -785,6 +785,9 @@ begin
  jit_cbs[OPPnone,OPcvtps2 ,OPSx_dq]:=@op_reg_mem_wo;
  jit_cbs[OPPnone,OPcvtps2 ,OPSx_pi]:=@op_reg_mem_wo;
 
+ jit_cbs[OPPnone,OPcvtpi2 ,OPSx_pd]:=@op_reg_mem_wo;
+ jit_cbs[OPPnone,OPcvtpi2 ,OPSx_ps]:=@op_reg_mem_wo;
+
  jit_cbs[OPPnone,OPsqrt,OPSx_ps]:=@op_reg_mem_wo;
  jit_cbs[OPPnone,OPsqrt,OPSx_pd]:=@op_reg_mem_wo;
  jit_cbs[OPPnone,OPsqrt,OPSx_sd]:=@op_reg_mem_wo;

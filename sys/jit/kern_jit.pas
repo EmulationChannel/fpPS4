@@ -1568,6 +1568,8 @@ var
  link_next:t_jit_i_link;
 
  node,node_curr,node_next:p_jit_instruction;
+
+ i:Integer;
 begin
  if (cmDontScanRipRel in ctx.modes) then
  begin
@@ -1641,6 +1643,8 @@ begin
   ptr:=ctx.code;
 
   dis.Disassemble(dm64,ptr,din);
+
+  apply_din_stat(din,(ptr-ctx.code));
 
   ctx.ptr_next:=ctx.ptr_curr+(ptr-ctx.code);
 
@@ -1810,7 +1814,8 @@ begin
   link_next:=ctx.builder.get_curr_label.after;
   node_next:=link_next._node;
 
-  {
+  //////
+  i:=0;
   if (node_curr<>node_next) and
      (node_curr<>nil) then
   begin
@@ -1819,17 +1824,23 @@ begin
    while (node<>nil) do
    begin
 
+    i:=i+node^.ASize;
+
+    {
     if not test_disassemble(@node^.AData,node^.ASize) then
     begin
      print_asm:=True;
      Break;
     end;
+    }
 
 
     node:=TAILQ_NEXT(node,@node^.entry);
    end;
   end;
-  }
+
+  apply_jit_stat(i);
+  //////
 
   {
   if print_asm then
@@ -1986,6 +1997,7 @@ begin
 
  ctx.Free;
 
+ //print_din_stats;
 end;
 
 initialization
