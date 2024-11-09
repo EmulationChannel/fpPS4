@@ -276,6 +276,9 @@ begin
    MsgBtnz.AnchorSide[akBottom].Side   :=asrBottom;
    MsgBtnz.BorderSpacing.Bottom:=10;
    MsgBtnz.BorderSpacing.Left  :=10;
+   MsgBtnz.Constraints.MinHeight:=25;
+   MsgBtnz.Constraints.MinWidth :=75;
+   MsgBtnz.AutoSize:=True;
    MsgBtnz.Caption:='OK';
    MsgBtnz.Parent:=MsgForm;
    MsgBtnz.ModalResult:=mrOK;
@@ -291,7 +294,10 @@ begin
    MsgBtnz.AnchorSide[akBottom].Side   :=asrBottom;
    MsgBtnz.BorderSpacing.Bottom:=10;
    MsgBtnz.BorderSpacing.Right :=10;
+   MsgBtnz.Constraints.MinHeight:=25;
+   MsgBtnz.Constraints.MinWidth :=75;
    MsgBtnz.Caption:='Abort';
+   MsgBtnz.AutoSize:=True;
    MsgBtnz.Parent:=MsgForm;
    MsgBtnz.ModalResult:=mrAbort;
   end;
