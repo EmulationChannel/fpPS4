@@ -175,6 +175,19 @@ type
   force  :Byte;
  end;
 
+ p_pad_lightbar_param=^t_pad_lightbar_param;
+ t_pad_lightbar_param=packed record
+  r,g,b  :Byte;
+  tracker:Byte;
+ end;
+
+ p_set_light_bar_args=^t_set_light_bar_args;
+ t_set_light_bar_args=packed record
+  handle :Integer;
+  _align1:Integer;
+  pParam :p_pad_lightbar_param;
+ end;
+
  p_mouse_read_data=^t_mouse_read_data;
  t_mouse_read_data=packed record //0x18
   timestamp  :QWORD;
@@ -431,6 +444,11 @@ begin
   $80184822: //scePadSetVibration/scePadSetVibrationForce
     begin
      //with p_vibration_args(data)^ do
+    end;
+
+  $80104821: //scePadSetLightBar/scePadSetLightBarForTracker
+    begin
+     //with p_set_light_bar_args(data)^ do
     end;
 
   $80204819: //sceHidMouseReadForUser
