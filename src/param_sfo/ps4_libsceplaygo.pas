@@ -98,6 +98,9 @@ var
  //lang
  playgo_lang:ScePlayGoLanguageMask=0;
 
+const
+ playgo_handle=203;
+
 function scePlayGoConvertLanguage(systemLang:Integer):ScePlayGoLanguageMask; inline;
 begin
  if (systemLang>=0) and (systemLang<48) then
@@ -151,14 +154,14 @@ begin
  if not is_init_playgo then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
  if (playgo_file=nil)  then Exit(SCE_PLAYGO_ERROR_NOT_SUPPORT_PLAYGO);
 
- outHandle^:=333;
+ outHandle^:=playgo_handle;
  Result:=0;
 end;
 
 function ps4_scePlayGoClose(handle:ScePlayGoHandle):Integer;
 begin
- if (handle<>333)      then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
- if not is_init_playgo then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
+ if (handle<>playgo_handle) then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if not is_init_playgo      then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
  Result:=0;
 end;
 
@@ -173,7 +176,7 @@ function ps4_scePlayGoGetLocus(
 var
  i:DWORD;
 begin
- if (handle<>333)                   then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if (handle<>playgo_handle)         then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
  if (chunkIds=nil) or (outLoci=nil) then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
  if (numberOfEntries=0)             then Exit(SCE_PLAYGO_ERROR_BAD_SIZE);
  if not is_init_playgo              then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
@@ -211,10 +214,10 @@ function ps4_scePlayGoSetToDoList(
           numberOfEntries:DWORD
           ):Integer;
 begin
- if (handle<>333)       then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
- if (todoList=nil)      then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
- if (numberOfEntries=0) then Exit(SCE_PLAYGO_ERROR_BAD_SIZE);
- if not is_init_playgo  then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
+ if (handle<>playgo_handle) then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if (todoList=nil)          then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
+ if (numberOfEntries=0)     then Exit(SCE_PLAYGO_ERROR_BAD_SIZE);
+ if not is_init_playgo      then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
 
  Result:=0;
 end;
@@ -226,7 +229,7 @@ function ps4_scePlayGoGetToDoList(
           outEntries     :PDWORD
           ):Integer;
 begin
- if (handle<>333)                         then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if (handle<>playgo_handle)               then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
  if (outTodoList=nil) or (outEntries=nil) then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
  if (numberOfEntries=0)                   then Exit(SCE_PLAYGO_ERROR_BAD_SIZE);
  if not is_init_playgo                    then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
@@ -242,9 +245,9 @@ function ps4_scePlayGoPrefetch(
           minimumLocus   :ScePlayGoLocus
           ):Integer;
 begin
- if (handle<>333)       then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
- if (chunkIds=nil)      then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
- if (numberOfEntries=0) then Exit(SCE_PLAYGO_ERROR_BAD_SIZE);
+ if (handle<>playgo_handle) then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if (chunkIds=nil)          then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
+ if (numberOfEntries=0)     then Exit(SCE_PLAYGO_ERROR_BAD_SIZE);
 
  Case minimumLocus of
   SCE_PLAYGO_LOCUS_NOT_DOWNLOADED:;
@@ -268,7 +271,7 @@ function ps4_scePlayGoGetEta(
           outEta         :pScePlayGoEta
           ):Integer;
 begin
- if (handle<>333)                  then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if (handle<>playgo_handle)        then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
  if (chunkIds=nil) or (outEta=nil) then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
  if (numberOfEntries=0)            then Exit(SCE_PLAYGO_ERROR_BAD_SIZE);
  if not is_init_playgo             then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
@@ -287,7 +290,7 @@ var
  i,chunk_id:DWORD;
  total_size:QWORD;
 begin
- if (handle<>333)                       then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if (handle<>playgo_handle)             then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
  if (chunkIds=nil) or (outProgress=nil) then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
  if (numberOfEntries=0)                 then Exit(SCE_PLAYGO_ERROR_BAD_SIZE);
  if not is_init_playgo                  then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
@@ -336,7 +339,7 @@ function ps4_scePlayGoGetChunkId(
 var
  i:DWORD;
 begin
- if (handle<>333)                                 then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if (handle<>playgo_handle)                       then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
  if (outEntries=nil)                              then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
  if (outChunkIdList<>nil) and (numberOfEntries=0) then Exit(SCE_PLAYGO_ERROR_BAD_SIZE);
  if not is_init_playgo                            then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
@@ -378,9 +381,9 @@ function ps4_scePlayGoGetInstallSpeed(
           speed :pScePlayGoInstallSpeed
           ):Integer;
 begin
- if (handle<>333)      then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
- if (speed=nil)        then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
- if not is_init_playgo then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
+ if (handle<>playgo_handle) then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if (speed=nil)             then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
+ if not is_init_playgo      then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
 
  rw_wlock(playgo_speed_lock);
 
@@ -405,8 +408,8 @@ function ps4_scePlayGoSetInstallSpeed(
           speed :ScePlayGoInstallSpeed
           ):Integer;
 begin
- if (handle<>333)      then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
- if not is_init_playgo then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
+ if (handle<>playgo_handle) then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if not is_init_playgo      then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
 
  Case speed of
   SCE_PLAYGO_INSTALL_SPEED_SUSPENDED:;
@@ -435,8 +438,8 @@ function ps4_scePlayGoSetLanguageMask(
           languageMask:ScePlayGoLanguageMask
           ):Integer;
 begin
- if (handle<>333) then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
- if not is_init_playgo then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
+ if (handle<>playgo_handle) then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if not is_init_playgo      then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
 
  playgo_lang:=languageMask;
  Result:=0;
@@ -447,9 +450,9 @@ function ps4_scePlayGoGetLanguageMask(
           outLanguageMask:pScePlayGoLanguageMask
           ):Integer;
 begin
- if (handle<>333) then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
- if (outLanguageMask=nil) then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
- if not is_init_playgo then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
+ if (handle<>playgo_handle) then Exit(SCE_PLAYGO_ERROR_BAD_HANDLE);
+ if (outLanguageMask=nil)   then Exit(SCE_PLAYGO_ERROR_BAD_POINTER);
+ if not is_init_playgo      then Exit(SCE_PLAYGO_ERROR_NOT_INITIALIZED);
 
  outLanguageMask^:=playgo_lang;
  Result:=0;
