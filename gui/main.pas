@@ -151,6 +151,7 @@ type
     function  OnMainWindows (mlen:DWORD;buf:Pointer):Ptruint; //MAIN_WINDOWS
     function  OnCaptionFPS  (mlen:DWORD;buf:Pointer):Ptruint; //CAPTION_FPS
     function  OnError       (mlen:DWORD;buf:Pointer):Ptruint; //ERROR
+    function  OnWarning     (mlen:DWORD;buf:Pointer):Ptruint; //WARNING
     function  OnParamSfoInit(mlen:DWORD;buf:Pointer):Ptruint; //PARAM_SFO_INIT
     function  OnPlaygoInit  (mlen:DWORD;buf:Pointer):Ptruint; //PLAYGO_INIT
 
@@ -244,20 +245,96 @@ begin
  Result := ((-fd.Height) * 72) div Font.PixelsPerInch;
 end;
 
+const
+ MsgDlgBtnToStr: array[TMsgDlgBtn] of PChar = (
+  '&Yes',
+  '&No',
+  '&OK',
+  '&Cancel',
+  '&Abort',
+  '&Retry',
+  '&Ignore',
+  '&All',
+  '&NoToAll',
+  '&YesToAll',
+  '&Help',
+  '&Close'
+ );
+
+ MsgDlgBtnToResult: array[TMsgDlgBtn] of Byte = (
+  mrYes,
+  mrNo,
+  mrOK,
+  mrCancel,
+  mrAbort,
+  mrRetry,
+  mrIgnore,
+  mrAll,
+  mrNoToAll,
+  mrYesToAll,
+  mrNone, //Help
+  mrClose
+ );
+
+type
+ TMsgDlgAButtons=array of TMsgDlgBtn;
+
 function MessageDlgEx(const AMsg:RawByteString;
-                      ADlgType:TMsgDlgType;
-                      AButtons:TMsgDlgButtons;
+                      const ACaption:RawByteString;
+                      AButtons:TMsgDlgAButtons;
                       AParent:TForm):TModalResult;
 var
  MsgForm:TForm;
  MsgMemo:TMemo;
  MsgBtnz:TButton;
+
+ //(asrTop, asrBottom, asrCenter);
+ Procedure NewBtn(DlgType:TMsgDlgBtn;DlgPos:TAnchorSideReference);
+ begin
+  MsgBtnz:=TButton.Create(MsgForm);
+
+  case DlgPos of
+   asrTop:
+     begin
+      MsgBtnz.Anchors:=[akLeft,akBottom];
+      MsgBtnz.AnchorSide[akLeft  ].Control:=MsgForm;
+      MsgBtnz.AnchorSide[akLeft  ].Side   :=asrTop;
+      MsgBtnz.AnchorSide[akBottom].Control:=MsgForm;
+      MsgBtnz.AnchorSide[akBottom].Side   :=asrBottom;
+     end;
+   asrBottom:
+     begin
+      MsgBtnz.Anchors:=[akRight,akBottom];
+      MsgBtnz.AnchorSide[akRight ].Control:=MsgForm;
+      MsgBtnz.AnchorSide[akRight ].Side   :=asrBottom;
+      MsgBtnz.AnchorSide[akBottom].Control:=MsgForm;
+      MsgBtnz.AnchorSide[akBottom].Side   :=asrBottom;
+     end;
+   asrCenter:
+     begin
+      MsgBtnz.Anchors:=[akLeft,akBottom];
+      MsgBtnz.AnchorSide[akLeft  ].Control:=MsgForm;
+      MsgBtnz.AnchorSide[akLeft  ].Side   :=asrCenter;
+      MsgBtnz.AnchorSide[akBottom].Control:=MsgForm;
+      MsgBtnz.AnchorSide[akBottom].Side   :=asrBottom;
+     end;
+  end;
+
+  MsgBtnz.BorderSpacing.Around :=10;
+  MsgBtnz.Constraints.MinHeight:=25;
+  MsgBtnz.Constraints.MinWidth :=75;
+  MsgBtnz.AutoSize   :=True;
+  MsgBtnz.Caption    :=MsgDlgBtnToStr[DlgType];
+  MsgBtnz.Parent     :=MsgForm;
+  MsgBtnz.ModalResult:=MsgDlgBtnToResult[DlgType];
+ end;
+
 begin
  MsgBtnz:=nil;
 
  MsgForm:=TForm.Create(nil);
  try
-  MsgForm.Caption    :='Error';
+  MsgForm.Caption    :=ACaption;
   MsgForm.Position   :=poDesigned;
   MsgForm.BorderIcons:=[biSystemMenu];
   MsgForm.FormStyle  :=fsSystemStayOnTop;
@@ -266,40 +343,24 @@ begin
   MsgForm.Width :=400;
   MsgForm.Height:=200;
   //
-  if (mbOK in AButtons) then
-  begin
-   MsgBtnz:=TButton.Create(MsgForm);
-   MsgBtnz.Anchors:=[akLeft,akBottom];
-   MsgBtnz.AnchorSide[akLeft  ].Control:=MsgForm;
-   MsgBtnz.AnchorSide[akLeft  ].Side   :=asrTop;
-   MsgBtnz.AnchorSide[akBottom].Control:=MsgForm;
-   MsgBtnz.AnchorSide[akBottom].Side   :=asrBottom;
-   MsgBtnz.BorderSpacing.Bottom:=10;
-   MsgBtnz.BorderSpacing.Left  :=10;
-   MsgBtnz.Constraints.MinHeight:=25;
-   MsgBtnz.Constraints.MinWidth :=75;
-   MsgBtnz.AutoSize:=True;
-   MsgBtnz.Caption:='OK';
-   MsgBtnz.Parent:=MsgForm;
-   MsgBtnz.ModalResult:=mrOK;
-  end;
-  //
-  if (mbAbort in AButtons) then
-  begin
-   MsgBtnz:=TButton.Create(MsgForm);
-   MsgBtnz.Anchors:=[akRight,akBottom];
-   MsgBtnz.AnchorSide[akRight ].Control:=MsgForm;
-   MsgBtnz.AnchorSide[akRight ].Side   :=asrBottom;
-   MsgBtnz.AnchorSide[akBottom].Control:=MsgForm;
-   MsgBtnz.AnchorSide[akBottom].Side   :=asrBottom;
-   MsgBtnz.BorderSpacing.Bottom:=10;
-   MsgBtnz.BorderSpacing.Right :=10;
-   MsgBtnz.Constraints.MinHeight:=25;
-   MsgBtnz.Constraints.MinWidth :=75;
-   MsgBtnz.Caption:='Abort';
-   MsgBtnz.AutoSize:=True;
-   MsgBtnz.Parent:=MsgForm;
-   MsgBtnz.ModalResult:=mrAbort;
+  Case Length(AButtons) of
+   0:;
+   1:
+     begin
+      NewBtn(AButtons[0],asrTop);
+     end;
+   2:
+     begin
+      NewBtn(AButtons[0],asrTop);
+      NewBtn(AButtons[1],asrBottom);
+     end;
+   3:
+     begin
+      NewBtn(AButtons[0],asrTop);
+      NewBtn(AButtons[1],asrCenter);
+      NewBtn(AButtons[2],asrBottom);
+     end;
+   else;
   end;
   //
   MsgMemo:=TMemo.Create(MsgForm);
@@ -397,13 +458,30 @@ end;
 function TfrmMain.OnError(mlen:DWORD;buf:Pointer):Ptruint; //ERROR
 begin
  Result:=0;
- if (MessageDlgEx(PChar(buf),mtError,[mbOK,mbAbort],Self)=mrAbort) then
+ if (MessageDlgEx(PChar(buf),'Error',[mbOK,mbAbort],Self)=mrAbort) then
  begin
   if (FGameProcess<>nil) then
   if (FGameProcess.g_ipc<>nil) then
   begin
    FGameProcess.g_ipc.FStop:=True;
   end;
+ end;
+end;
+
+function TfrmMain.OnWarning(mlen:DWORD;buf:Pointer):Ptruint; //WARNING
+begin
+ Result:=MessageDlgEx(PChar(buf),'Warning',[mbYes,mbNo,mbAbort],Self);
+ if (Result=mrAbort) then
+ begin
+  if (FGameProcess<>nil) then
+  if (FGameProcess.g_ipc<>nil) then
+  begin
+   FGameProcess.g_ipc.FStop:=True;
+  end;
+ end;
+ if (Result=mrYes) then
+ begin
+  Result:=0;
  end;
 end;
 
@@ -428,7 +506,7 @@ begin
  begin
   V:='"{$GAME}/sce_sys/param.sfo" not found, continue?';
 
-  if (MessageDlgEx(V,mtError,[mbOK,mbAbort],Self)=mrOK) then
+  if (MessageDlgEx(V,'Error',[mbOK,mbAbort],Self)=mrOK) then
   begin
    Exit(0);
   end else
@@ -468,7 +546,7 @@ begin
  begin
   V:='"{$GAME}/sce_sys/playgo-chunk.dat" not found, continue?';
 
-  if (MessageDlgEx(V,mtError,[mbOK,mbAbort],Self)=mrOK) then
+  if (MessageDlgEx(V,'Error',[mbOK,mbAbort],Self)=mrOK) then
   begin
    Exit(0);
   end else
@@ -662,7 +740,7 @@ begin
    JReader.Execute(FConfigInfo);
   except
    on E: Exception do
-     MessageDlgEx(E.Message,mtError,[mbOK],Self);
+     MessageDlgEx(E.Message,'Error',[mbOK],Self);
   end;
   FreeAndNil(JReader);
   FreeAndNil(m);
@@ -683,7 +761,7 @@ begin
    JReader.Execute(obj);
   except
    on E: Exception do
-     MessageDlgEx(E.Message,mtError,[mbOK],Self);
+     MessageDlgEx(E.Message,'Error',[mbOK],Self);
   end;
   FreeAndNil(JReader);
   FreeAndNil(m);
@@ -726,7 +804,7 @@ begin
   M.SaveToFile(GameListFile);
  except
   on E: Exception do
-    MessageDlgEx(E.Message,mtError,[mbOK],Self);
+    MessageDlgEx(E.Message,'Error',[mbOK],Self);
  end;
 
  FreeAndNil(M);
@@ -770,6 +848,7 @@ begin
  IpcHandler.AddCallback('MAIN_WINDOWS'  ,@OnMainWindows );
  IpcHandler.AddCallback('CAPTION_FPS'   ,@OnCaptionFPS  );
  IpcHandler.AddCallback('ERROR'         ,@OnError       );
+ IpcHandler.AddCallback('WARNING',       @OnWarning     );
  IpcHandler.AddCallback('PARAM_SFO_INIT',@OnParamSfoInit);
  IpcHandler.AddCallback('PLAYGO_INIT'   ,@OnPlaygoInit  );
 
@@ -1127,7 +1206,7 @@ begin
   M.SaveToFile(fpps4File);
  except
   on E: Exception do
-    MessageDlgEx(E.Message,mtError,[mbOK],Self);
+    MessageDlgEx(E.Message,'Error',[mbOK],Self);
  end;
 
  FreeAndNil(M);
@@ -1284,7 +1363,7 @@ begin
    r:='Game process stopped with exit code:0x'+HexStr(exit_code,8);
    FileWrite(FAddHandle,PChar(r)^,Length(r));
 
-   MessageDlgEx(r,mtError,[mbOK],Self);
+   MessageDlgEx(r,'Error',[mbOK],Self);
   end;
 
  end else

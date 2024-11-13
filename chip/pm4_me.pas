@@ -16,6 +16,7 @@ uses
  si_ci_vi_merged_enum,
 
  sys_bootparam,
+ host_ipc_interface,
  md_sleep,
 
  Vulkan,
@@ -192,6 +193,8 @@ type
 
 var
  use_renderdoc_capture:Boolean=False;
+ wait_loop_detect     :Boolean=True;
+ wait_loop_autoskip   :Boolean=False;
 
 implementation
 
@@ -2566,9 +2569,15 @@ begin
  end;
 end;
 
+function SendWarnMsg(const s:RawByteString):Integer;
+begin
+ Result:=p_host_ipc.SendSync(HashIpcStr('WARNING'),Length(s)+1,pchar(s));
+end;
+
 procedure pm4_WaitRegMem(var ctx:t_me_render_context;node:p_pm4_node_WaitRegMem);
 label
- _repeat;
+ _repeat,
+ _reset;
 var
  wait_addr:p_me_wait_addr;
 begin
@@ -2597,12 +2606,30 @@ begin
   //
   Inc(ctx.stream^.hint_loop);
   //
+  if wait_loop_detect then
   if (ctx.stream^.hint_loop>10000) then
   begin
    //loop detection
-   Writeln(stderr,'WaitReg loop detected 0x',HexStr(QWORD(node^.pollAddr),10),' -> skip');
-   Exit;
-  end;
+   if wait_loop_autoskip then
+   begin
+    Writeln(stderr,'WaitRegMem hang detected 0x',HexStr(QWORD(node^.pollAddr),10),' -> skip');
+    goto _reset;
+   end else
+   begin
+    Writeln(stderr,'WaitRegMem hang detected 0x',HexStr(QWORD(node^.pollAddr),10));
+    //
+    if SendWarnMsg('Hang in WaitRegMem instruction detected, skip instruction?')=0 then
+    begin
+     Writeln(stderr,' -> skip');
+     goto _reset;
+    end else
+    begin
+     Writeln(stderr,' -> repeat');
+     ctx.stream^.hint_loop:=0;
+    end;
+    //
+   end;
+  end; //hint_loop
   //
   ctx.switch_task;
   //early check
@@ -2611,10 +2638,12 @@ begin
    goto _repeat;
   end;
   //
-  Exit;
+  Exit; //dont reset wait addr
  end;
 
- wait_addr^.set_adr(ctx.me^.gc_kqueue,nil);
+ _reset:
+  ctx.stream^.hint_loop:=0;
+  wait_addr^.set_adr(ctx.me^.gc_kqueue,nil);
 end;
 
 //
