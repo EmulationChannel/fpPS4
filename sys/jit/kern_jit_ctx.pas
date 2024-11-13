@@ -3958,6 +3958,27 @@ begin
   Exit;
  end;
 
+ if (din.OpCode.Prefix=OPPnone) then
+ begin
+  case din.OpCode.Opcode of
+   OPins ,
+   OPouts,
+   OPmovs,
+   OPlods,
+   OPstos,
+   OPcmps,
+   OPscas:
+      case din.OpCode.Suffix of
+       OPSx_b:begin Result.mema_size:=1; Exit; end;
+       OPSx_w:begin Result.mema_size:=2; Exit; end;
+       OPSx_d:begin Result.mema_size:=4; Exit; end;
+       OPSx_q:begin Result.mema_size:=8; Exit; end;
+       else;
+      end;
+   else;
+  end;
+ end;
+
  Assert(false,'get_instruction_info');
 end;
 
