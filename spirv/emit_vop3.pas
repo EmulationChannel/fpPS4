@@ -31,6 +31,8 @@ type
   procedure emit_V_ADDC_U32;
   procedure emit_V_SUBB_U32;
 
+  procedure emit_V_SUB_I32;
+
   procedure emit_V_CNDMASK_B32;
   procedure emit_V_MUL_LEGACY_F32;
   procedure emit_V2_F32(OpId:DWORD);
@@ -1284,11 +1286,34 @@ begin
  OpBitwiseAnd(bor,src[0],exc);     //borrow_out & EXEC
 end;
 
+procedure TEmit_VOP3.emit_V_SUB_I32;
+Var
+ dst,bor:PsrRegSlot;
+ src:array[0..1] of TsrRegNode;
+ exc:TsrRegNode;
+begin
+ dst:=get_vdst8(FSPI.VOP3b.VDST);
+ bor:=get_sdst7(FSPI.VOP3b.SDST);
+
+ Assert(FSPI.VOP3b.OMOD=0,'FSPI.VOP3b.OMOD');
+ Assert(FSPI.VOP3b.NEG =0,'FSPI.VOP3b.NEG');
+
+ src[0]:=fetch_ssrc9(FSPI.VOP3b.SRC0,dtUInt32);
+ src[1]:=fetch_ssrc9(FSPI.VOP3b.SRC1,dtUInt32);
+
+ OpISubExt(dst,bor,src[0],src[1],dtUInt32);
+
+ exc:=MakeRead(get_exec0,dtUnknow);
+ OpBitwiseAnd(bor,bor^.current,exc); //borrow_out & EXEC
+end;
+
 procedure TEmit_VOP3.emit_VOP3b;
 begin
  Case FSPI.VOP3b.OP of
   256+V_ADDC_U32: emit_V_ADDC_U32;
   256+V_SUBB_U32: emit_V_SUBB_U32;
+
+  256+V_SUB_I32 : emit_V_SUB_I32;
 
   else
    Assert(false,'VOP3b?'+IntToStr(FSPI.VOP3b.OP)+' '+get_str_spi(FSPI));
