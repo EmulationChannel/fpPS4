@@ -1324,7 +1324,7 @@ procedure onAcquireMem(pctx:p_pfp_ctx;Body:PPM4ACQUIREMEM);
 {var
  addr,size:QWORD;}
 begin
- Assert(pctx^.stream_type=stGfxDcb);
+ //Assert(pctx^.stream_type=stGfxDcb);
 
  pctx^.UC_REG.CP_COHER_BASE_HI.COHER_BASE_HI_256B:=Body^.coherBaseHi;
  DWORD(pctx^.UC_REG.CP_COHER_CNTL)               :=Body^.coherCntl;
@@ -2066,6 +2066,7 @@ begin
       IT_DISPATCH_DIRECT                :onDispatchDirectCompute(pctx,buff);
       IT_RELEASE_MEM                    :onReleaseMemCompute    (pctx,buff);
       IT_WAIT_REG_MEM                   :onWaitRegMem           (pctx,buff);
+      IT_ACQUIRE_MEM                    :onAcquireMem           (pctx,buff);
       IT_INDIRECT_BUFFER                :onIndirectBufferCompute(pctx,buff);
       else
        begin
