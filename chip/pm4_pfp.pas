@@ -1139,7 +1139,7 @@ var
  byteCount:DWORD;
  srcSel,dstSel:Byte;
 begin
- Assert(pctx^.stream_type=stGfxDcb);
+ //Assert(pctx^.stream_type=stGfxDcb);
 
  srcSel:=((PDWORD(Body)[1] shr $1d) and 3) or ((PDWORD(Body)[6] shr $19) and 8) or ((PDWORD(Body)[6] shr $18) and 4);
  dstSel:=((PDWORD(Body)[1] shr $14) and 1) or ((PDWORD(Body)[6] shr $1a) and 8) or ((PDWORD(Body)[6] shr $19) and 4);
@@ -2062,6 +2062,7 @@ begin
      case PM4_TYPE_3_HEADER(token).opcode of
       IT_NOP                            :onNop                  (pctx,buff);
       IT_WRITE_DATA                     :onWriteData            (pctx,buff);
+      IT_DMA_DATA                       :onDmaData              (pctx,buff);
       IT_SET_SH_REG                     :onSetShRegCompute      (pctx,buff);
       IT_DISPATCH_DIRECT                :onDispatchDirectCompute(pctx,buff);
       IT_RELEASE_MEM                    :onReleaseMemCompute    (pctx,buff);
