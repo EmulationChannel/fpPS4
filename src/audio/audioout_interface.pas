@@ -48,18 +48,9 @@ type
 implementation
 
 uses
+ md_time,
  time,
  syscalls;
-
-function GetProcessTime():QWORD; //microseconds
-var
- time:timespec;
-begin
- time:=Default(timespec);
- clock_gettime(15,@time);
- //
- Result:=(time.tv_nsec div 1000) + (time.tv_sec * 1000000);
-end;
 
 procedure usleep(usec:QWORD); //microseconds
 var
