@@ -14,7 +14,7 @@ type
   n:PChar;
   c:TRTLCriticalSection;
   {$IFDEF DEBUG_MTX}
-  debug_own:array[0..2] of Pointer;
+  debug_own:array[0..1] of Pointer;
   {$ENDIF}
  end;
 
@@ -96,7 +96,6 @@ begin
  end;
  m.debug_own[0]:=PPointer(rbp)[1]; rbp:=PPointer(rbp)[0];
  m.debug_own[1]:=PPointer(rbp)[1]; rbp:=PPointer(rbp)[0];
- m.debug_own[2]:=PPointer(rbp)[1];
  {$ENDIF}
 end;
 
@@ -116,7 +115,6 @@ begin
   end;
  m.debug_own[0]:=PPointer(rbp)[1]; rbp:=PPointer(rbp)[0];
  m.debug_own[1]:=PPointer(rbp)[1]; rbp:=PPointer(rbp)[0];
- m.debug_own[2]:=PPointer(rbp)[1];
  end;
  {$ENDIF}
 end;
@@ -127,7 +125,6 @@ begin
  {$IFDEF DEBUG_MTX}
  m.debug_own[0]:=nil;
  m.debug_own[1]:=nil;
- m.debug_own[2]:=nil;
  {$ENDIF}
  LeaveCriticalSection(m.c);
 end;

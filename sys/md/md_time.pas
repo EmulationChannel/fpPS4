@@ -28,6 +28,7 @@ function  get_unit_uptime:Int64;
 procedure unittime(time:PInt64);
 procedure calcru_proc(user,syst:PInt64);
 procedure get_process_cputime(time:PInt64);
+function  GetProcessTime:QWORD; //microsecond
 procedure calcru_thread(user,syst:PInt64);
 procedure get_thread_cputime(time:PInt64);
 procedure gettimezone(z:p_timezone);
@@ -254,6 +255,13 @@ begin
  Assert(R=0,'get_process_cputime');
  unittime(@k.ExitTime.QuadPart);
  time^:=k.ExitTime.QuadPart-k.CreateTime.QuadPart;
+end;
+
+function GetProcessTime:QWORD; //microsecond
+begin
+ Result:=0;
+ get_process_cputime(@Result);
+ Result:=Result div UNIT_PER_USEC;
 end;
 
 procedure calcru_thread(user,syst:PInt64);

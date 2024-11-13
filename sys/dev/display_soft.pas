@@ -6,6 +6,7 @@ interface
 
 uses
  LFQueue,
+ mqueue,
  display_interface,
  time,
  kern_thr,
@@ -50,6 +51,7 @@ type
 
  PQNodeFlip=^TQNodeFlip;
  TQNodeFlip=object(TQNode)
+  entry    :STAILQ_ENTRY;
   submit   :PQNodeSubmit;
   submit_id:QWORD;
  end;
@@ -57,10 +59,13 @@ type
  TFlipAlloc=object
   FNodes:array[0..17] of TQNodeFlip;
   FAlloc:TIntrusiveMPSCQueue;
+  FCount:Integer;
   Procedure Init;
   function  Alloc:PQNodeFlip;
   procedure Free(P:PQNodeFlip);
  end;
+
+ TSubmitQueue=TIntrusiveMPSCQueue;
 
  TDisplayHandleSoft=class(TDisplayHandle)
 
@@ -68,19 +73,21 @@ type
 
   FHEvent:PRTLEvent;
   FVEvent:PRTLEvent;
+
   Ftd:p_kthread;
 
   FSubmitAlloc:TSubmitAlloc;
-  FSubmitQueue:TIntrusiveMPSCQueue;
+  FSubmitQueue:TSubmitQueue;
 
   FFlipAlloc:TFlipAlloc;
+  FFlipQueue:STAILQ_HEAD;
 
   FTerminate:Boolean;
 
+  Fflip_count:array[0..15] of Integer;
+
   flip_rate:Integer;
   vblank_count:Integer;
-
-  flipPendingNum:Integer;
 
   m_attr:array[0.. 3] of t_attr;
   m_bufs:array[0..15] of t_buffer;
@@ -99,12 +106,14 @@ type
   function   UnregisterBufferAttribute(attrid:Byte):Integer; override;
   function   RegisterBuffer           (buf:p_register_buffer):Integer; override;
   function   UnregisterBuffer         (index:Integer):Integer; override;
+  procedure  SubmitNode               (Node:PQNodeSubmit);
+  procedure  ResetBuffer              (bufferIndex:Integer);
   function   SubmitFlip               (submit:p_submit_flip):Integer; override;
   function   SubmitFlipEop            (submit:p_submit_flip;submit_id:QWORD):Integer; override;
   function   TriggerFlipEop           (submit_id:QWORD):Integer; override;
-  function   Vblank                   ():Integer; override;
+  function   Vblank                   ():Boolean; override;
   //
-  procedure  OnSubmit(Node:PQNodeSubmit);
+  procedure  OnFlip(Node:PQNodeSubmit);
  end;
 
 implementation
@@ -117,9 +126,9 @@ uses
  LCLType,
  LCLIntf,
  }
+ md_time,
  sys_bootparam,
- kern_dmem,
- dev_dce;
+ kern_dmem;
 
 //
 
@@ -163,12 +172,18 @@ function TFlipAlloc.Alloc:PQNodeFlip;
 begin
  Result:=nil;
  FAlloc.Pop(Result);
+
+ if (Result<>nil) then
+ begin
+  System.InterlockedIncrement(FCount);
+ end;
 end;
 
 procedure TFlipAlloc.Free(P:PQNodeFlip);
 begin
  if (P=nil) then Exit;
  FAlloc.Push(P);
+ System.InterlockedDecrement(FCount);
 end;
 
 //
@@ -192,6 +207,7 @@ begin
  FSubmitQueue.Create;
 
  FFlipAlloc.Init;
+ STAILQ_INIT(@FFlipQueue);
 
  if (Ftd=nil) then
  begin
@@ -297,6 +313,10 @@ begin
  m_bufs[i].left_dmem :=left_dmem;
  m_bufs[i].right_dmem:=right_dmem;
 
+ //
+ labels[buf^.index]:=0; //reset
+ Fflip_count[buf^.index]:=0; //reset
+ //
 
  Result:=0;
 end;
@@ -882,6 +902,65 @@ begin
  ReleaseDC(hWindow, hdc);
 end;
 
+procedure TDisplayHandleSoft.SubmitNode(Node:PQNodeSubmit);
+var
+ //prev:Integer;
+ bufferIndex:Integer;
+begin
+ bufferIndex:=Node^.submit.bufferIndex;
+
+ Node^.tsc:=rdtsc();
+
+ //set label
+ if (bufferIndex<>-1) then
+ begin
+  //prev:=labels[bufferIndex];
+
+  labels[bufferIndex]:=1;
+
+  //Writeln('[SubmitNode] labels[',bufferIndex,']=',prev,'->',labels[bufferIndex],' *',Fflip_count[bufferIndex]);
+
+  //
+  System.InterlockedIncrement(Fflip_count[bufferIndex]);
+  //
+  System.InterlockedIncrement(last_status.flipPendingNum0);
+ end;
+
+ FSubmitQueue.Push(Node);
+
+ if (Node^.submit.flipMode=SCE_VIDEO_OUT_FLIP_MODE_HSYNC) then
+ begin
+  RTLEventSetEvent(FHEvent);
+ end;
+end;
+
+procedure gc_wakeup_internal_ptr(ptr:Pointer); register; external;
+
+procedure TDisplayHandleSoft.ResetBuffer(bufferIndex:Integer);
+//var
+// prev:Integer;
+begin
+
+ //reset label
+ if (bufferIndex<>-1) then
+ begin
+  System.InterlockedDecrement(last_status.flipPendingNum0);
+
+  //prev:=labels[bufferIndex];
+
+  if (System.InterlockedDecrement(Fflip_count[bufferIndex])=0) then
+  begin
+   labels[bufferIndex]:=0;
+   gc_wakeup_internal_ptr(@labels[bufferIndex]);
+  end;
+
+  //Writeln('[ResetBuffer] labels[',bufferIndex,']=',prev,'->',labels[bufferIndex],' *',Fflip_count[bufferIndex]);
+
+ end;
+ labels[16]:=0; //bufferIndex = -1 ???
+
+end;
+
 function TDisplayHandleSoft.SubmitFlip(submit:p_submit_flip):Integer;
 var
  buf :p_buffer;
@@ -897,27 +976,15 @@ begin
  end;
 
  Node:=FSubmitAlloc.Alloc;
- if (Node=nil) then Exit(EBUSY);
+ if (Node=nil) then
+ begin
+  Writeln('SubmitQueue is busy!');
+  Exit(EBUSY);
+ end;
 
  Node^.submit:=submit^;
- Node^.tsc   :=rdtsc();
 
- //Sets libSceGnm in usermode
- //if (submit^.bufferIndex<>-1) then
- //begin
- // dce_page^.labels[submit^.bufferIndex]:=1;
- //end;
-
- //
- System.InterlockedIncrement(last_status.flipPendingNum0);
-
- FSubmitQueue.Push(Node);
-
- if (Node^.submit.flipMode=SCE_VIDEO_OUT_FLIP_MODE_HSYNC) then
- begin
-  RTLEventSetEvent(FHEvent);
- end;
- //
+ SubmitNode(Node);
 
  Result:=0;
 end;
@@ -938,12 +1005,17 @@ begin
  end;
 
  Node:=FSubmitAlloc.Alloc;
- if (Node=nil) then Exit(EBUSY);
+ if (Node=nil) then
+ begin
+  Writeln('SubmitQueue is busy!');
+  Exit(EBUSY);
+ end;
 
  Flip:=FFlipAlloc.Alloc;
  if (Flip=nil) then
  begin
   FSubmitAlloc.Free(Node);
+  Writeln('FlipQueue is busy!');
   Exit(EBUSY);
  end;
 
@@ -952,6 +1024,8 @@ begin
  Flip^.next_    :=nil;
  Flip^.submit   :=Node;
  Flip^.submit_id:=submit_id;
+
+ STAILQ_INSERT_TAIL(@FFlipQueue,Flip,@Flip^.entry);
 
  System.InterlockedIncrement(last_status.gcQueueNum);
 
@@ -962,20 +1036,19 @@ function TDisplayHandleSoft.TriggerFlipEop(submit_id:QWORD):Integer;
 var
  Node:PQNodeSubmit;
  Flip:PQNodeFlip;
- i:Integer;
 begin
  Result:=0;
  //
- mtx_lock(mtx^);
+ mtx_lock(dce_mtx^);
 
- For i:=0 to High(FFlipAlloc.FNodes) do
+ Flip:=STAILQ_FIRST(@FFlipQueue);
+
+ while (Flip<>nil) do
  begin
-  Flip:=@FFlipAlloc.FNodes[i];
-
-  if (Flip^.next_=nil) and
-     (Flip^.submit<>nil) and
-     (Flip^.submit_id=submit_id) then
+  if (Flip^.submit_id=submit_id) then
   begin
+   STAILQ_REMOVE(@FFlipQueue,Flip,@Flip^.entry);
+
    Node:=Flip^.submit;
 
    Flip^.submit   :=nil;
@@ -984,40 +1057,25 @@ begin
 
    System.InterlockedDecrement(last_status.gcQueueNum);
 
-   //
+   mtx_unlock(dce_mtx^);
 
-   //Sets libSceGnm in usermode
-   //if (submit^.bufferIndex<>-1) then
-   //begin
-   // dce_page^.labels[submit^.bufferIndex]:=1;
-   //end;
-
-   //
-   Node^.tsc:=rdtsc();
-
-   System.InterlockedIncrement(last_status.flipPendingNum0);
-
-   mtx_unlock(mtx^);
-
-   FSubmitQueue.Push(Node);
-
-   if (Node^.submit.flipMode=SCE_VIDEO_OUT_FLIP_MODE_HSYNC) then
+   if (Node<>nil) then
    begin
-    RTLEventSetEvent(FHEvent);
+    SubmitNode(Node);
    end;
-   //
 
    Exit;
   end;
-
+  //
+  Flip:=STAILQ_NEXT(Flip,@Flip^.entry);
  end;
 
- mtx_unlock(mtx^);
+ mtx_unlock(dce_mtx^);
  //
  Result:=1;
 end;
 
-function TDisplayHandleSoft.Vblank():Integer;
+function TDisplayHandleSoft.Vblank():Boolean;
 begin
  vblank_count:=vblank_count+1;
 
@@ -1028,12 +1086,15 @@ begin
   RTLEventSetEvent(FVEvent);
  end;
 
- Result:=0;
+ {
+  Delay vblank update when GPU rendering is in progress,
+  so that games that only rely on vblank will wait
+  for the actual rendering to complete!
+ }
+ Result:=(last_status.gcQueueNum=0);
 end;
 
-procedure gc_wakeup_internal_ptr(ptr:Pointer); register; external;
-
-procedure TDisplayHandleSoft.OnSubmit(Node:PQNodeSubmit);
+procedure TDisplayHandleSoft.OnFlip(Node:PQNodeSubmit);
 var
  i:Integer;
  submit:p_submit_flip;
@@ -1044,14 +1105,14 @@ begin
  For i:=0 to High(m_sbat) do
  if (m_sbat[i].init<>0) then
  begin
-  mtx_lock(mtx^);
+  mtx_lock(dce_mtx^);
 
    m_attr[i].init:=1;
    m_attr[i].attr:=m_sbat[i].attr;
 
    m_sbat[i].init:=0;
 
-  mtx_unlock(mtx^);
+  mtx_unlock(dce_mtx^);
  end;
 
  submit:=@Node^.submit;
@@ -1066,27 +1127,20 @@ begin
   SoftFlip(hWindow,buf,attr,@dst_cache);
  end;
 
- mtx_lock(mtx^);
+ mtx_lock(dce_mtx^);
 
-  //reset label
-  if (submit^.bufferIndex<>-1) then
-  begin
-   dce_page^.labels[submit^.bufferIndex]:=0;
-   gc_wakeup_internal_ptr(@dce_page^.labels[submit^.bufferIndex]);
-  end;
-  dce_page^.label_:=0; //bufferIndex = -1 ???
-
-  System.InterlockedDecrement(last_status.flipPendingNum0);
+  ResetBuffer(submit^.bufferIndex);
 
   last_status.flipArg        :=submit^.flipArg;
   last_status.flipArg2       :=submit^.flipArg2;
   last_status.count          :=last_status.count+1;
   last_status.submitTsc      :=Node^.tsc;
   last_status.currentBuffer  :=submit^.bufferIndex;
-  last_status.tsc            :=rdtsc();
-  last_status.processTime    :=last_status.tsc;
 
- mtx_unlock(mtx^);
+  last_status.processTime    :=GetProcessTime;
+  last_status.tsc            :=rdtsc();
+
+ mtx_unlock(dce_mtx^);
 
  knote_eventid(EVENTID_FLIP, submit^.flipArg);
 
@@ -1120,7 +1174,7 @@ begin
     RTLEventResetEvent(dce.FVEvent);
    end;
    //
-   dce.OnSubmit(Node);
+   dce.OnFlip(Node);
    dce.FSubmitAlloc.Free(Node);
    //
   end else

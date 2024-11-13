@@ -101,10 +101,11 @@ type
  end;
 
  TDisplayHandle=class
-  event_flip:p_knlist;
-  mtx:p_mtx;
+  event_flip :p_knlist;
+  labels     :PQWORD;
+  dce_mtx    :p_mtx;
   last_status:t_flip_status;
-  p_fps_cnt:PQWORD;
+  p_fps_cnt  :PQWORD;
   procedure knote_eventid            (event_id:WORD;flipArg:QWORD);
   function  Open                     ():Integer; virtual;
   function  GetFlipStatus            (status:p_flip_status):Integer; virtual;
@@ -118,7 +119,7 @@ type
   function  SubmitFlip               (submit:p_submit_flip):Integer; virtual;
   function  SubmitFlipEop            (submit:p_submit_flip;submit_id:QWORD):Integer; virtual;
   function  TriggerFlipEop           (submit_id:QWORD):Integer; virtual;
-  function  Vblank                   ():Integer; virtual;
+  function  Vblank                   ():Boolean; virtual;
  end;
 
  TAbstractDisplay=class of TDisplayHandle;
@@ -182,6 +183,7 @@ end;
 function TDisplayHandle.RegisterBuffer(buf:p_register_buffer):Integer;
 begin
  Result:=0;
+ labels[buf^.index]:=0; //reset
 end;
 
 function TDisplayHandle.UnregisterBuffer(index:Integer):Integer;
@@ -226,9 +228,9 @@ begin
  Result:=0;
 end;
 
-function TDisplayHandle.Vblank():Integer;
+function TDisplayHandle.Vblank():Boolean;
 begin
- Result:=0;
+ Result:=True;
 end;
 
 end.

@@ -1150,7 +1150,7 @@ function op_lazy_jit(var ctx:t_jit_context2):Boolean;
 begin
  Result:=False;
 
- if use_lazy_jit then
+ if not use_lazy_jit then
  begin
   Exit;
  end;

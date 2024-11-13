@@ -618,10 +618,11 @@ begin
  begin
   map_queue_valid:=map_queue_valid or (1 shl id);
 
-  //what is it?
+  {
   id:=(pipeHi - 1) * 4 + (pipeLo - 8);
 
-  map_queue_valid:=map_queue_valid or (1 shl id);
+  map_pipe_valid:=map_pipe_valid or (1 shl id);
+  }
  end;
 
 end;

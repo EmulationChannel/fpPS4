@@ -23,9 +23,8 @@ function  TriggerFlipEop(submit_id:QWORD):Integer;
 type
  p_dce_page=^t_dce_page;
  t_dce_page=packed record //0x170
-  zero         :QWORD;
-  unk1         :array[0..151] of Byte;
-  labels       :array[0.. 15] of QWORD; //sceVideoOutGetBufferLabelAddress
+  zero         :array[0..19] of QWORD;
+  labels       :array[0..15] of QWORD; //sceVideoOutGetBufferLabelAddress
   label_       :QWORD;
   unk2         :QWORD;
   ident_flip   :QWORD;
@@ -57,6 +56,7 @@ implementation
 uses
  errno,
  systm,
+ md_time,
  vm_pmap,
  subr_backtrace,
  sys_vm_object,
@@ -71,7 +71,8 @@ const
  EVENTID_POSITION =$0058;
  EVENTID_PREVBLANK=$0059;
 
- //$0062 wZI4fmUJMlw / vXMpe7Murfc
+ //$0061 sys_update_scaler
+ //$0062 sys_prevblank wZI4fmUJMlw / vXMpe7Murfc
  //$0063 sys_vblank
 
 procedure knote_eventid(event_id:WORD;flipArg:QWORD;lockflags:Integer);
@@ -86,6 +87,7 @@ var
   refs   :Int64;
 
   count  :QWORD;
+  ptime  :QWORD;
   tsc    :QWORD;
 
   fps_cnt:QWORD;
@@ -95,30 +97,40 @@ var
 procedure vblank_expire(arg:Pointer);
 var
  i:QWORD;
+ trigger:Boolean;
 begin
  if (vblank.refs<>0) then
  begin
 
   knote_eventid(EVENTID_PREVBLANK, vblank.count, 0); //SCE_VIDEO_OUT_EVENT_PRE_VBLANK_START
 
-  mtx_lock(dce_mtx);
+  //mtx_lock(dce_mtx);
 
+   trigger:=False;
    if (dce_handle<>nil) then
    begin
-    dce_handle.Vblank();
+    trigger:=dce_handle.Vblank();
    end;
 
-  mtx_unlock(dce_mtx);
+   if trigger then
+   begin
+    vblank.ptime:=GetProcessTime;
+    vblank.tsc  :=rdtsc();
 
-  vblank.tsc:=rdtsc();
+    i:=vblank.count;
+    vblank.count:=vblank.count+1;
+   end;
 
-  i:=vblank.count;
-  vblank.count:=vblank.count+1;
+  //mtx_unlock(dce_mtx);
 
   //
   callout_reset(@vblank.callout, vblank.callout.c_time, @vblank_expire, nil);
   //
-  knote_eventid(EVENTID_VBLANK   , i, 0); //SCE_VIDEO_OUT_EVENT_VBLANK
+
+  if trigger then
+  begin
+   knote_eventid(EVENTID_VBLANK   , i, 0); //SCE_VIDEO_OUT_EVENT_VBLANK
+  end;
 
   if (vblank.fps_tsc=0) then
   begin
@@ -232,7 +244,7 @@ type
   processTime:QWORD;
   tsc        :QWORD;
   flags      :Byte;
-  _align     :array[0..7] of Byte;
+  _align     :array[0..6] of Byte;
   reserved   :QWORD;
  end;
 
@@ -402,6 +414,8 @@ var
 begin
  Result:=0;
 
+ //Writeln('dce_flip_control(',data^.id,')');
+
  //id -> 0..0x24
 
  case data^.id of
@@ -435,7 +449,8 @@ begin
         end else
         begin
          dce_handle.event_flip:=@g_video_out_event_flip;
-         dce_handle.mtx       :=@dce_mtx;
+         dce_handle.labels    :=@dce_page^.labels;
+         dce_handle.dce_mtx   :=@dce_mtx;
          dce_handle.p_fps_cnt :=@vblank.fps_cnt;
          Result:=dce_handle.Open();
         end;
@@ -724,9 +739,13 @@ begin
 
       u.v_vblank:=Default(t_vblank_args);
 
-      u.v_vblank.count      :=vblank.count;
-      u.v_vblank.processTime:=vblank.tsc;
-      u.v_vblank.tsc        :=vblank.tsc;
+      mtx_lock(vblank.lock);
+
+       u.v_vblank.count      :=vblank.count;
+       u.v_vblank.processTime:=vblank.ptime;
+       u.v_vblank.tsc        :=vblank.tsc;
+
+      mtx_unlock(vblank.lock);
 
       Result:=copyout(@u.v_vblank,ptr,len);
 
@@ -824,7 +843,12 @@ begin
 
      if (data^.arg3>13) then Exit(EINVAL);
 
-     Writeln('dce_flip_control(',data^.id,'):',data^.arg3,' 0x',HexStr(data^.arg4,10));
+     case data^.arg3 of
+      12:Writeln('SetLabelsAddr:',' 0x',HexStr(data^.arg4,10));
+      else
+         Writeln('dce_flip_control(',data^.id,'):',data^.arg3,' 0x',HexStr(data^.arg4,10));
+     end;
+
     end;
 
   33: //sceVideoOutAdjustColor_
@@ -971,7 +995,7 @@ type
   attrid:DWORD;   //attribute id [0..3]
   left  :Pointer; //buffer ptr
   right :Pointer; //Stereo ptr
-  unk   :Integer;
+  stereo:Integer;
  end;
 
 Function dce_register_buffer_ptrs(dev:p_cdev;data:p_register_buffer_ptrs):Integer;
@@ -1070,9 +1094,18 @@ begin
     f_eop_count:=f_eop_count+1;
 
     Result:=dce_handle.SubmitFlipEop(@submit,submit_eop);
+
+    if (Result<>0) then
+    begin
+     Writeln('SubmitFlipEopError=',Result);
+    end;
    end else
    begin
     Result:=dce_handle.SubmitFlip(@submit);
+    if (Result<>0) then
+    begin
+     Writeln('SubmitFlipError=',Result);
+    end;
    end;
 
   end;
@@ -1085,7 +1118,7 @@ begin
                             'flipMode=',data^.flipMode,' ',
                              'flipArg=','0x',HexStr(data^.flipArg,16),' ',
                              'eop_val=','0x',HexStr(data^.eop_val));
-
+ if (Result=0) then
  if (data^.eop_nz=1) then
  begin
   Result:=copyout(@submit_eop,data^.eop_val,SizeOf(QWORD));
