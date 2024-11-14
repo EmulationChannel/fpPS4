@@ -1087,6 +1087,11 @@ procedure pmap_prot_track(pmap :pmap_t;
                           __end:vm_offset_t;
                           prots:Byte); public;
 begin
+ if (p_print_pmap) then
+ begin
+  Writeln('pmap_prot_track:',HexStr(start,11),':',HexStr(__end,11),':',HexStr(prots,2));
+ end;
+
  start:=start              and (not PMAPP_MASK);
  __end:=(__end+PMAPP_MASK) and (not PMAPP_MASK);
 
@@ -1102,6 +1107,11 @@ procedure pmap_prot_restore(pmap :pmap_t;
                             start:vm_offset_t;
                             __end:vm_offset_t);
 begin
+ if (p_print_pmap) then
+ begin
+  Writeln('pmap_prot_restore:',HexStr(start,11),':',HexStr(__end,11));
+ end;
+
  start:=start              and (not PMAPP_MASK);
  __end:=(__end+PMAPP_MASK) and (not PMAPP_MASK);
 
