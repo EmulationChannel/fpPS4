@@ -132,8 +132,8 @@ type
   procedure alloc_base(_size:ptruint);
   procedure free_base;
   procedure attach_entry(node:p_jit_entry_point);
-  procedure attach_entry;
-  procedure attach_chunk;
+  procedure attach_all_entry;
+  procedure attach_all_chunk;
   procedure attach;
   function  detach_entry(node:p_jit_entry_point):Boolean;
   procedure detach_all_entry;
@@ -172,7 +172,7 @@ function  jmp_dispatcher(addr:Pointer;plt:p_jit_plt;from:Pointer):Pointer;
 
 procedure blob_track(blob:p_jit_dynamic_blob);
 
-procedure build(var ctx:t_jit_context2);
+function  build(var ctx:t_jit_context2):p_jit_dynamic_blob;
 
 procedure preload(addr:Pointer);
 
@@ -907,7 +907,7 @@ begin
  build_chunk(ctx,blob,start,__end,count);
 end;
 
-procedure build(var ctx:t_jit_context2);
+function build(var ctx:t_jit_context2):p_jit_dynamic_blob;
 var
  addr:Pointer;
 
@@ -922,6 +922,8 @@ var
  //F:THandle;
 
 begin
+ Result:=nil;
+
  if (ctx.builder.GetMemSize=0) then Exit;
 
  blob:=new_blob(ctx.builder.GetMemSize);
@@ -998,7 +1000,9 @@ begin
   build_blob(ctx,blob,start,__end);
  end;
 
- blob^.attach;
+ //blob^.attach;
+
+ Result:=blob;
 end;
 
 function fetch_entry(src:Pointer):p_jit_entry_point;
@@ -1461,7 +1465,7 @@ begin
  rw_wunlock(entry_hamt_lock);
 end;
 
-procedure t_jit_dynamic_blob.attach_entry;
+procedure t_jit_dynamic_blob.attach_all_entry;
 var
  node,next:p_jit_entry_point;
 begin
@@ -1476,7 +1480,7 @@ begin
  end;
 end;
 
-procedure t_jit_dynamic_blob.attach_chunk;
+procedure t_jit_dynamic_blob.attach_all_chunk;
 //var
 // node,next:p_jcode_chunk;
 begin
@@ -1501,8 +1505,8 @@ end;
 
 procedure t_jit_dynamic_blob.attach;
 begin
- attach_entry;
- attach_chunk;
+ attach_all_entry;
+ attach_all_chunk;
 end;
 
 function t_jit_dynamic_blob.detach_entry(node:p_jit_entry_point):Boolean;
@@ -1637,6 +1641,8 @@ end;
 
 function on_trigger(handle:Pointer;mode:T_TRIGGER_MODE):Integer;
 begin
+ Result:=DO_NOTHING;
+
  case mode of
   M_CPU_WRITE :;
   M_DMEM_WRITE:;

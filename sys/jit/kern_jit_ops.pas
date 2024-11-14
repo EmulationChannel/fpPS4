@@ -1020,7 +1020,7 @@ const
   reg_mem:(opt:[not_impl]);
   reg_imm:(opt:[not_impl]);
   reg_im8:(op:$0FBA;index:4);
-  hint:[his_ro];
+  hint:[his_ro,his_bt];
  );
 
 procedure op_bt(var ctx:t_jit_context2);
@@ -1040,7 +1040,7 @@ const
   reg_mem:(opt:[not_impl]);
   reg_imm:(opt:[not_impl]);
   reg_im8:(op:$0FBA;index:7);
-  hint:[his_rw];
+  hint:[his_rw,his_bt];
  );
 
 procedure op_btc(var ctx:t_jit_context2);
@@ -1060,7 +1060,7 @@ const
   reg_mem:(opt:[not_impl]);
   reg_imm:(opt:[not_impl]);
   reg_im8:(op:$0FBA;index:5);
-  hint:[his_rw];
+  hint:[his_rw,his_bt];
  );
 
 procedure op_bts(var ctx:t_jit_context2);
@@ -1080,7 +1080,7 @@ const
   reg_mem:(opt:[not_impl]);
   reg_imm:(opt:[not_impl]);
   reg_im8:(op:$0FBA;index:6);
-  hint:[his_rw];
+  hint:[his_rw,his_bt];
  );
 
 procedure op_btr(var ctx:t_jit_context2);

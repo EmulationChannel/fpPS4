@@ -190,7 +190,8 @@ type
                    his_ro, //read only
                    his_wo, //write only
                    his_rw, //read-write
-                   his_align);
+                   his_align,
+                   his_bt);
 
  t_op_desc=packed record
   mem_reg:t_op_type; //reg_reg
@@ -2449,6 +2450,7 @@ begin
        Assert(mem_size<>os0);
 
        if ((his_ro in desc.hint) or (mem_size<>os32)) and
+          (not (his_bt in desc.hint)) and
           (not (not_impl in desc.mem_reg.opt)) then
        begin
         i:=GetFrameOffset(ctx.din.Operand[1]);
@@ -2543,6 +2545,7 @@ begin
        cmp_opr:=cmp_reg(ctx.din.Operand[1],ctx.din.Operand[2]);
 
        if ((his_ro in desc.hint) or (mem_size<>os32)) and
+          (not (his_bt in desc.hint)) and
           (not (not_impl in desc.mem_reg.opt)) and
           (not cmp_opr) then
        begin
@@ -2621,8 +2624,8 @@ begin
       end else
       begin
 
-       if (his_ro in desc.hint) or
-          (mem_size<>os32) then
+       if ((his_ro in desc.hint) or (mem_size<>os32)) and
+          (not (his_bt in desc.hint)) then
        begin
         i:=GetFrameOffset(ctx.din.Operand[1]);
         op_mi(ctx,desc,[r_thrd+i,mem_size],imm,imm_size);

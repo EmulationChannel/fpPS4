@@ -16,8 +16,6 @@ var
  debug_info:Boolean=False;
 
 procedure pick(var ctx:t_jit_context2;preload:Pointer);
-procedure pick_locked_internal(var ctx:t_jit_context2);
-procedure pick_locked(var ctx:t_jit_context2);
 
 implementation
 
@@ -1373,6 +1371,9 @@ begin
  Assert(false,'TODO: trigger in code analize');
 end;
 
+function  pick_locked_internal(var ctx:t_jit_context2):p_jit_dynamic_blob; forward;
+function  pick_locked_normal  (var ctx:t_jit_context2):p_jit_dynamic_blob; forward;
+
 procedure pick(var ctx:t_jit_context2;preload:Pointer); [public, alias:'kern_jit_pick'];
 label
  _exit;
@@ -1385,6 +1386,8 @@ var
  lock___end:QWORD;
 
  tobj:p_vm_track_object;
+
+ blob:p_jit_dynamic_blob;
 begin
  map:=p_proc.p_vmspace;
 
@@ -1420,10 +1423,15 @@ begin
 
   if (cmInternal in ctx.modes) then
   begin
-   pick_locked_internal(ctx);
+   blob:=pick_locked_internal(ctx);
   end else
   begin
-   pick_locked(ctx); //blob.attach-> blob_track-> vm_map_track_insert
+   blob:=pick_locked_normal(ctx);
+  end;
+
+  if (blob<>nil) then
+  begin
+   blob^.attach; //blob.attach-> blob_track-> vm_map_track_insert
   end;
 
   //restore non tracked  (mirrors?)
@@ -1464,12 +1472,14 @@ begin
  //debug
 end;
 
-procedure pick_locked_internal(var ctx:t_jit_context2);
+function pick_locked_internal(var ctx:t_jit_context2):p_jit_dynamic_blob;
 var
  node:t_jit_context2.p_export_point;
 
  link_curr,link_next:t_jit_i_link;
 begin
+ Result:=nil;
+
  node:=ctx.export_list;
 
  if (node=nil) then
@@ -1538,7 +1548,7 @@ begin
 
  ctx.end_chunk(ctx.ptr_next);
 
- build(ctx);
+ Result:=build(ctx);
 
  ctx.Free;
 end;
@@ -1546,7 +1556,7 @@ end;
 var
  _print_stat:Integer=0;
 
-procedure pick_locked(var ctx:t_jit_context2);
+ function pick_locked_normal(var ctx:t_jit_context2):p_jit_dynamic_blob;
 label
  _next,
  _build,
@@ -1571,6 +1581,8 @@ var
 
  i:Integer;
 begin
+ Result:=nil;
+
  if (cmDontScanRipRel in ctx.modes) then
  begin
   //dont scan rip relative
@@ -1993,7 +2005,7 @@ begin
   op_set_r14_imm(ctx,Int64(ctx.ptr_curr));
  end;
 
- build(ctx);
+ Result:=build(ctx);
 
  ctx.Free;
 
