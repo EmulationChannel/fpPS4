@@ -98,22 +98,10 @@ procedure pmap_protect(pmap  :pmap_t;
                        __end :vm_offset_t;
                        prot  :vm_prot_t);
 
-{
-procedure _pmap_prot_fix(pmap :pmap_t;
-                         start:vm_offset_t;
-                         __end:vm_offset_t;
-                         mode :Integer);
-
-procedure _pmap_prot_int(pmap :pmap_t;
-                         start:vm_offset_t;
-                         __end:vm_offset_t;
-                         prot :vm_prot_t);
-}
-
 procedure pmap_prot_track(pmap :pmap_t;
                           start:vm_offset_t;
                           __end:vm_offset_t;
-                          prots:Byte);
+                          prot :Byte);
 
 procedure pmap_prot_restore(pmap :pmap_t;
                             start:vm_offset_t;
@@ -1009,15 +997,10 @@ begin
     begin
      _default:
 
-     vm_nt_map_prot_fix(@pmap^.nt_map,
-                        start,
-                        __end,
-                        TRACK_PROT or REMAP_PROT);
-
-     //vm_nt_map_protect(@pmap^.nt_map,
-     //                  start,
-     //                  __end,
-     //                  (prot and VM_RW));
+     vm_nt_map_protect(@pmap^.nt_map,
+                       start,
+                       __end,
+                       (prot and VM_RW));
 
     end;
   OBJT_DEVICE:
@@ -1054,58 +1037,34 @@ begin
  pmap_unlock(pmap,lock);
 end;
 
-procedure _pmap_prot_fix(pmap :pmap_t;
-                         start:vm_offset_t;
-                         __end:vm_offset_t;
-                         mode :Integer);
-begin
- start:=start              and (not PMAPP_MASK);
- __end:=(__end+PMAPP_MASK) and (not PMAPP_MASK);
-
- vm_nt_map_prot_fix(@pmap^.nt_map,
-                    start,
-                    __end,
-                    mode);
-end;
-
-procedure _pmap_prot_int(pmap :pmap_t;
-                         start:vm_offset_t;
-                         __end:vm_offset_t;
-                         prot :vm_prot_t);
-begin
- start:=start              and (not PMAPP_MASK);
- __end:=(__end+PMAPP_MASK) and (not PMAPP_MASK);
-
- vm_nt_map_protect(@pmap^.nt_map,
-                   start,
-                   __end,
-                   (prot and VM_RW));
-end;
-
 procedure pmap_prot_track(pmap :pmap_t;
                           start:vm_offset_t;
                           __end:vm_offset_t;
-                          prots:Byte); public;
+                          prot :Byte); public;
 begin
  if (p_print_pmap) then
  begin
-  Writeln('pmap_prot_track:',HexStr(start,11),':',HexStr(__end,11),':',HexStr(prots,2));
+  Writeln('pmap_prot_track:',HexStr(start,11),':',HexStr(__end,11),':',HexStr(prot,2));
  end;
 
  start:=start              and (not PMAPP_MASK);
  __end:=(__end+PMAPP_MASK) and (not PMAPP_MASK);
 
- ppmap_track(start,__end,prots);
+ //Don't do range lock here!
 
- vm_nt_map_prot_fix(@pmap^.nt_map,
+ ppmap_track(start,__end,prot);
+
+ vm_nt_map_tracking(@pmap^.nt_map,
                     start,
                     __end,
-                    TRACK_PROT or REMAP_PROT);
+                    prot);
 end;
 
 procedure pmap_prot_restore(pmap :pmap_t;
                             start:vm_offset_t;
                             __end:vm_offset_t);
+var
+ lock:Pointer;
 begin
  if (p_print_pmap) then
  begin
@@ -1115,10 +1074,14 @@ begin
  start:=start              and (not PMAPP_MASK);
  __end:=(__end+PMAPP_MASK) and (not PMAPP_MASK);
 
+ lock:=pmap_wlock(pmap,start,__end);
+
  vm_nt_map_prot_fix(@pmap^.nt_map,
                     start,
                     __end,
                     REMAP_PROT);
+
+ pmap_unlock(pmap,lock);
 end;
 
 procedure pmap_madvise(pmap  :pmap_t;

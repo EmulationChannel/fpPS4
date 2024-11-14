@@ -9,7 +9,8 @@ uses
  sysutils,
  vm,
  kern_mtx,
- vm_pmap_prot;
+ vm_pmap_prot,
+ vm_nt_sub_map;
 
 const
  NT_FILE_FREE=1;
@@ -44,30 +45,31 @@ type
   maxp :Byte;
  end;
 
+ ///
+
  pp_vm_nt_entry=^p_vm_nt_entry;
  p_vm_nt_entry=^vm_nt_entry;
- vm_nt_entry=packed record
-  prev       :p_vm_nt_entry;     // previous entry
-  next       :p_vm_nt_entry;     // next entry
-  left       :p_vm_nt_entry;     // left child in binary search tree
-  right      :p_vm_nt_entry;     // right child in binary search tree
-  start      :vm_offset_t;       // start address
-  __end      :vm_offset_t;       // end address
-  size       :vm_offset_t;       // unaligned size
-  obj        :p_vm_nt_file_obj;  // object I point to
-  offset     :vm_ooffset_t;      // offset into object
+ vm_nt_entry=packed object
+  prev  :p_vm_nt_entry;     // previous entry
+  next  :p_vm_nt_entry;     // next entry
+  left  :p_vm_nt_entry;     // left child in binary search tree
+  right :p_vm_nt_entry;     // right child in binary search tree
+  usize :vm_offset_t;       // unaligned size
+  offset:vm_ooffset_t;      // offset into object
+  obj   :p_vm_nt_file_obj;  // object I point to
+  sub   :t_vm_nt_sub_map;
+  property start:vm_offset_t read sub.header.start write sub.header.start; // start address
+  property __end:vm_offset_t read sub.header.__end write sub.header.__end; // end address
  end;
 
  p_vm_nt_map=^t_vm_nt_map;
  t_vm_nt_map=object
   header     :vm_nt_entry;   // List of entries
-  size       :vm_size_t;     // virtual size
-  nentries   :Integer;       // Number of entries
+  lock       :mtx;           // Lock for map data
   root       :p_vm_nt_entry; // Root of a binary search tree
   danger_zone:t_danger_zone;
-  lock       :mtx;
-  property  min_offset:vm_offset_t read header.start write header.start;
-  property  max_offset:vm_offset_t read header.__end write header.__end;
+  property min_offset:vm_offset_t read header.sub.header.start write header.sub.header.start;
+  property max_offset:vm_offset_t read header.sub.header.__end write header.sub.header.__end;
  end;
 
 function  vm_nt_file_obj_allocate  (hfile:THandle;maxp:Byte):p_vm_nt_file_obj;
@@ -86,27 +88,36 @@ function  vm_nt_map_insert(
              offset:vm_ooffset_t;
              start :vm_offset_t;
              __end :vm_offset_t;
-             size  :vm_offset_t;
+             usize :vm_offset_t;
              prot  :Integer):Integer;
 
 function  vm_nt_map_delete(map:p_vm_nt_map;start:vm_offset_t;__end:vm_offset_t):Integer;
 
-procedure vm_nt_map_protect(map:p_vm_nt_map;
+//Change protection taking into account tracking
+procedure vm_nt_map_protect(map  :p_vm_nt_map;
                             start:vm_offset_t;
                             __end:vm_offset_t;
-                            prot  :Integer);
+                            prot :Integer);
 
-procedure vm_nt_map_prot_fix(map:p_vm_nt_map;
+//Change protection tracking
+procedure vm_nt_map_tracking(map  :p_vm_nt_map;
+                             start:vm_offset_t;
+                             __end:vm_offset_t;
+                             prot :Integer);
+
+//Update page protection by mode
+procedure vm_nt_map_prot_fix(map  :p_vm_nt_map;
                              start:vm_offset_t;
                              __end:vm_offset_t;
                              mode :Integer);
 
-procedure vm_nt_map_madvise(map:p_vm_nt_map;
-                            start:vm_offset_t;
-                            __end:vm_offset_t;
+procedure vm_nt_map_madvise(map   :p_vm_nt_map;
+                            start :vm_offset_t;
+                            __end :vm_offset_t;
                             advise:Integer);
 
-function  vm_nt_map_mirror(map:p_vm_nt_map;
+//Create a memory mirror of the current state of the pages
+function  vm_nt_map_mirror(map  :p_vm_nt_map;
                            start:vm_offset_t;
                            __end:vm_offset_t):Pointer;
 
@@ -191,60 +202,6 @@ end;
 
 //
 
-procedure vm_prot_fixup(map:p_vm_nt_map;
-                        start:vm_offset_t;
-                        __end:vm_offset_t;
-                        max  :Integer;
-                        mode :Integer);
-var
- next:vm_offset_t;
- base,size:vm_size_t;
- prot:Integer;
- mask:Integer;
- r:Integer;
-begin
- if (PAGE_PROT=nil) then Exit;
- if (start=__end) then Exit;
-
- while (start<__end) do
- begin
-  if ((mode and TRACK_PROT)=0) then
-  begin
-   next:=ppmap_scan_rwx(start,__end);
-
-   prot:=ppmap_get_prot(start);
-
-   prot:=(prot and VM_RW);
-  end else
-  begin
-   next:=ppmap_scan(start,__end);
-
-   prot:=ppmap_get_prot(start);
-
-   mask:=not (prot shr PAGE_TRACK_SHIFT);
-
-   prot:=(prot and VM_RW) and mask;
-  end;
-
-  base:=start;
-  size:=next-start;
-
-  if ((mode and REMAP_PROT)<>0) or (prot<>(max and VM_RW)) then
-  begin
-   r:=md_protect(Pointer(base),size,prot);
-   if (r<>0) then
-   begin
-    Writeln('failed md_protect(',HexStr(base,11),',',HexStr(base+size,11),'):0x',HexStr(r,8));
-    Assert(false,'vm_prot_fixup');
-   end;
-  end;
-
-  start:=next;
- end;
-end;
-
-//
-
 procedure vm_init_stat(var stat:t_range_stat;entry:p_vm_nt_entry); inline;
 begin
  stat:=Default(t_range_stat);
@@ -313,7 +270,7 @@ begin
    r:=md_file_mmap_ex(entry^.obj^.hfile,
                       Pointer(entry^.start),
                       entry^.offset,
-                      entry^.size, //unaligned size
+                      entry^.usize, //unaligned size
                       (max and VM_RW));
    if (r<>0) then
    begin
@@ -562,7 +519,7 @@ begin
     r:=md_file_mmap_ex(stat.obj^.hfile,
                        Pointer(ets[i]^.start),
                        ets[i]^.offset,
-                       ets[i]^.size, //unaligned size
+                       ets[i]^.usize, //unaligned size
                        (max and VM_RW));
     if (r<>0) then
     begin
@@ -584,12 +541,11 @@ begin
    if (ets[i]^.obj<>nil) then
    if (stat.obj^.hfile<>0) then
    begin
-    vm_prot_fixup(map,
-                  ets[i]^.start,
-                  ets[i]^.__end,
-                  max,
-                  TRACK_PROT or REMAP_PROT //untrack trigger or restore track?
-                 );
+    vm_nt_sub_map_prot_fixup(@ets[i]^.sub,
+                             ets[i]^.start,
+                             ets[i]^.__end,
+                             TRACK_PROT or REMAP_PROT //untrack trigger or restore track?
+                            );
    end;
   end;
  end;
@@ -690,6 +646,13 @@ begin
  FreeMem(entry);
 end;
 
+procedure vm_nt_entry_deallocate(map:p_vm_nt_map;entry:p_vm_nt_entry); inline;
+begin
+ vm_nt_sub_map_free       (@entry^.sub);
+ vm_nt_file_obj_deallocate(entry^.obj);
+ vm_nt_entry_dispose      (map,entry);
+end;
+
 function vm_nt_entry_create(map:p_vm_nt_map):p_vm_nt_entry;
 var
  new_entry:p_vm_nt_entry;
@@ -779,7 +742,6 @@ procedure vm_nt_entry_link(
            after_where:p_vm_nt_entry;
            entry      :p_vm_nt_entry);
 begin
- Inc(map^.nentries);
  entry^.prev:=after_where;
  entry^.next:=after_where^.next;
  entry^.next^.prev:=entry;
@@ -826,7 +788,6 @@ begin
  next:=entry^.next;
  next^.prev:=prev;
  prev^.next:=next;
- Dec(map^.nentries);
 end;
 
 function vm_nt_map_lookup_entry(
@@ -874,7 +835,7 @@ function _vm_nt_map_insert(
            offset:vm_ooffset_t;
            start :vm_offset_t;
            __end :vm_offset_t;
-           size  :vm_offset_t; //unaligned size
+           usize :vm_offset_t; //unaligned size
            prot  :Integer):Integer;
 var
  new_entry :p_vm_nt_entry;
@@ -903,12 +864,16 @@ begin
  new_entry:=vm_nt_entry_create(map);
  new_entry^.start :=start;
  new_entry^.__end :=__end;
- new_entry^.size  :=size; //unaligned size
+ new_entry^.usize :=usize; //unaligned size
  new_entry^.obj   :=obj;
  new_entry^.offset:=offset;
 
+ vm_nt_sub_map_init  (@new_entry^.sub,start,__end);
+
+ //fill full map
+ vm_nt_sub_map_insert(@new_entry^.sub,start,__end,prot);
+
  vm_nt_entry_link(map, prev_entry, new_entry);
- map^.size:=map^.size+(new_entry^.__end - new_entry^.start);
 
  vm_map(map,new_entry,prot);
 
@@ -925,7 +890,7 @@ function vm_nt_map_insert(
            offset:vm_ooffset_t;
            start :vm_offset_t;
            __end :vm_offset_t;
-           size  :vm_offset_t; //unaligned size
+           usize :vm_offset_t; //unaligned size
            prot  :Integer):Integer;
 begin
  if (start=__end) then
@@ -941,7 +906,7 @@ begin
            offset,
            start ,
            __end ,
-           size  ,
+           usize ,
            prot  );
 
  vm_nt_map_unlock(map);
@@ -985,10 +950,15 @@ begin
 
    entry^.start :=prev^.start;
    entry^.offset:=prev^.offset;
-   entry^.size  :=entry^.size+prev^.size; //unaligned size
+   entry^.usize :=entry^.usize+prev^.usize; //unaligned size
 
-   vm_nt_file_obj_deallocate(prev^.obj);
-   vm_nt_entry_dispose(map, prev);
+   //update (implicitly)
+   //entry^.sub.min_offset:=entry^.start;
+
+   //move
+   vm_nt_sub_map_move(@entry^.sub,@prev^.sub);
+
+   vm_nt_entry_deallocate(map,prev);
   end;
  end;
 
@@ -1002,18 +972,21 @@ begin
      ((stat.obj=nil) or (entry^.offset + esize=next^.offset))
      then
   begin
-   begin
-    vm_nt_entry_unlink(map, next);
+   vm_nt_entry_unlink(map, next);
 
-    stat.rnext.start:=next^.start;
-    stat.rnext.__end:=next^.__end;
+   stat.rnext.start:=next^.start;
+   stat.rnext.__end:=next^.__end;
 
-    entry^.__end:=next^.__end;
-    entry^.size :=entry^.size+next^.size; //unaligned size
+   entry^.__end:=next^.__end;
+   entry^.usize:=entry^.usize+next^.usize; //unaligned size
 
-    vm_nt_file_obj_deallocate(next^.obj);
-    vm_nt_entry_dispose(map, next);
-   end;
+   //update (implicitly)
+   //entry^.sub.max_offset:=entry^.__end;
+
+   //move
+   vm_nt_sub_map_move(@entry^.sub,@next^.sub);
+
+   vm_nt_entry_deallocate(map,next);
   end;
  end;
 
@@ -1047,11 +1020,21 @@ begin
   prev^:=entry^;
 
   prev^.__end:=start;
-  prev^.size :=(prev^.__end-prev^.start); //unaligned size
+  prev^.usize:=(prev^.__end-prev^.start); //unaligned size
 
   entry^.offset:=entry^.offset + (start - entry^.start);
   entry^.start :=start;
-  entry^.size  :=entry^.size-prev^.size; //unaligned size
+  entry^.usize :=entry^.usize-prev^.usize; //unaligned size
+
+  //update (implicitly)
+  //prev ^.sub.max_offset:=start;
+  //entry^.sub.min_offset:=start;
+
+  //new map
+  vm_nt_sub_map_init(@prev^.sub,prev^.start,prev^.__end);
+
+  //move
+  vm_nt_sub_map_move(@prev^.sub,@entry^.sub);
 
   vm_nt_entry_link(map, entry^.prev, prev);
   vm_nt_file_obj_reference(prev^.obj);
@@ -1065,10 +1048,20 @@ begin
   next^.start :=__end;
 
   entry^.__end:=__end;
-  entry^.size :=(entry^.__end-entry^.start); //unaligned size
+  entry^.usize:=(entry^.__end-entry^.start); //unaligned size
 
   next^.offset:=next^.offset + (__end - entry^.start);
-  next^.size  :=next^.size-entry^.size; //unaligned size
+  next^.usize :=next^.usize-entry^.usize; //unaligned size
+
+  //update (implicitly)
+  //next ^.sub.min_offset:=__end;
+  //entry^.sub.max_offset:=__end;
+
+  //new map
+  vm_nt_sub_map_init(@next^.sub,next^.start,next^.__end);
+
+  //move
+  vm_nt_sub_map_move(@next^.sub,@entry^.sub);
 
   vm_nt_entry_link(map, entry, next);
   vm_nt_file_obj_reference(next^.obj);
@@ -1106,10 +1099,20 @@ begin
   next^.start :=__end;
 
   entry^.__end:=__end;
-  entry^.size :=(entry^.__end-entry^.size); //unaligned size
+  entry^.usize:=(entry^.__end-entry^.usize); //unaligned size
 
   next^.offset:=next^.offset + (__end - entry^.start);
-  next^.size  :=next^.size-entry^.size; //unaligned size
+  next^.usize :=next^.usize-entry^.usize; //unaligned size
+
+  //update (implicitly)
+  //next ^.sub.min_offset:=__end;
+  //entry^.sub.max_offset:=__end;
+
+  //new map
+  vm_nt_sub_map_init(@next^.sub,next^.start,next^.__end);
+
+  //move
+  vm_nt_sub_map_move(@next^.sub,@entry^.sub);
 
   vm_nt_entry_link(map, entry, next);
   vm_nt_file_obj_reference(next^.obj);
@@ -1128,22 +1131,10 @@ begin
 
 end;
 
-procedure vm_nt_entry_deallocate(entry:p_vm_nt_entry);
+procedure vm_nt_entry_delete(map:p_vm_nt_map;entry:p_vm_nt_entry); inline;
 begin
- vm_nt_file_obj_deallocate(entry^.obj);
- Freemem(entry);
-end;
-
-procedure vm_nt_entry_delete(map:p_vm_nt_map;entry:p_vm_nt_entry);
-var
- size:vm_ooffset_t;
-begin
- vm_nt_entry_unlink(map, entry);
-
- size:=entry^.__end - entry^.start;
- map^.size:=map^.size-size;
-
- vm_nt_entry_deallocate(entry);
+ vm_nt_entry_unlink    (map, entry);
+ vm_nt_entry_deallocate(map, entry);
 end;
 
 function vm_nt_map_delete(map:p_vm_nt_map;start:vm_offset_t;__end:vm_offset_t):Integer;
@@ -1189,16 +1180,15 @@ begin
  Result:=(KERN_SUCCESS);
 end;
 
-procedure vm_nt_map_protect(map:p_vm_nt_map;
+procedure vm_nt_map_protect(map  :p_vm_nt_map;
                             start:vm_offset_t;
                             __end:vm_offset_t;
-                            prot  :Integer);
+                            prot :Integer);
 var
  entry:p_vm_nt_entry;
  e_start:vm_offset_t;
  e___end:vm_offset_t;
  max:Integer;
- r:Integer;
 begin
  if (start=__end) then Exit;
 
@@ -1209,7 +1199,7 @@ begin
   entry:=entry^.next;
  end else
  begin
-  entry:=entry;
+  //
  end;
 
  while (entry<>@map^.header) and (entry^.start<__end) do
@@ -1238,13 +1228,7 @@ begin
     max:=0;
    end;
 
-   r:=md_protect(Pointer(e_start),e___end-e_start,(prot and max and VM_RW));
-   if (r<>0) then
-   begin
-    Writeln('failed md_protect(',HexStr(e_start,11),',',HexStr(e___end,11),'):0x',HexStr(r,8));
-    Assert(false,'vm_nt_map_protect');
-   end;
-
+   vm_nt_sub_map_protect(@entry^.sub,e_start,e___end,(prot and max and VM_RW));
   end;
 
   entry:=entry^.next;
@@ -1253,7 +1237,57 @@ begin
  vm_nt_map_unlock(map);
 end;
 
-procedure vm_nt_map_prot_fix(map:p_vm_nt_map;
+procedure vm_nt_map_tracking(map  :p_vm_nt_map;
+                             start:vm_offset_t;
+                             __end:vm_offset_t;
+                             prot :Integer);
+var
+ entry:p_vm_nt_entry;
+ e_start:vm_offset_t;
+ e___end:vm_offset_t;
+begin
+ if (start=__end) then Exit;
+
+ vm_nt_map_lock(map);
+
+ if (not vm_nt_map_lookup_entry(map, start, @entry)) then
+ begin
+  entry:=entry^.next;
+ end else
+ begin
+  //
+ end;
+
+ while (entry<>@map^.header) and (entry^.start<__end) do
+ begin
+  e_start:=entry^.start;
+  e___end:=entry^.__end;
+
+  if (e_start<start) then
+  begin
+   e_start:=start;
+  end;
+
+  if (e___end>__end) then
+  begin
+   e___end:=__end;
+  end;
+
+  if (e___end>e_start) then
+  begin
+   vm_nt_sub_map_tracking(@entry^.sub,e_start,e___end,prot);
+  end;
+
+  entry:=entry^.next;
+ end;
+
+ vm_nt_map_unlock(map);
+end;
+
+
+
+
+procedure vm_nt_map_prot_fix(map  :p_vm_nt_map;
                              start:vm_offset_t;
                              __end:vm_offset_t;
                              mode :Integer);
@@ -1294,7 +1328,7 @@ begin
 
    if (e___end>e_start) then
    begin
-    vm_prot_fixup(map,e_start,e___end,entry^.obj^.maxp,mode);
+    vm_nt_sub_map_prot_fixup(@entry^.sub,e_start,e___end,mode);
    end;
   end;
 
@@ -1327,9 +1361,9 @@ asm
  _exit:
 end;
 
-procedure vm_nt_map_madvise(map:p_vm_nt_map;
-                            start:vm_offset_t;
-                            __end:vm_offset_t;
+procedure vm_nt_map_madvise(map   :p_vm_nt_map;
+                            start :vm_offset_t;
+                            __end :vm_offset_t;
                             advise:Integer);
 var
  entry:p_vm_nt_entry;
@@ -1379,7 +1413,7 @@ begin
      mirror:=vm_nt_map_mirror(map,base,base+size);
      if (mirror<>nil) then
      begin
-      ZeroPages(mirror,size);
+      ZeroPages  (mirror,size);
       md_unmap_ex(mirror,size);
      end;
 
@@ -1396,7 +1430,7 @@ begin
 end;
 
 
-function vm_nt_map_mirror(map:p_vm_nt_map;
+function vm_nt_map_mirror(map  :p_vm_nt_map;
                           start:vm_offset_t;
                           __end:vm_offset_t):Pointer;
 var

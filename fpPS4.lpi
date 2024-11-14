@@ -1558,6 +1558,10 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ps4_libSceNpGameIntent"/>
       </Unit>
+      <Unit>
+        <Filename Value="sys\vm\vm_nt_sub_map.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

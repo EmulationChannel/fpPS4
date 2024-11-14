@@ -153,7 +153,7 @@ implementation
 procedure pmap_prot_track(pmap :Pointer;
                           start:vm_offset_t;
                           __end:vm_offset_t;
-                          prots:Byte); external;
+                          prot :Byte); external;
 
 function vm_track_object_allocate(handle:Pointer;start,__end:vm_offset_t;htype:T_THANDLE_TYPE;prot:Byte):p_vm_track_object;
 begin
