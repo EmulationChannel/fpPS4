@@ -715,10 +715,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="sys\vm\vm_file.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="sys\vm\vm_object.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
