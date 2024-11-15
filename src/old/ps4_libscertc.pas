@@ -668,17 +668,8 @@ begin
  Result:=MonthDays[leap][month];
 end;
 
-function int64_mul_high(a,b:Int64):Int64; assembler; nostackframe;
-asm
- mov  a,%rax
- imul b
- mov  %rdx,Result
-end;
-
 function ps4_sceRtcGetDayOfWeek(year,month,day:Integer):Integer; SysV_ABI_CDecl;
 var
- v11:Int64;
-
  days:Byte;
  leap:Boolean;
 begin
@@ -707,12 +698,8 @@ begin
   year :=year -1;
  end;
 
- v11 := int64_mul_high($5C28F5C28F5C28F5 , year) - year;
-
- v11 := (v11 shr 63) + SarInt64(v11 , 6);
-
  Result := Integer( (13 * month + 8) div 5
-                     + v11
+                     - (year div 100)
                      + year + (year div 4) + (year div 400)
                      + day)
                     mod 7;
