@@ -6,10 +6,12 @@ unit ps4_libSceAjm;
 interface
 
 uses
- subr_dynlib,
- ps4_handles;
+ subr_dynlib;
 
 implementation
+
+uses
+ kern_id;
 
 {$I ajm_error.inc}
 
@@ -27,7 +29,7 @@ const
  SCE_AJM_FLAG_SIDEBAND_GAPLESS_DECODE=(1 shl 45);
 
 var
- FAjmMap:TIntegerHandles;
+ FAjmMap:t_id_desc_table;
 
 type
  PSceAjmContextId=^SceAjmContextId;
@@ -51,15 +53,15 @@ type
  end;
 
  SceAjmSidebandDecAt9CodecInfo=packed record
-  uiSuperFrameSize:DWORD;
+  uiSuperFrameSize    :DWORD;
   uiFramesInSuperFrame:DWORD;
-  uiNextFrameSize:DWORD;
-  uiFrameSamples:DWORD;
+  uiNextFrameSize     :DWORD;
+  uiFrameSamples      :DWORD;
  end;
 
  pSceAjmDecAt9GetCodecInfoResult=^SceAjmDecAt9GetCodecInfoResult;
  SceAjmDecAt9GetCodecInfoResult=packed record
-  sResult:SceAjmSidebandResult;
+  sResult   :SceAjmSidebandResult;
   sCodecInfo:SceAjmSidebandDecAt9CodecInfo;
  end;
 
@@ -75,15 +77,16 @@ type
 
  pSceAjmBatchError=^SceAjmBatchError;
  SceAjmBatchError=packed record
-  iErrorCode:Integer;      //Detailed error code
-  align1:Integer;
-  pJobAddress:Pointer;     //For internal use only
+  iErrorCode     :Integer; //Detailed error code
+  align1         :Integer;
+  pJobAddress    :Pointer; //For internal use only
   uiCommandOffset:Integer; //For internal use only
-  align2:Integer;
-  pJobOriginRa:Pointer;    //For internal use only
+  align2         :Integer;
+  pJobOriginRa   :Pointer; //For internal use only
  end;
 
- TAjmContext=class(TClassHandle)
+ TAjmContext=class
+  desc:t_id_desc;
   AJM_CODEC_MP3_DEC  :Pointer;
   AJM_CODEC_AT9_DEC  :Pointer;
   AJM_CODEC_M4AAC_DEC:Pointer;
@@ -101,9 +104,23 @@ begin
  if (pContext=nil) then Exit(SCE_AJM_ERROR_INVALID_PARAMETER);
  H:=TAjmContext.Create;
  pContext^:=-1;
- FAjmMap.New(H,pContext^);
- H.Release;
+ if id_new(@FAjmMap,@H.desc,pContext) then
+ begin
+  id_release(@H.desc);
+ end;
  Result:=0;
+end;
+
+function id_ctx_get(Key:Integer):TAjmContext;
+var
+ desc:p_id_desc;
+begin
+ Result:=nil;
+ desc:=id_get(@FAjmMap,Key,nil);
+ if (desc<>nil) then
+ begin
+  Result:=TAjmContext(Pointer(desc)-Ptruint(@TAjmContext(nil).desc));
+ end;
 end;
 
 function ps4_sceAjmModuleRegister(uiContext:SceAjmContextId;uiCodec:SceAjmCodecType;iReserved:QWORD):Integer;
@@ -112,7 +129,7 @@ Var
 begin
  Result:=0;
 
- H:=TAjmContext(FAjmMap.Acqure(uiContext));
+ H:=id_ctx_get(uiContext);
  if (H=nil) then Exit(SCE_AJM_ERROR_INVALID_CONTEXT);
 
  Case uiCodec of
@@ -121,7 +138,7 @@ begin
      if (H.AJM_CODEC_MP3_DEC<>nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_ALREADY_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_MP3_DEC:=Pointer(1);
@@ -131,7 +148,7 @@ begin
      if (H.AJM_CODEC_AT9_DEC<>nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_ALREADY_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_AT9_DEC:=Pointer(1);
@@ -141,7 +158,7 @@ begin
      if (H.AJM_CODEC_M4AAC_DEC<>nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_ALREADY_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_M4AAC_DEC:=Pointer(1);
@@ -151,7 +168,7 @@ begin
      if (H.AJM_CODEC_CELP8_DEC<>nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_ALREADY_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_CELP8_DEC:=Pointer(1);
@@ -161,7 +178,7 @@ begin
      if (H.AJM_CODEC_CELP8_ENC<>nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_ALREADY_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_CELP8_ENC:=Pointer(1);
@@ -171,7 +188,7 @@ begin
      if (H.AJM_CODEC_CELP_DEC<>nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_ALREADY_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_CELP_DEC:=Pointer(1);
@@ -181,7 +198,7 @@ begin
      if (H.AJM_CODEC_CELP_ENC<>nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_ALREADY_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_CELP_ENC:=Pointer(1);
@@ -189,7 +206,7 @@ begin
   else
     begin
      Result:=SCE_AJM_ERROR_INVALID_PARAMETER;
-     H.Release;
+     id_release(@H.desc);
      Exit;
     end;
  end;
@@ -204,7 +221,7 @@ begin
   SCE_AJM_CODEC_CELP_ENC :Writeln('SCE_AJM_CODEC_CELP_ENC ');
  end;
 
- H.Release;
+ id_release(@H.desc);
 end;
 
 function ps4_sceAjmModuleUnregister(uiContext:SceAjmContextId;uiCodec:SceAjmCodecType):Integer;
@@ -213,7 +230,7 @@ Var
 begin
  Result:=0;
 
- H:=TAjmContext(FAjmMap.Acqure(uiContext));
+ H:=id_ctx_get(uiContext);
  if (H=nil) then Exit(SCE_AJM_ERROR_INVALID_CONTEXT);
 
  Case uiCodec of
@@ -222,7 +239,7 @@ begin
      if (H.AJM_CODEC_MP3_DEC=nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_NOT_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_MP3_DEC:=nil;
@@ -232,7 +249,7 @@ begin
      if (H.AJM_CODEC_AT9_DEC=nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_NOT_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_AT9_DEC:=nil;
@@ -242,7 +259,7 @@ begin
      if (H.AJM_CODEC_M4AAC_DEC=nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_NOT_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_M4AAC_DEC:=nil;
@@ -252,7 +269,7 @@ begin
      if (H.AJM_CODEC_CELP8_DEC=nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_NOT_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_CELP8_DEC:=nil;
@@ -262,7 +279,7 @@ begin
      if (H.AJM_CODEC_CELP8_ENC=nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_NOT_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_CELP8_ENC:=nil;
@@ -272,7 +289,7 @@ begin
      if (H.AJM_CODEC_CELP_DEC=nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_NOT_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_CELP_DEC:=nil;
@@ -282,7 +299,7 @@ begin
      if (H.AJM_CODEC_CELP_ENC=nil) then
      begin
       Result:=SCE_AJM_ERROR_CODEC_NOT_REGISTERED;
-      H.Release;
+      id_release(@H.desc);
       Exit;
      end;
      H.AJM_CODEC_CELP_ENC:=nil;
@@ -290,18 +307,18 @@ begin
   else
     begin
      Result:=SCE_AJM_ERROR_INVALID_PARAMETER;
-     H.Release;
+     id_release(@H.desc);
      Exit;
     end;
  end;
 
- H.Release;
+ id_release(@H.desc);
 end;
 
 function ps4_sceAjmFinalize(uiContext:SceAjmContextId):Integer;
 begin
  Result:=0;
- if not FAjmMap.Delete(uiContext) then Result:=SCE_AJM_ERROR_INVALID_CONTEXT;
+ if not id_del(@FAjmMap,uiContext,nil) then Result:=SCE_AJM_ERROR_INVALID_CONTEXT;
 end;
 
 function ps4_sceAjmInstanceCodecType(uiCodec:SceAjmCodecType):Integer;
@@ -318,7 +335,7 @@ Var
 begin
  Result:=0;
 
- H:=TAjmContext(FAjmMap.Acqure(uiContext));
+ H:=id_ctx_get(uiContext);
  if (H=nil) then Exit(SCE_AJM_ERROR_INVALID_CONTEXT);
 
  Case uiCodec of
@@ -336,12 +353,12 @@ begin
   else
     begin
      Result:=SCE_AJM_ERROR_INVALID_PARAMETER;
-     H.Release;
+     id_release(@H.desc);
      Exit;
     end;
  end;
 
- H.Release;
+ id_release(@H.desc);
 end;
 
 function ps4_sceAjmInstanceDestroy(uiContext:SceAjmContextId;
@@ -351,12 +368,12 @@ Var
 begin
  Result:=0;
 
- H:=TAjmContext(FAjmMap.Acqure(uiContext));
+ H:=id_ctx_get(uiContext);
  if (H=nil) then Exit(SCE_AJM_ERROR_INVALID_CONTEXT);
 
  //
 
- H.Release;
+ id_release(@H.desc);
 end;
 
 type
@@ -508,7 +525,7 @@ var
  stub:t_int_file;
 
 initialization
- FAjmMap:=TIntegerHandles.Create(1);
+ id_table_init(@FAjmMap,1);
  RegisteredInternalFile(stub,'libSceAjm.prx',@Load_libSceAjm);
 
 end.

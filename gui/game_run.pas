@@ -94,7 +94,7 @@ uses
  ps4_libSceMove,
  ps4_libSceSharePlay,
  ps4_libScePlayGo,
- //ps4_libSceAjm,
+ ps4_libSceAjm,
  //internal libs
 
  kern_rtld,
