@@ -12,6 +12,7 @@ uses
   srCFGLabel,
   srCFGCursor,
   srFlow,
+  srConst,
   srReg,
   srOp,
   srOpUtils,
@@ -30,6 +31,7 @@ type
   function  IsUnknow(Adr:TSrcAdr):Boolean;
   function  get_inline_end_addr(adr:TSrcAdr):TSrcAdr;
   procedure emit_block_unknow(adr:TSrcAdr);
+  procedure emit_S_BARRIER;
  end;
 
 implementation
@@ -299,6 +301,28 @@ begin
  end;
 end;
 
+procedure TEmit_SOPP.emit_S_BARRIER;
+Var
+ node:TspirvOp;
+ execution,memory,memory_semantics:TsrConst;
+begin
+ //upgrade version to 1.3
+ if (Config.SpvVersion<$10300) then
+ begin
+  Config.SpvVersion:=$10300;
+ end;
+
+ node:=AddSpirvOp(line,Op.OpControlBarrier); //need first
+
+ execution       :=ConstList.Fetch(dtUint32,Scope.Workgroup);
+ memory          :=ConstList.Fetch(dtUint32,Scope.Workgroup);
+ memory_semantics:=ConstList.Fetch(dtUint32,MemorySemantics.AcquireRelease or MemorySemantics.WorkgroupMemory);
+
+ node.AddParam(execution);
+ node.AddParam(memory);
+ node.AddParam(memory_semantics);
+end;
+
 procedure TEmit_SOPP.emit_SOPP;
 begin
  Case FSPI.SOPP.OP of
@@ -325,6 +349,8 @@ begin
   S_CBRANCH_EXECNZ:emit_S_BRANCH_COND(cExecz,true);  //It means that lane_id=0
 
   S_BRANCH        :emit_S_BRANCH;
+
+  S_BARRIER       :emit_S_BARRIER;
 
   else
    Assert(false,'SOPP?'+IntToStr(FSPI.SOPP.OP)+' '+get_str_spi(FSPI));

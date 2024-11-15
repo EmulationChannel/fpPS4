@@ -558,15 +558,7 @@ begin
  if (FShader=nil) then //Rebuild with different parameters
  begin
 
-  M:=ParseShader(FStage,pData,GPU_REGS,pc);
-  Assert(M<>nil);
-
-  //hach/dump
-  FHash_spv:=MurmurHash64A(M.Memory,M.Size,0);
-  DumpSpv(FStage,M,FHash_spv);
-  //
-
-  //dump gcn
+  //dump gcn (before parse)
   if (Length(t.FShaderAliases)=0) then
   begin
    case FStage of
@@ -576,6 +568,14 @@ begin
     else;
    end;
   end;
+  //
+
+  M:=ParseShader(FStage,pData,GPU_REGS,pc);
+  Assert(M<>nil);
+
+  //hach/dump
+  FHash_spv:=MurmurHash64A(M.Memory,M.Size,0);
+  DumpSpv(FStage,M,FHash_spv);
   //
 
   pUserData:=GPU_REGS.get_user_data(FStage);

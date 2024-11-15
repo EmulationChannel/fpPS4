@@ -17,6 +17,7 @@ type
   procedure emit_SOPK;
   procedure emit_S_MOVK_I32;
   procedure emit_S_ADDK_I32;
+  procedure emit_S_MULK_I32;
   procedure emit_S_CMPK_I32(OpId:DWORD);
   procedure emit_S_CMPK_U32(OpId:DWORD);
  end;
@@ -75,6 +76,26 @@ begin
  OpBitwiseAnd(car,a,b);
 end;
 
+procedure TEmit_SOPK.emit_S_MULK_I32; //sdst.s = (sdst.s * signExtend(imm16.s)) & 0xFFFFFFFF
+Var
+ dst:PsrRegSlot;
+ src:TsrRegNode;
+ imm:TsrRegNode;
+ a,b:TsrRegNode;
+ i:Integer;
+begin
+ dst:=get_sdst7(FSPI.SOPK.SDST);
+ i:=SignExtend16(FSPI.SOPK.SIMM);
+
+ src:=fetch_ssrc8(FSPI.SOPK.SDST,dtInt32);
+ imm:=NewReg_i(dtInt32,i);
+
+ //Force type
+ src:=BitcastList.FetchRead(dtInt32,src);
+
+ OpIMul(dst,src,imm);
+end;
+
 procedure TEmit_SOPK.emit_S_CMPK_I32(OpId:DWORD); //SCC = compareOp(sdst.s, signExtend(imm16.s))
 Var
  dst:PsrRegSlot;
@@ -125,6 +146,7 @@ begin
   S_MOVK_I32: emit_S_MOVK_I32;
 
   S_ADDK_I32: emit_S_ADDK_I32;
+  S_MULK_I32: emit_S_MULK_I32;
 
   else
    Assert(false,'SOPK?'+IntToStr(FSPI.SOPK.OP)+' '+get_str_spi(FSPI));

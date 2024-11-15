@@ -23,12 +23,12 @@ type
  TEmit_DS=class(TEmitFetch)
   procedure emit_DS;
   procedure _emit_DS_SWIZZLE_B32;
-  function  fetch_ds_chain(vbindex:TsrRegNode;rtype,atomic:TsrDataType;offset:Word):TsrChain;
-  procedure emit_DS_WRITE (rtype:TsrDataType);
-  procedure emit_DS_WRITE2(rtype:TsrDataType);
-  procedure emit_DS_ATOMIC_U32(OpId:DWORD);
-  procedure emit_DS_READ  (rtype:TsrDataType);
-  procedure emit_DS_READ2 (rtype:TsrDataType);
+  function  fetch_ds_chain   (vbindex:TsrRegNode;rtype,atomic:TsrDataType;offset:Word):TsrChain;
+  procedure emit_DS_WRITE    (rtype:TsrDataType);
+  procedure emit_DS_WRITE2   (rtype:TsrDataType);
+  procedure emit_DS_READ     (rtype:TsrDataType);
+  procedure emit_DS_READ2    (rtype:TsrDataType);
+  procedure emit_DS_ATOMIC_OP(rtype:TsrDataType;OpId:DWORD;rtn:Boolean);
  end;
 
 implementation
@@ -255,6 +255,10 @@ begin
  begin
   vsrc:=fetch_vdst8_64(FSPI.DS.DATA0,dtUint64);
  end else
+ if (rtype.BitSize=32) then
+ begin
+  vsrc:=fetch_vdst8(FSPI.DS.DATA0,rtype);
+ end else
  begin
   vsrc:=fetch_vdst8(FSPI.DS.DATA0,dtUnknow);
  end;
@@ -286,8 +290,8 @@ begin
   vsrc[1]:=fetch_vdst8_64(FSPI.DS.DATA1,dtUint64);
  end else
  begin
-  vsrc[0]:=fetch_vdst8(FSPI.DS.DATA0,dtUnknow);
-  vsrc[1]:=fetch_vdst8(FSPI.DS.DATA1,dtUnknow);
+  vsrc[0]:=fetch_vdst8(FSPI.DS.DATA0,rtype);
+  vsrc[1]:=fetch_vdst8(FSPI.DS.DATA1,rtype);
  end;
 
  pChain[0]:=fetch_ds_chain(vbindex,rtype,dtUnknow,FSPI.DS.OFFSET[0]*(rtype.BitSize div 8));
@@ -295,27 +299,6 @@ begin
 
  FetchStore(pChain[0],vsrc[0]);
  FetchStore(pChain[1],vsrc[1]);
-end;
-
-procedure TEmit_DS.emit_DS_ATOMIC_U32(OpId:DWORD);
-var
- pChain:TsrChain;
-
- vbindex:TsrRegNode;
- vsrc:TsrRegNode;
-
- //dst:PsrRegSlot;
- vdst:TsrRegNode;
-begin
- vbindex:=fetch_vdst8(FSPI.DS.ADDR,dtUint32);
-
- vsrc:=fetch_vdst8(FSPI.DS.DATA0,dtUint32);
-
- pChain:=fetch_ds_chain(vbindex,dtUint32,dtUint32,WORD(FSPI.DS.OFFSET));
-
- vdst:=FetchAtomic(pChain,OpId,dtUint32,vsrc);
-
- vdst.mark_read(nil); //self link
 end;
 
 //vdst[], vbindex [OFFSET:<0..65535>] [GDS:< 0|1>]
@@ -394,6 +377,73 @@ begin
  end;
 end;
 
+//vdst, vbindex, vsrc [OFFSET:<0..65535>] [GDS:< 0|1>]
+procedure TEmit_DS.emit_DS_ATOMIC_OP(rtype:TsrDataType;OpId:DWORD;rtn:Boolean);
+var
+ pChain:TsrChain;
+
+ vbindex:TsrRegNode;
+ vsrc:TsrRegNode;
+ vdst:TsrRegNode;
+
+ dst:array[0..1] of PsrRegSlot;
+begin
+ vbindex:=fetch_vdst8(FSPI.DS.ADDR,dtUint32);
+
+ if (rtype.BitSize=64) then
+ begin
+  vsrc:=fetch_vdst8_64(FSPI.DS.DATA0,dtUint64);
+ end else
+ if (rtype.BitSize=32) then
+ begin
+  vsrc:=fetch_vdst8(FSPI.DS.DATA0,rtype);
+ end else
+ begin
+  vsrc:=fetch_vdst8(FSPI.DS.DATA0,dtUnknow);
+ end;
+
+ case rtype of
+  dtUint8 :vsrc:=OpUToU(vsrc,dtUint8);
+  dtUint16:vsrc:=OpUToU(vsrc,dtUint16);
+  else
+ end;
+
+ pChain:=fetch_ds_chain(vbindex,rtype,rtype,WORD(FSPI.DS.OFFSET));
+
+ vdst:=FetchAtomic(pChain,OpId,rtype,vsrc);
+
+ if rtn then
+ begin
+  //save result
+  case rtype of
+   dtUint8 :vdst:=OpUToU(vdst,dtUint32);
+   dtUint16:vdst:=OpUToU(vdst,dtUint32);
+   //
+   dtInt8  :vdst:=OpSToS(vdst,dtInt32);
+   dtInt16 :vdst:=OpSToS(vdst,dtInt32);
+   else;
+  end;
+
+  if (rtype.BitSize=64) then
+  begin
+   dst[0]:=get_vdst8(FSPI.DS.VDST+0);
+   dst[1]:=get_vdst8(FSPI.DS.VDST+1);
+
+   MakeCopy64(dst[0],dst[1],vdst);
+  end else
+  begin
+   dst[0]:=get_vdst8(FSPI.DS.VDST);
+
+   MakeCopy(dst[0],vdst);
+  end;
+ end else
+ begin
+  //no result
+  vdst.mark_read(nil); //self link
+ end;
+
+end;
+
 procedure TEmit_DS.emit_DS;
 begin
 
@@ -401,28 +451,55 @@ begin
 
   DS_NOP:;
 
-  DS_WRITE_B8  :emit_DS_WRITE(dtUint8);
-  DS_WRITE_B16 :emit_DS_WRITE(dtUint16);
-  DS_WRITE_B32 :emit_DS_WRITE(dtUint32);
-  DS_WRITE_B64 :emit_DS_WRITE(dtUint64);
+  DS_WRITE_B8   :emit_DS_WRITE(dtUint8);
+  DS_WRITE_B16  :emit_DS_WRITE(dtUint16);
+  DS_WRITE_B32  :emit_DS_WRITE(dtUint32);
+  DS_WRITE_B64  :emit_DS_WRITE(dtUint64);
 
-  DS_WRITE2_B32:emit_DS_WRITE2(dtUint32);
-  DS_WRITE2_B64:emit_DS_WRITE2(dtUint64);
+  DS_WRITE2_B32 :emit_DS_WRITE2(dtUint32);
+  DS_WRITE2_B64 :emit_DS_WRITE2(dtUint64);
 
-  DS_READ_I8   :emit_DS_READ(dtInt8);
-  DS_READ_U8   :emit_DS_READ(dtUint8);
-  DS_READ_I16  :emit_DS_READ(dtInt16);
-  DS_READ_U16  :emit_DS_READ(dtUint16);
-  DS_READ_B32  :emit_DS_READ(dtUint32);
-  DS_READ_B64  :emit_DS_READ(dtUint64);
+  DS_READ_I8    :emit_DS_READ(dtInt8);
+  DS_READ_U8    :emit_DS_READ(dtUint8);
+  DS_READ_I16   :emit_DS_READ(dtInt16);
+  DS_READ_U16   :emit_DS_READ(dtUint16);
+  DS_READ_B32   :emit_DS_READ(dtUint32);
+  DS_READ_B64   :emit_DS_READ(dtUint64);
 
-  DS_READ2_B32 :emit_DS_READ2(dtUint32);
-  DS_READ2_B64 :emit_DS_READ2(dtUint64);
+  DS_READ2_B32  :emit_DS_READ2(dtUint32);
+  DS_READ2_B64  :emit_DS_READ2(dtUint64);
 
-  DS_MIN_U32   :emit_DS_ATOMIC_U32(Op.OpAtomicUMin);
-  DS_MAX_U32   :emit_DS_ATOMIC_U32(Op.OpAtomicUMax);
+  DS_ADD_U32    :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicIAdd,False);
+  DS_SUB_U32    :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicISub,False);
 
-  DS_OR_B32    :emit_DS_ATOMIC_U32(Op.OpAtomicOr);
+  DS_INC_U32    :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicIIncrement,False);
+  DS_DEC_U32    :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicIDecrement,False);
+
+  DS_MIN_I32    :emit_DS_ATOMIC_OP(dtInt32 ,Op.OpAtomicSMin,False);
+  DS_MAX_I32    :emit_DS_ATOMIC_OP(dtInt32 ,Op.OpAtomicSMax,False);
+
+  DS_MIN_U32    :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicUMin,False);
+  DS_MAX_U32    :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicUMax,False);
+
+  DS_AND_B32    :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicAnd,False);
+  DS_OR_B32     :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicOr ,False);
+  DS_XOR_B32    :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicXor,False);
+
+  DS_ADD_RTN_U32:emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicIAdd,True);
+  DS_SUB_RTN_U32:emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicISub,True);
+
+  DS_INC_RTN_U32:emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicIIncrement,True);
+  DS_DEC_RTN_U32:emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicIDecrement,True);
+
+  DS_MIN_RTN_I32:emit_DS_ATOMIC_OP(dtInt32 ,Op.OpAtomicSMin,True);
+  DS_MAX_RTN_I32:emit_DS_ATOMIC_OP(dtInt32 ,Op.OpAtomicSMax,True);
+
+  DS_MIN_RTN_U32:emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicUMin,True);
+  DS_MAX_RTN_U32:emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicUMax,True);
+
+  DS_AND_RTN_B32:emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicAnd,True);
+  DS_OR_RTN_B32 :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicOr ,True);
+  DS_XOR_RTN_B32:emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicXor,True);
 
   //DS_SWIZZLE_B32 v4 v3 v0 v0 OFFSET:0x80AA GDS:0
 
