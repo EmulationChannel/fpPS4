@@ -128,6 +128,7 @@ type
  TsrImageInfo=packed record
   dtype:TsrDataType;
   tinfo:TsrTypeImageInfo;
+  count:Byte;
   GLC:Boolean;
   SLC:Boolean;
  end;

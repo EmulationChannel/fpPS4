@@ -23,22 +23,22 @@ type
 
  TImgSampleParam=object
   roffset:DWORD;
-  mods:TsrImageMods;
-  img_op:Integer;
+  mods   :TsrImageMods;
+  img_op :Integer;
 
   coord,pcf,bias,lod,min_lod,offset:TsrRegNode;
  end;
 
  TEmit_MIMG=class(TEmitFetch)
   procedure emit_MIMG;
-  procedure DistribDmask(DMASK:Byte;dst:TsrRegNode;info:PsrImageInfo);
-  function  GatherDmask(telem:TsrDataType):TsrRegNode;
-  Function  GatherCoord_f(var offset:DWORD;info:PsrImageInfo):TsrRegNode;
-  Function  GatherCoord_u(var offset:DWORD;info:PsrImageInfo):TsrRegNode;
-  Function  Gather_value(var offset:DWORD;rtype:TsrDataType):TsrRegNode;
-  Function  Gather_packed_offset(var offset:DWORD;dim:Byte):TsrRegNode;
-  procedure Gather_sample_param(var p:TImgSampleParam;info:PsrImageInfo);
-  procedure add_sample_op(var p:TImgSampleParam;node:TSpirvOp);
+  procedure DistribDmask            (DMASK:Byte;dst:TsrRegNode;info:PsrImageInfo);
+  function  GatherDmask             (info:PsrImageInfo):TsrRegNode;
+  Function  GatherCoord_f           (var offset:DWORD;info:PsrImageInfo):TsrRegNode;
+  Function  GatherCoord_u           (var offset:DWORD;info:PsrImageInfo):TsrRegNode;
+  Function  Gather_value            (var offset:DWORD;rtype:TsrDataType):TsrRegNode;
+  Function  Gather_packed_offset    (var offset:DWORD;dim:Byte):TsrRegNode;
+  procedure Gather_sample_param     (var p:TImgSampleParam;info:PsrImageInfo);
+  procedure add_sample_op           (var p:TImgSampleParam;node:TSpirvOp);
   procedure emit_image_sample       (Tgrp:TsrNode;info:PsrImageInfo);
   procedure emit_image_sample_gather(Tgrp:TsrNode;info:PsrImageInfo);
   procedure emit_image_load         (Tgrp:TsrNode;info:PsrImageInfo);
@@ -48,6 +48,80 @@ type
  end;
 
 implementation
+
+function GetImageElemCount(PT:PTSharpResource4):Byte;
+begin
+ Result:=0;
+ if (PT=nil) then Exit;
+ Case PT^.dfmt of
+
+  IMG_DATA_FORMAT_8                :Result:=1;
+  IMG_DATA_FORMAT_ETC2_R           :Result:=1;
+  IMG_DATA_FORMAT_BC4              :Result:=1;
+  IMG_DATA_FORMAT_1                :Result:=1;
+  IMG_DATA_FORMAT_32_AS_8          :Result:=1;
+  IMG_DATA_FORMAT_16               :Result:=1;
+  IMG_DATA_FORMAT_32               :Result:=1;
+
+  IMG_DATA_FORMAT_8_8              :Result:=2;
+  IMG_DATA_FORMAT_16_16            :Result:=2;
+  IMG_DATA_FORMAT_ETC2_RG          :Result:=2;
+  IMG_DATA_FORMAT_BC5              :Result:=2;
+  IMG_DATA_FORMAT_4_4              :Result:=2;
+  IMG_DATA_FORMAT_32_AS_8_8        :Result:=2;
+  IMG_DATA_FORMAT_32_32            :Result:=2;
+  IMG_DATA_FORMAT_8_24             :Result:=2;
+  IMG_DATA_FORMAT_24_8             :Result:=2;
+  IMG_DATA_FORMAT_X24_8_32         :Result:=2;
+
+  IMG_DATA_FORMAT_10_11_11         :Result:=3;
+  IMG_DATA_FORMAT_11_11_10         :Result:=3;
+  IMG_DATA_FORMAT_5_6_5            :Result:=3;
+  IMG_DATA_FORMAT_ETC2_RGB         :Result:=3;
+  IMG_DATA_FORMAT_GB_GR            :Result:=3;
+  IMG_DATA_FORMAT_BG_RG            :Result:=3;
+  IMG_DATA_FORMAT_BC1              :Result:=3;
+  IMG_DATA_FORMAT_BC6              :Result:=3;
+  IMG_DATA_FORMAT_6_5_5            :Result:=3;
+  IMG_DATA_FORMAT_32_32_32         :Result:=3;
+
+  IMG_DATA_FORMAT_10_10_10_2       :Result:=4;
+  IMG_DATA_FORMAT_2_10_10_10       :Result:=4;
+  IMG_DATA_FORMAT_8_8_8_8          :Result:=4;
+  IMG_DATA_FORMAT_1_5_5_5          :Result:=4;
+  IMG_DATA_FORMAT_5_5_5_1          :Result:=4;
+  IMG_DATA_FORMAT_4_4_4_4          :Result:=4;
+  IMG_DATA_FORMAT_ETC2_RGBA        :Result:=4;
+  IMG_DATA_FORMAT_ETC2_RGBA1       :Result:=4;
+  IMG_DATA_FORMAT_5_9_9_9          :Result:=4;
+  IMG_DATA_FORMAT_BC2              :Result:=4;
+  IMG_DATA_FORMAT_BC3              :Result:=4;
+  IMG_DATA_FORMAT_BC7              :Result:=4;
+  IMG_DATA_FORMAT_16_16_16_16      :Result:=4;
+  IMG_DATA_FORMAT_32_32_32_32      :Result:=4;
+
+  IMG_DATA_FORMAT_FMASK8_S2_F1     :Result:=1;
+  IMG_DATA_FORMAT_FMASK8_S4_F1     :Result:=1;
+  IMG_DATA_FORMAT_FMASK8_S8_F1     :Result:=1;
+  IMG_DATA_FORMAT_FMASK8_S2_F2     :Result:=1;
+  IMG_DATA_FORMAT_FMASK8_S4_F2     :Result:=1;
+  IMG_DATA_FORMAT_FMASK8_S4_F4     :Result:=1;
+
+  IMG_DATA_FORMAT_FMASK16_S16_F1   :Result:=1;
+  IMG_DATA_FORMAT_FMASK16_S8_F2    :Result:=1;
+
+  IMG_DATA_FORMAT_FMASK32_S16_F2   :Result:=1;
+  IMG_DATA_FORMAT_FMASK32_S8_F4    :Result:=1;
+  IMG_DATA_FORMAT_FMASK32_S8_F8    :Result:=1;
+
+  IMG_DATA_FORMAT_FMASK64_S16_F4   :Result:=1;
+  IMG_DATA_FORMAT_FMASK64_S16_F8   :Result:=1;
+
+  IMG_DATA_FORMAT_32_AS_32_32_32_32:Result:=4;
+
+  else;
+ end;
+end;
 
 function GetImageFormat(PT:PTSharpResource4):Byte;
 begin
@@ -383,6 +457,7 @@ function GetImageInfo(PT:PTSharpResource4):TsrImageInfo;
 begin
  Result:=Default(TsrImageInfo);
  Result.dtype:=GetElemType(PT);
+ Result.count:=GetImageElemCount(PT);
 
  Result.tinfo.Dim    :=GetDimType(PT);
  Result.tinfo.Depth  :=2;
@@ -529,36 +604,33 @@ begin
   end;
 end;
 
-function TEmit_MIMG.GatherDmask(telem:TsrDataType):TsrRegNode;
+function TEmit_MIMG.GatherDmask(info:PsrImageInfo):TsrRegNode;
 var
  src:array[0..3] of TsrRegNode;
  i,d,m:Byte;
 begin
+ Assert(info^.count<>0);
+
  d:=0;
- For i:=0 to 3 do
- if Byte(FSPI.MIMG.DMASK).TestBit(i) then
+ m:=info^.count;
+ For i:=0 to m-1 do
  begin
-  src[i]:=fetch_vsrc8(FSPI.MIMG.VDATA+d,telem);
-  Inc(d);
-  m:=i;
- end else
- begin
-  src[i]:=nil;
+  if Byte(FSPI.MIMG.DMASK).TestBit(i) then
+  begin
+   src[i]:=fetch_vsrc8(FSPI.MIMG.VDATA+d,info^.dtype);
+   Inc(d);
+  end else
+  begin
+   src[i]:=NewReg_i(info^.dtype,0);
+  end;
  end;
 
- //Result:=telem.AsVector(4);
- For i:=0 to m do
- begin
-  //TODO: zero or prev value?
-  Assert(src[i]<>nil,'TODO: zero or prev value?');
- end;
-
- if (m=0) then
+ if (m=1) then
  begin
   Result:=src[0];
  end else
  begin
-  Result:=OpMakeVec(line,telem.AsVector(m+1),@src);
+  Result:=OpMakeVec(line,info^.dtype.AsVector(m),@src);
  end;
 end;
 
@@ -986,7 +1058,7 @@ var
 
  node:TSpirvOp;
 begin
- dst:=GatherDmask(info^.dtype);
+ dst:=GatherDmask(info);
 
  roffset:=0;
 

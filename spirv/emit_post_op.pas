@@ -66,6 +66,11 @@ type
   function  OnIAddExt2(node:TSpirvOp):Integer;
   function  OnISubExt2(node:TSpirvOp):Integer;
   function  OnPackAnc2(node:TSpirvOp):Integer;
+  //
+  function  OnCUBEID2(node:TSpirvOp):Integer;
+  function  OnCUBESC2(node:TSpirvOp):Integer;
+  function  OnCUBETC2(node:TSpirvOp):Integer;
+  function  OnCUBEMA2(node:TSpirvOp):Integer;
  end;
 
 implementation
@@ -131,11 +136,10 @@ begin
   Op.OpReturn:Result:=OnReturn_2(node);
   OpMakeExp  :Result:=OnMakeExp2(node);
 
-  OpCUBEID:Assert(False,'TODO: CUBEID'); //TODO: CUBEID
-  OpCUBESC:Assert(False,'TODO: CUBESC'); //TODO: CUBESC
-  OpCUBETC:Assert(False,'TODO: CUBETC'); //TODO: CUBETC
-  OpCUBEMA:Assert(False,'TODO: CUBEMA'); //TODO: CUBEMA
-
+  OpCUBEID:OnCUBEID2(node);
+  OpCUBESC:OnCUBESC2(node);
+  OpCUBETC:OnCUBETC2(node);
+  OpCUBEMA:OnCUBEMA2(node);
  end;
 
 end;
@@ -2381,6 +2385,24 @@ begin
  Result:=1;
 end;
 
+{
+float3 __GetCubemapUv(float3 uv)
+{
+ float  faceId = __v_cubeid_f32(uv.x, uv.y, uv.z);
+ float  sc     = __v_cubesc_f32(uv.x, uv.y, uv.z);
+ float  tc     = __v_cubetc_f32(uv.x, uv.y, uv.z);
+ float  ima    = 1.f / abs( __v_cubema_f32(uv.x, uv.y, uv.z) );
+ return float3(sc * ima + 1.5f, tc * ima + 1.5f, faceId);
+}
+
+float4 __GetCubemapArrayUv(float4 uv)
+{
+ float3 cuv = __GetCubemapUv(uv.xyz);
+ cuv.z      = cuv.z + (uv.w * 8.f);
+ return float4(cuv, uv.w);
+}
+}
+
 function TEmitPostOp.OnMakeCub1(node:TSpirvOp):Integer;
 var
  dst:TsrRegNode;
@@ -2481,6 +2503,98 @@ begin
  node.pDst:=nil;
  Result:=1;
 end;
+
+function TEmitPostOp.OnCUBEID2(node:TSpirvOp):Integer;
+var
+ dst:TsrRegNode;
+ src:TsrRegNode;
+
+ procedure _SetReg(src:TsrRegNode);
+ begin
+  dst.pWriter:=src;
+  node.mark_not_used;
+  node.pDst:=nil;
+  Inc(Result);
+ end;
+
+begin
+ Result:=0;
+ dst:=node.pDst.specialize AsType<ntReg>;
+ src:=node.ParamNode(2).AsReg;
+
+ if (dst=nil) or (src=nil) then Exit;
+
+ _SetReg(src); //fake out
+end;
+
+function TEmitPostOp.OnCUBESC2(node:TSpirvOp):Integer;
+var
+ dst:TsrRegNode;
+ src:TsrRegNode;
+
+ procedure _SetReg(src:TsrRegNode);
+ begin
+  dst.pWriter:=src;
+  node.mark_not_used;
+  node.pDst:=nil;
+  Inc(Result);
+ end;
+
+begin
+ Result:=0;
+ dst:=node.pDst.specialize AsType<ntReg>;
+ src:=node.ParamNode(0).AsReg;
+
+ if (dst=nil) or (src=nil) then Exit;
+
+ _SetReg(src); //fake out
+end;
+
+function TEmitPostOp.OnCUBETC2(node:TSpirvOp):Integer;
+var
+ dst:TsrRegNode;
+ src:TsrRegNode;
+
+ procedure _SetReg(src:TsrRegNode);
+ begin
+  dst.pWriter:=src;
+  node.mark_not_used;
+  node.pDst:=nil;
+  Inc(Result);
+ end;
+
+begin
+ Result:=0;
+ dst:=node.pDst.specialize AsType<ntReg>;
+ src:=node.ParamNode(1).AsReg;
+
+ if (dst=nil) or (src=nil) then Exit;
+
+ _SetReg(src); //fake out
+end;
+
+function TEmitPostOp.OnCUBEMA2(node:TSpirvOp):Integer;
+var
+ dst:TsrRegNode;
+
+ procedure _SetConst_s(dtype:TsrDataType;value:Single);
+ begin
+  Assert(dtype=dtFloat32);
+  dst.pWriter:=NewReg_s(dtype,value,@node);
+  node.mark_not_used;
+  node.pDst:=nil;
+  Inc(Result);
+ end;
+
+begin
+ Result:=0;
+ dst:=node.pDst.specialize AsType<ntReg>;
+
+ if (dst=nil) then Exit;
+
+ _SetConst_s(dtFloat32,1); //fake out
+end;
+
 
 procedure TEmitPostOp.MakeVecConst(rtype:TsrDataType;dst:TsrRegNode;src:PPsrRegNode);
 var
