@@ -3327,22 +3327,15 @@ begin
      begin
       new1:=new_reg(ctx.din.Operand[2]);
 
-      mem_size:=ctx.din.Operand[1].RegValue[0].ASize;
+      mem_size:=ctx.din.Operand[1].Size;
       Assert(mem_size<>os0);
 
-      if ((his_ro in desc.hint) or (mem_size<>os32)) and
-         (not (not_impl in desc.mem_reg.opt)) then
+      if (not (not_impl in desc.mem_reg.opt)) then
       begin
-       mem_size:=ctx.din.Operand[1].Size;
-       Assert(mem_size<>os0);
-
        i:=GetFrameOffset(ctx.din.Operand[1]);
        _VM(desc.mem_reg,new1,[r_thrd+i,mem_size]);
       end else
       begin
-       mem_size:=ctx.din.Operand[1].Size;
-       Assert(mem_size<>os0);
-
        new2:=new_reg_size(r_tmp0,ctx.din.Operand[1]);
 
        if (not (his_wo in desc.hint)) or
