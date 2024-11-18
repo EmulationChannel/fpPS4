@@ -3278,7 +3278,8 @@ begin
  with ctx.builder do
   case memop of
    mo_mem_reg,
-   mo_reg_mem:
+   mo_reg_mem,
+   mo_ctx_mem:
      begin
       build_lea(ctx,get_lea_id(memop),r_tmp0);
       mem_size:=ctx.din.Operand[get_lea_id(memop)].Size;
@@ -3326,20 +3327,36 @@ begin
      begin
       new1:=new_reg(ctx.din.Operand[2]);
 
-      mem_size:=ctx.din.Operand[1].Size;
+      mem_size:=ctx.din.Operand[1].RegValue[0].ASize;
       Assert(mem_size<>os0);
 
-      if (not_impl in desc.mem_reg.opt) then
+      if ((his_ro in desc.hint) or (mem_size<>os32)) and
+         (not (not_impl in desc.mem_reg.opt)) then
       begin
+       mem_size:=ctx.din.Operand[1].Size;
+       Assert(mem_size<>os0);
+
+       i:=GetFrameOffset(ctx.din.Operand[1]);
+       _VM(desc.mem_reg,new1,[r_thrd+i,mem_size]);
+      end else
+      begin
+       mem_size:=ctx.din.Operand[1].Size;
+       Assert(mem_size<>os0);
+
        new2:=new_reg_size(r_tmp0,ctx.din.Operand[1]);
+
+       if (not (his_wo in desc.hint)) or
+          (his_ro in desc.hint) then
+       begin
+        op_load(ctx,new2,1);
+       end;
 
        _VV(desc.reg_mem,new2,new1,mem_size); //swapped
 
-       op_save(ctx,1,fix_size(new2));
-      end else
-      begin
-       i:=GetFrameOffset(ctx.din.Operand[1]);
-       _VM(desc.mem_reg,new1,[r_thrd+i,mem_size]);
+       if not (his_ro in desc.hint) then
+       begin
+        op_save(ctx,1,fix_size(new2));
+       end;
       end;
 
      end;

@@ -15,6 +15,11 @@ procedure apply_jit_stat(code_size:Word);
 
 procedure print_din_stats;
 
+function  is_sse  (x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
+function  is_3dnow(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
+function  is_float(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
+function  is_avx  (x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
+
 implementation
 
 uses
@@ -1234,6 +1239,23 @@ begin
  end;
 end;
 
+function is_float(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
+begin
+ Result:=(y in [OPf2xm1..OPgf2p8mulb]);
+end;
+
+function is_avx(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
+begin
+ case y of
+  OPvalign..OPvzeroupper:Result:=True;
+  else
+    case x of
+     OPPnone:Result:=False;
+     OPPv   :Result:=True;
+    end;
+ end;
+end;
+
 type
  t_status=record
   g,s,d,f,v:DWORD;
@@ -1261,30 +1283,24 @@ var
 
  procedure inc_status(var status:t_status);
  begin
-  if (y in [OPf2xm1..OPgf2p8mulb]) then
+  if is_float(x,y,z) then
   begin
    Inc(status.f);
   end else
-  case y of
-   OPvalign..OPvzeroupper:Inc(status.v);
-   else
-     case x of
-      OPPnone:
-        begin
-         if is_3dnow(x,y,z) then
-         begin
-          Inc(status.d)
-         end else
-         if is_sse(x,y,z) then
-         begin
-          Inc(status.s)
-         end else
-         begin
-          Inc(status.g)
-         end;
-        end;
-      OPPv   :Inc(status.v);
-     end;
+  if is_avx(x,y,z) then
+  begin
+   Inc(status.v);
+  end else
+  if is_3dnow(x,y,z) then
+  begin
+   Inc(status.d)
+  end else
+  if is_sse(x,y,z) then
+  begin
+   Inc(status.s)
+  end else
+  begin
+   Inc(status.g)
   end;
  end;
 
@@ -1329,14 +1345,14 @@ begin
  if print_status then
  begin
   Writeln('[jit status]');
-  Writeln('       general:',percent(cbs_status.g,use_status.g):5:2,'%');
-  Writeln('     x87 float:',percent(cbs_status.f,use_status.f):5:2,'%');
-  Writeln('         3DNow:',percent(cbs_status.d,use_status.d):5:2,'%');
-  Writeln('           sse:',percent(cbs_status.s,use_status.s):5:2,'%');
-  Writeln('  vex encoding:',percent(cbs_status.v,use_status.v):5:2,'%');
-  Writeln('         total:',percent(cbs_status.g+cbs_status.s+use_status.d+cbs_status.f+cbs_status.v,
-                                    use_status.g+use_status.s+use_status.d+use_status.f+use_status.v
-                                   ):0:2,'%');
+  Writeln('  general:',percent(cbs_status.g,use_status.g):5:2,'%');
+  Writeln('    float:',percent(cbs_status.f,use_status.f):5:2,'%');
+  Writeln('    3DNow:',percent(cbs_status.d,use_status.d):5:2,'%');
+  Writeln('      sse:',percent(cbs_status.s,use_status.s):5:2,'%');
+  Writeln('      avx:',percent(cbs_status.v,use_status.v):5:2,'%');
+  Writeln('    total:',percent(cbs_status.g+cbs_status.s+use_status.d+cbs_status.f+cbs_status.v,
+                               use_status.g+use_status.s+use_status.d+use_status.f+use_status.v
+                              ):0:2,'%');
  end;
 
 end;
