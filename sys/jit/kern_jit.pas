@@ -1039,7 +1039,7 @@ begin
   //set PCB_IS_HLE
   if pcb then
   begin
-   ori8se([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_HLE));
+   ori([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_HLE));
   end;
 
   if switch_stack then
@@ -1120,7 +1120,7 @@ begin
   //reset PCB_IS_HLE
   if pcb then
   begin
-   andi8se([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],not Byte(PCB_IS_HLE));
+   andi([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],not Byte(PCB_IS_HLE));
   end;
 
  end;
