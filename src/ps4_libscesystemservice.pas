@@ -405,6 +405,7 @@ end;
 
 function ps4_sceSystemServiceGetDisplaySafeAreaInfo(info:pSceSystemServiceDisplaySafeAreaInfo):Integer;
 begin
+ Writeln('sceSystemServiceGetDisplaySafeAreaInfo');
  Result:=SCE_KERNEL_ERROR_UNKNOWN;
  if (info=nil) then Exit(SCE_SYSTEM_SERVICE_ERROR_PARAMETER);
  info^:=Default(SceSystemServiceDisplaySafeAreaInfo);

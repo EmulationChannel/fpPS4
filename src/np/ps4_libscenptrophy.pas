@@ -84,49 +84,49 @@ type
 
  pSceNpTrophyDetails=^SceNpTrophyDetails;
  SceNpTrophyDetails=packed record
-  size:qword;
-  trophyId:SceNpTrophyId;
+  size       :qword;
+  trophyId   :SceNpTrophyId;
   trophyGrade:SceNpTrophyGrade;
-  groupId:SceNpTrophyGroupId;
-  hidden:boolean;
-  reserved:array[0..2] of Byte;
-  name:array[0..SCE_NP_TROPHY_NAME_MAX_SIZE-1] of AnsiChar;
+  groupId    :SceNpTrophyGroupId;
+  hidden     :boolean;
+  reserved   :array[0..2] of Byte;
+  name       :array[0..SCE_NP_TROPHY_NAME_MAX_SIZE-1] of AnsiChar;
   description:array[0..SCE_NP_TROPHY_DESCR_MAX_SIZE-1] of AnsiChar;
  end;
 
  pSceNpTrophyData=^SceNpTrophyData;
  SceNpTrophyData=packed record
-  size:qword;
-  trophyId:SceNpTrophyId;
-  unlocked:boolean;
-  reserved:array[0..2] of Byte;
+  size     :qword;
+  trophyId :SceNpTrophyId;
+  unlocked :boolean;
+  reserved :array[0..2] of Byte;
   timestamp:QWORD;
  end;
 
  pSceNpTrophyGroupDetails=^SceNpTrophyGroupDetails;
  SceNpTrophyGroupDetails=packed record
-  size:qword;
-  groupId:SceNpTrophyGroupId;
+  size       :qword;
+  groupId    :SceNpTrophyGroupId;
   numTrophies:DWORD;
   numPlatinum:DWORD;
   numGold    :DWORD;
   numSilver  :DWORD;
   numBronze  :DWORD;
-  title:array[0..SCE_NP_TROPHY_GROUP_TITLE_MAX_SIZE-1] of AnsiChar;
+  title      :array[0..SCE_NP_TROPHY_GROUP_TITLE_MAX_SIZE-1] of AnsiChar;
   description:array[0..SCE_NP_TROPHY_GROUP_DESCR_MAX_SIZE-1] of AnsiChar;
  end;
 
  pSceNpTrophyGroupData=^SceNpTrophyGroupData;
  SceNpTrophyGroupData=packed record
-  size:qword;
-  groupId:SceNpTrophyGroupId;
+  size              :qword;
+  groupId           :SceNpTrophyGroupId;
   unlockedTrophies  :DWORD;
   unlockedPlatinum  :DWORD;
   unlockedGold      :DWORD;
   unlockedSilver    :DWORD;
   unlockedBronze    :DWORD;
   progressPercentage:DWORD;
-  reserved:DWORD;
+  reserved          :DWORD;
  end;
 
 implementation
