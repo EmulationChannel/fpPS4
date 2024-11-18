@@ -139,6 +139,7 @@ function  _vm_track_map_insert_mirror(map:p_vm_track_map;start,__end,dst:vm_offs
 function  vm_track_map_remove_object (map:p_vm_track_map;obj:p_vm_track_object):Integer;
 function  vm_track_map_remove_memory (map:p_vm_track_map;start,__end:vm_offset_t):Integer;
 function  vm_track_map_trigger       (map:p_vm_track_map;start,__end:vm_offset_t;exclude:Pointer;mode:T_TRIGGER_MODE):Integer;
+function  vm_track_map_trigger2      (map:p_vm_track_map;var start,__end:vm_offset_t;exclude:Pointer;mode:T_TRIGGER_MODE):Integer;
 
 function  vm_track_map_next_object   (map:p_vm_track_map;start:vm_offset_t;obj:p_vm_track_object;htype:T_THANDLE_TYPE):p_vm_track_object;
 
@@ -1449,9 +1450,17 @@ begin
 end;
 
 function vm_track_map_trigger(map:p_vm_track_map;start,__end:vm_offset_t;exclude:Pointer;mode:T_TRIGGER_MODE):Integer;
+begin
+ Result:=vm_track_map_trigger2(map,start,__end,exclude,mode);
+end;
+
+function vm_track_map_trigger2(map:p_vm_track_map;var start,__end:vm_offset_t;exclude:Pointer;mode:T_TRIGGER_MODE):Integer;
 var
  entry:p_vm_track_map_entry;
  node:p_vm_track_object_instance;
+
+ o_start:vm_offset_t;
+ o___end:vm_offset_t;
 
  diff:vm_offset_t;
  size:vm_offset_t;
@@ -1471,15 +1480,19 @@ begin
   Exit;
  end;
 
- size:=(__end-start);
+ //save orig
+ o_start:=start;
+ o___end:=__end;
+
+ size:=(o___end-o_start);
 
  //TAILQ_INIT(@list);
 
  vm_track_map_lock(map);
 
- //vm_track_map_RANGE_CHECK(map, start, __end);
+ //vm_track_map_RANGE_CHECK(map, o_start, o___end);
 
- if (vm_track_map_lookup_entry(map, start, @entry)) then
+ if (vm_track_map_lookup_entry(map, o_start, @entry)) then
  begin
   //
  end else
@@ -1487,8 +1500,21 @@ begin
   entry:=entry^.next;
  end;
 
- while (entry<>@map^.header) and (entry^.start<__end) do
+ while (entry<>@map^.header) and (entry^.start<o___end) do
  begin
+
+  //expand lo result
+  if (start>entry^.start) then
+  begin
+   start:=entry^.start;
+  end;
+
+  //expand hi result
+  if (__end<entry^.__end) then
+  begin
+   __end:=entry^.__end;
+  end;
+
   node:=vm_track_first_instance(entry^.instances);
 
   while (node<>nil) do
@@ -1500,7 +1526,7 @@ begin
    begin
 
     //remap with source
-    diff:=entry^.start-start;
+    diff:=entry^.start-o_start;
     //
     s_start:=node^.source-diff;
     s___end:=s_start+size;

@@ -24,6 +24,7 @@ type
   function    GetDedicatedAllocation:Boolean;
   function    BindMem(P:TvPointer):TVkResult;
   procedure   UnBindMem(do_free:Boolean);
+  function    is_invalid:Boolean;
   procedure   FreeHandle;
   procedure   OnReleaseMem(Sender:TObject); virtual;
   procedure   SetObjectName(const name:RawByteString);
@@ -225,6 +226,11 @@ begin
  end;
 end;
 
+function TvBuffer.is_invalid:Boolean;
+begin
+ Result:=(FHandle=VK_NULL_HANDLE);
+end;
+
 procedure TvBuffer.FreeHandle;
 begin
  if (FHandle<>VK_NULL_HANDLE) then
@@ -268,7 +274,8 @@ begin
   end;
  end else
  begin
-  Result:=inherited Acquire(Sender);
+  Result:=False;
+  //Result:=inherited Acquire(Sender);
  end;
 end;
 

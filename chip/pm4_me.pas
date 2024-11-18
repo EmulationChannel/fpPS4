@@ -902,6 +902,13 @@ begin
 
     ri:=TvImage2(resource_instance^.resource^.rimage);
 
+    if (ri<>nil) then
+    if (ri.is_invalid) then
+    begin
+     resource_instance^.resource^.rimage:=nil;
+     ri:=nil;
+    end;
+
     if (ri=nil) then
     begin
      ri:=FetchImage(ctx.Cmd,
@@ -944,6 +951,13 @@ begin
     resource_instance^.prepared:=true;
 
     buf:=TvHostBuffer(resource_instance^.resource^.rimage);
+
+    if (buf<>nil) then
+    if (buf.is_invalid) then
+    begin
+     resource_instance^.resource^.rimage:=nil;
+     buf:=nil;
+    end;
 
     if (buf=nil) then
     begin
@@ -1484,6 +1498,13 @@ begin
 
    ri:=TvImage2(color_instance[i]^.resource^.rimage);
 
+   if (ri<>nil) then
+   if (ri.is_invalid) then
+   begin
+    color_instance[i]^.resource^.rimage:=nil;
+    ri:=nil;
+   end;
+
    if (ri=nil) then
    begin
     ri:=FetchImage(ctx.Cmd,
@@ -1535,9 +1556,23 @@ begin
    rd:=TvCustomImage2(d_instance^.resource^.rimage);
   end;
 
+  if (rd<>nil) then
+  if (rd.is_invalid) then
+  begin
+   d_instance^.resource^.rimage:=nil;
+   rd:=nil;
+  end;
+
   if (s_instance<>nil) then
   begin
    rs:=TvCustomImage2(s_instance^.resource^.rimage);
+  end;
+
+  if (rs<>nil) then
+  if (rs.is_invalid) then
+  begin
+   s_instance^.resource^.rimage:=nil;
+   rs:=nil;
   end;
 
   if (rd<>nil) then

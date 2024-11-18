@@ -586,6 +586,8 @@ begin
    minfo.minLod:=F.minLod;
   end;
 
+  Writeln('vkCreateImageView:',cinfo.format);
+
   FView:=VK_NULL_HANDLE;
   r:=vkCreateImageView(Device.FHandle,@cinfo,nil,@FView);
   if (r<>VK_SUCCESS) then
@@ -1074,7 +1076,7 @@ label
  _repeat;
 var
  t:TvImage2;
- Fdevc:TvPointer;
+ mem:TvPointer;
 begin
  Result:=nil;
 
@@ -1084,7 +1086,7 @@ begin
 
  if (t<>nil) then
  begin
-  if t.Acquire(nil) then
+  if t.Acquire(nil) then //result ref
   begin
    t.FUsage:=t.FUsage+usage;
   end else
@@ -1106,20 +1108,36 @@ begin
 
    _SetName(t);
 
-   Fdevc:=MemManager.FetchMemory(
+   mem:=MemManager.FetchMemory(
      t.GetRequirements,
      V_PROP_DEVICE_LOCAL or V_PROP_BEST_FIT
    );
 
-   t.BindMem(Fdevc);
-
-   if _InsertImage(t) then
+   if (t.BindMem(mem)<>VK_SUCCESS) then
    begin
-    t._Acquire(nil); //map ref
+    //unknow error
+    FreeAndNil(t);
+    mem.Release; //release [FetchMemory]
+    //
+    Exit(nil);
+   end;
+
+   if not _InsertImage(t) then
+   begin
+    //collision?
+
+    FreeAndNil(t);
+    mem.Release; //release [FetchMemory]
+
+    //
+    goto _repeat;
    end;
 
   end;
 
+  t.Acquire(nil); //result ref
+
+  mem.Release; //release [FetchMemory]
  end;
 
  Result:=t;
@@ -1153,13 +1171,14 @@ begin
 
  Result:=_FetchImage(F,usage); // <- Acquire(nil)/FetchMemory
 
+ //add dep
  cmd.RefTo(Result);
 
  FImage2Set.Unlock_wr;
 
  if (Result<>nil) then
  begin
-  Result.Release(nil); //<- Acquire(nil)/FetchMemory
+  Result.Release(nil);  //release [Acquire(nil)]
  end;
 end;
 

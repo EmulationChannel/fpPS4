@@ -66,7 +66,9 @@ type
   FHandle:TVkImage;
   FFormat:TVkFormat; //real used format
   FBind  :TvPointer;
+  FBRefs :ptruint;
   FName  :RawByteString;
+  function    is_invalid:Boolean;
   procedure   FreeHandle; virtual;
   Destructor  Destroy; override;
   function    GetImageInfo:TVkImageCreateInfo; virtual; abstract;
@@ -288,6 +290,9 @@ Function GetNormalizedParams(const key:TvImageKey):TvImageKeyParams;
 Function CompareNormalized(const a,b:TvImageKey):Integer;
 
 implementation
+
+uses
+ subr_backtrace;
 
 function TvImageKeyParams.layerCount:Word;
 begin
@@ -1539,6 +1544,11 @@ begin
  end;
 end;
 
+function TvCustomImage.is_invalid:Boolean;
+begin
+ Result:=(FHandle=VK_NULL_HANDLE);
+end;
+
 procedure TvCustomImage.FreeHandle;
 begin
  if (FHandle<>VK_NULL_HANDLE) then
@@ -1626,6 +1636,7 @@ function TvCustomImage.BindMem(P:TvPointer):TVkResult;
 begin
  if P.Acquire then //try Acquire
  begin
+  //
   Result:=vkBindImageMemory(Device.FHandle,FHandle,P.FMemory.FHandle,P.FOffset);
   //
   if (Result=VK_SUCCESS) then
@@ -1642,15 +1653,27 @@ begin
 end;
 
 procedure TvCustomImage.UnBindMem(do_free:Boolean);
+var
+ B:TvPointer;
+ R:ptruint;
 begin
  if (FBind.FMemory<>nil) then
  begin
+  B:=FBind;
+  FBind.FMemory:=nil;
+  //
+  R:=ptruint(System.InterlockedExchange(Pointer(FBRefs),nil));
+  while (R<>0) do
+  begin
+   B.Release;
+   Dec(R);
+  end;
+  //
   if do_free then
   begin
-   MemManager.FreeMemory(FBind);
+   MemManager.FreeMemory(B);
   end;
  end;
- FBind.FMemory:=nil;
 end;
 
 procedure TvCustomImage.OnReleaseMem(Sender:TObject);
@@ -1678,12 +1701,44 @@ end;
 
 function TvCustomImage.Acquire(Sender:TObject):Boolean;
 begin
- Result:=FBind.Acquire;
+ if (FBind.FMemory<>nil) then
+ begin
+  Result:=FBind.Acquire;
+  if Result then
+  begin
+   System.InterlockedIncrement(Pointer(FBRefs));
+   inherited Acquire(Sender);
+  end;
+ end else
+ begin
+  Result:=False;
+  //Result:=inherited Acquire(Sender);
+ end;
 end;
 
 procedure TvCustomImage.Release(Sender:TObject);
+var
+ B:TvPointer;
+ R:ptruint;
 begin
- FBind.Release;
+ while True do
+ begin
+  B:=FBind;
+  if (B.FMemory<>nil) and (FBRefs<>0) then
+  begin
+   R:=FBRefs;
+   if (System.InterlockedCompareExchange(Pointer(FBRefs),Pointer(R-1),Pointer(R))=Pointer(R)) then
+   begin
+    B.Release;
+    inherited Release(Sender);
+    Break;
+   end;
+  end else
+  begin
+   inherited Release(Sender);
+   Break;
+  end;
+ end;
 end;
 
 procedure _test_and_set_to(var new:TVkFlags;
@@ -2220,6 +2275,11 @@ begin
   end;
 
   if (cmd=0) then Exit;
+
+  if (image=VK_NULL_HANDLE) then
+  begin
+   print_backtrace(StdErr,Get_pc_addr,get_frame,0);
+  end;
 
   Writeln('Barrier:'#13#10,
           ' image        =0x',HexStr(image,16),#13#10,

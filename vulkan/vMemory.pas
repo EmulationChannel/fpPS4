@@ -170,6 +170,7 @@ function GetSparceMemoryTypes:TVkUInt32;
 implementation
 
 uses
+ subr_backtrace,
  kern_rwlock,
  kern_dmem;
 
@@ -1841,6 +1842,7 @@ begin
  if (r<>VK_SUCCESS) then
  begin
   Writeln(StdErr,'vkAllocateMemory:',r,' Size=0x',HexStr(Size,16),' mtindex=',mtindex);
+  print_backtrace(StdErr,Get_pc_addr,get_frame,0);
  end;
 end;
 
