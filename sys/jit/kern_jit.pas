@@ -1042,7 +1042,6 @@ begin
    ori8se([r13-jit_frame_offset+Integer(@p_kthread(nil)^.pcb_flags),os8],Byte(PCB_IS_HLE));
   end;
 
-  //switch_stack:=True;
   if switch_stack then
   begin
    //save internal stack
@@ -1094,7 +1093,6 @@ begin
   movq(r14,[GS+Integer(teb_jitcall)]);
   movq([r13+Integer(@p_jit_frame(nil)^.tf_r13)],r14);
 
-  //switch_stack:=True;
   if switch_stack then
   begin
    //load rsp,rbp
@@ -1306,6 +1304,9 @@ begin
 
  jit_cbs[OPPnone,OPsldt,OPSnone]:=@op_invalid;
  jit_cbs[OPPnone,OPlldt,OPSnone]:=@op_invalid;
+
+ jit_cbs[OPPnone,OPxbegin,OPSnone]:=@op_invalid;
+ jit_cbs[OPPnone,OPxend  ,OPSnone]:=@op_invalid;
 end;
 
 function test_disassemble(addr:Pointer;vsize:Integer):Boolean;
@@ -1700,14 +1701,6 @@ begin
    else;
   end;
 
-  {
-  if (qword(ctx.ptr_curr) and $FFFFF) = $427F5 then
-  begin
-   print_asm:=true;
-   ctx.builder.int3;
-  end;
-  }
-
   if (din.Flags * [ifOnly32, ifOnly64, ifOnlyVex] <> []) or
      (din.ParseFlags * [preF3,preF2] <> []) or
      is_invalid(din) then
@@ -1793,6 +1786,14 @@ begin
   op_set_r14_imm(ctx,Int64(ctx.ptr_curr));
   with ctx.builder do
    movq([GS+Integer(teb_jitcall)],r14);
+  }
+
+  {
+  if (qword(ctx.ptr_curr) and $FFFFFF) = $2f662e then
+  begin
+   //print_asm:=true;
+   ctx.builder.int3;
+  end;
   }
 
   if op_lazy_jit(ctx) then
@@ -1883,15 +1884,6 @@ begin
   end;
 
   //print_asm:=False;
-
-
-  {
-  if (qword(ctx.ptr_curr) and $FFFFF) = $4d5b8 then
-  begin
-   //print_asm:=true;
-   ctx.builder.int3;
-  end;
-  }
 
   _next:
 
