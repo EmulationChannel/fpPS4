@@ -334,22 +334,16 @@ end;
 function ps4_sceNpCheckNpAvailability(reqId:Integer;onlineId:pSceNpOnlineId;pReserved:Pointer):Integer;
 begin
  Result:=0;
- //Result:=SCE_NP_ERROR_SIGNED_OUT;
- Result:=SCE_NP_ERROR_NOT_SIGNED_UP;
 end;
 
 function ps4_sceNpCheckNpAvailabilityA(reqId,userId:Integer):Integer;
 begin
  Result:=0;
- //Result:=SCE_NP_ERROR_SIGNED_OUT;
- Result:=SCE_NP_ERROR_NOT_SIGNED_UP;
 end;
 
 function ps4_sceNpCheckNpReachability(reqId,userId:Integer):Integer;
 begin
  Result:=0;
- //Result:=SCE_NP_ERROR_SIGNED_OUT;
- Result:=SCE_NP_ERROR_NOT_SIGNED_UP;
 end;
 
 function ps4_sceNpGetParentalControlInfo(reqId:Integer;
@@ -387,7 +381,6 @@ begin
  pInfo^.ugcRestriction    :=False;
 
  Result:=0;
-  Result:=SCE_NP_ERROR_NOT_SIGNED_UP;
 end;
 
 function ps4_sceNpCheckPlus(reqId:Integer;
@@ -400,7 +393,6 @@ begin
 
  pResult^.authorized:=False;
  Result:=0;
- Result:=SCE_NP_ERROR_NOT_SIGNED_UP;
 end;
 
 function ps4_sceNpNotifyPlusFeature(pParam:pSceNpNotifyPlusFeatureParameter):Integer;
@@ -446,7 +438,6 @@ begin
  pDateOfBirth^.month:=1;
  pDateOfBirth^.day  :=1;
  Result:=0;
- Result:=SCE_NP_ERROR_NOT_SIGNED_UP;
 end;
 
 function ps4_sceNpGetAccountDateOfBirthA(userId:SceUserServiceUserId;
@@ -458,7 +449,6 @@ begin
  pDateOfBirth^.month:=1;
  pDateOfBirth^.day  :=1;
  Result:=0;
- Result:=SCE_NP_ERROR_NOT_SIGNED_UP;
 end;
 
 function Load_libSceNpManager(name:pchar):p_lib_info;
