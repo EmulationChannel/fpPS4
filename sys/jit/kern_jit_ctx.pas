@@ -3332,8 +3332,29 @@ begin
 
       if (not (not_impl in desc.mem_reg.opt)) then
       begin
-       i:=GetFrameOffset(ctx.din.Operand[1]);
-       _VM(desc.mem_reg,new1,[r_thrd+i,mem_size]);
+
+       if ((his_ro in desc.hint) or (mem_size<>os32)) then
+       begin
+        i:=GetFrameOffset(ctx.din.Operand[1]);
+        _VM(desc.mem_reg,new1,[r_thrd+i,mem_size]);
+       end else
+       begin
+        new2:=new_reg_size(r_tmp0,ctx.din.Operand[1]);
+
+        if (not (his_wo in desc.hint)) or
+           (his_ro in desc.hint) then
+        begin
+         op_load(ctx,new2,1);
+        end;
+
+        _VV(desc.mem_reg,new1,new2,mem_size);
+
+        if not (his_ro in desc.hint) then
+        begin
+         op_save(ctx,1,fix_size(new2));
+        end;
+       end;
+
       end else
       begin
        new2:=new_reg_size(r_tmp0,ctx.din.Operand[1]);
