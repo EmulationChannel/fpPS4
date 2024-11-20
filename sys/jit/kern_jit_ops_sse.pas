@@ -740,12 +740,16 @@ begin
  jit_cbs[OPPnone,OPpmulhw  ,OPSnone]:=@op_reg_mem_rw;
  jit_cbs[OPPnone,OPpmuldq  ,OPSnone]:=@op_reg_mem_rw;
 
- jit_cbs[OPPnone,OPadd ,OPSx_sd]:=@op_reg_mem_rw;
- jit_cbs[OPPnone,OPadd ,OPSx_ss]:=@op_reg_mem_rw;
- jit_cbs[OPPnone,OPpadd,OPSx_b ]:=@op_reg_mem_rw;
- jit_cbs[OPPnone,OPpadd,OPSx_w ]:=@op_reg_mem_rw;
- jit_cbs[OPPnone,OPpadd,OPSx_d ]:=@op_reg_mem_rw;
- jit_cbs[OPPnone,OPpadd,OPSx_q ]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPadd   ,OPSx_sd]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPadd   ,OPSx_ss]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpadd  ,OPSx_b ]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpadd  ,OPSx_w ]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpadd  ,OPSx_d ]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpadd  ,OPSx_q ]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpadds ,OPSx_b ]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpadds ,OPSx_w ]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpaddus,OPSx_b ]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpaddus,OPSx_w ]:=@op_reg_mem_rw;
 
  jit_cbs[OPPnone,OPsub ,OPSx_sd]:=@op_reg_mem_rw;
  jit_cbs[OPPnone,OPsub ,OPSx_ss]:=@op_reg_mem_rw;
