@@ -3859,13 +3859,14 @@ begin
 
   if is_memory(ctx.din.Operand[2]) then
   begin
-   new2:=new_reg_size(r_tmp0,ctx.din.Operand[2]);
-
-   build_lea(ctx,2,r_tmp0);
    mem_size:=ctx.din.Operand[2].Size;
    Assert(mem_size<>os0);
 
+   build_lea(ctx,2,r_tmp0);
+
    op_copyin(ctx,mem_size);
+
+   new2:=new_reg_size(r_tmp0,mem_size);
 
    movq(new2,[r_tmp0]);
   end else
@@ -3933,13 +3934,14 @@ begin
 
   if is_memory(ctx.din.Operand[3]) then
   begin
-   new3:=new_reg_size(r_tmp1,ctx.din.Operand[3]);
-
-   build_lea(ctx,3,r_tmp0);
    mem_size:=ctx.din.Operand[3].Size;
    Assert(mem_size<>os0);
 
+   build_lea(ctx,3,r_tmp0);
+
    op_copyin(ctx,mem_size);
+
+   new3:=new_reg_size(r_tmp1,mem_size);
 
    movq(new3,[r_tmp0]);
   end else
