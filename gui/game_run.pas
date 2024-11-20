@@ -173,6 +173,13 @@ begin
  TryStringToGUID(ConfInfo.VulkanInfo.device,vDevice.VulkanDeviceGuid);
 
  vDevice.VulkanAppFlags:=t_vulkan_app_flags(ConfInfo.VulkanInfo.app_flags);
+ //
+
+ ps4_libSceSystemService.FSystemName  :=ConfInfo.PS4SystemService.SystemName;
+ ps4_libSceSystemService.FLanguage    :=ConfInfo.PS4SystemService.Language;
+ ps4_libSceSystemService.FDateFormat  :=ConfInfo.PS4SystemService.DateFormat;
+ ps4_libSceSystemService.FTimeFormat  :=ConfInfo.PS4SystemService.TimeFormat;
+ ps4_libSceSystemService.FButtonAssign:=ConfInfo.PS4SystemService.ButtonAssign;
 end;
 
 procedure prepare(GameStartupInfo:TGameStartupInfo); SysV_ABI_CDecl;

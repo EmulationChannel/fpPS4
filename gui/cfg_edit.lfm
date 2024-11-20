@@ -1,7 +1,7 @@
 object frmCfgEditor: TfrmCfgEditor
   Left = 448
   Height = 319
-  Top = 221
+  Top = 198
   Width = 400
   Caption = 'Config Editor'
   ClientHeight = 319
@@ -13,11 +13,11 @@ object frmCfgEditor: TfrmCfgEditor
     Height = 270
     Top = 0
     Width = 397
-    ActivePage = Tab_Vulkan
+    ActivePage = Tab_PS4System
     Align = alCustom
     Anchors = [akTop, akLeft, akRight, akBottom]
     BorderSpacing.Bottom = 10
-    TabIndex = 4
+    TabIndex = 5
     TabOrder = 0
     object Tab_MainInfo: TTabSheet
       Caption = 'Main'
@@ -512,6 +512,237 @@ object frmCfgEditor: TfrmCfgEditor
         Data = {
           0E0000000202020202020202020202020202
         }
+      end
+    end
+    object Tab_PS4System: TTabSheet
+      Caption = 'PS4 System'
+      ClientHeight = 242
+      ClientWidth = 389
+      object PanelHalf: TPanel
+        AnchorSideLeft.Control = Tab_PS4System
+        AnchorSideLeft.Side = asrCenter
+        AnchorSideRight.Control = Tab_PS4System
+        AnchorSideRight.Side = asrCenter
+        Left = 188
+        Height = 49
+        Top = 64
+        Width = 12
+        Anchors = [akTop, akLeft, akRight]
+        BevelOuter = bvNone
+        Enabled = False
+        TabOrder = 0
+      end
+      object Edt_PS4SystemService_Language: TComboBox
+        AnchorSideLeft.Control = Tab_PS4System
+        AnchorSideTop.Control = Label5
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = Tab_PS4System
+        AnchorSideRight.Side = asrBottom
+        Left = 10
+        Height = 23
+        Top = 93
+        Width = 369
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        ItemHeight = 15
+        Items.Strings = (
+          'Japanese'
+          'English (United States)'
+          'French (France)'
+          'Spanish (Spain)'
+          'German'
+          'Italian'
+          'Dutch'
+          'Portuguese (Portugal)'
+          'Russian'
+          'Korean'
+          'Chinese (traditional)'
+          'Chinese (simplified)'
+          'Finnish'
+          'Swedish'
+          'Danish'
+          'Norwegian'
+          'Polish'
+          'Portuguese (Brazil)'
+          'English (United Kingdom)'
+          'Turkish'
+          'Spanish (Latin America)'
+          'Arabic'
+          'French (Canada)'
+          'Czech'
+          'Hungarian'
+          'Greek'
+          'Romanian'
+          'Thai'
+          'Vietnamese'
+          'Indonesian'
+          'Ukrainian'
+        )
+        Style = csDropDownList
+        TabOrder = 2
+      end
+      object Edt_PS4SystemService_DateFormat: TComboBox
+        AnchorSideLeft.Control = Tab_PS4System
+        AnchorSideTop.Control = Label6
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = PanelHalf
+        Left = 10
+        Height = 23
+        Top = 151
+        Width = 168
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        ItemHeight = 15
+        Items.Strings = (
+          'YYYYMMDD'
+          'DDMMYYYY'
+          'MMDDYYYY'
+        )
+        Style = csDropDownList
+        TabOrder = 3
+      end
+      object Label6: TLabel
+        AnchorSideLeft.Control = Tab_PS4System
+        AnchorSideTop.Control = Edt_PS4SystemService_Language
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = PanelHalf
+        Left = 10
+        Height = 15
+        Top = 126
+        Width = 168
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        Caption = 'Date Format:'
+      end
+      object Edt_PS4SystemService_TimeFormat: TComboBox
+        AnchorSideLeft.Control = PanelHalf
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = Label6
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = Tab_PS4System
+        AnchorSideRight.Side = asrBottom
+        Left = 210
+        Height = 23
+        Top = 151
+        Width = 169
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        ItemHeight = 15
+        Items.Strings = (
+          '12HOUR'
+          '24HOUR'
+        )
+        Style = csDropDownList
+        TabOrder = 4
+      end
+      object Label7: TLabel
+        AnchorSideLeft.Control = PanelHalf
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = Edt_PS4SystemService_Language
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = Tab_PS4System
+        AnchorSideRight.Side = asrBottom
+        Left = 210
+        Height = 15
+        Top = 126
+        Width = 169
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        Caption = 'Time Format:'
+      end
+      object Label8: TLabel
+        AnchorSideLeft.Control = Tab_PS4System
+        AnchorSideTop.Control = Edt_PS4SystemService_TimeFormat
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = PanelHalf
+        Left = 10
+        Height = 15
+        Top = 184
+        Width = 168
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        Caption = 'Button Assign:'
+      end
+      object Edt_PS4SystemService_ButtonAssign: TComboBox
+        AnchorSideLeft.Control = Tab_PS4System
+        AnchorSideTop.Control = Label8
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = PanelHalf
+        Left = 10
+        Height = 23
+        Top = 209
+        Width = 168
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        ItemHeight = 15
+        Items.Strings = (
+          'CIRCLE'
+          'CROSS'
+        )
+        Style = csDropDownList
+        TabOrder = 5
+      end
+      object Label9: TLabel
+        AnchorSideLeft.Control = Tab_PS4System
+        AnchorSideTop.Control = Tab_PS4System
+        AnchorSideRight.Control = Tab_PS4System
+        AnchorSideRight.Side = asrBottom
+        Left = 10
+        Height = 15
+        Top = 10
+        Width = 369
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        Caption = 'System Name:'
+      end
+      object Label5: TLabel
+        AnchorSideLeft.Control = Tab_PS4System
+        AnchorSideTop.Control = Edt_PS4SystemService_SystemName
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = Tab_PS4System
+        AnchorSideRight.Side = asrBottom
+        Left = 10
+        Height = 15
+        Top = 68
+        Width = 369
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        Caption = 'Language:'
+      end
+      object Edt_PS4SystemService_SystemName: TEdit
+        AnchorSideLeft.Control = Tab_PS4System
+        AnchorSideTop.Control = Label9
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = Tab_PS4System
+        AnchorSideRight.Side = asrBottom
+        Left = 10
+        Height = 23
+        Top = 35
+        Width = 369
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 10
+        BorderSpacing.Top = 10
+        BorderSpacing.Right = 10
+        MaxLength = 65
+        TabOrder = 1
       end
     end
   end

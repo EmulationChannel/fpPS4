@@ -13,6 +13,13 @@ uses
   ps4_libSceUserService,
   ps4_libSceNpCommon;
 
+var
+ FSystemName  :array[0..65] of AnsiChar='PS4-123'#0;
+ FLanguage    :ShortInt=-1;
+ FDateFormat  :ShortInt=-1;
+ FTimeFormat  :ShortInt=-1;
+ FButtonAssign:Byte=0;
+
 const
  SCE_SYSTEM_SERVICE_PARAM_ID_LANG                =1;
  SCE_SYSTEM_SERVICE_PARAM_ID_DATE_FORMAT         =2;
@@ -76,10 +83,10 @@ const
  SCE_SYSTEM_PARAM_TIME_FORMAT_12HOUR=0;
  SCE_SYSTEM_PARAM_TIME_FORMAT_24HOUR=1;
 
- //
+ // System name
  SCE_SYSTEM_SERVICE_MAX_SYSTEM_NAME_LENGTH=65;
 
- //
+ // Game parental level
  SCE_SYSTEM_PARAM_GAME_PARENTAL_OFF    =0;
  SCE_SYSTEM_PARAM_GAME_PARENTAL_LEVEL01=1;
  SCE_SYSTEM_PARAM_GAME_PARENTAL_LEVEL02=2;
@@ -93,7 +100,7 @@ const
  SCE_SYSTEM_PARAM_GAME_PARENTAL_LEVEL10=10;
  SCE_SYSTEM_PARAM_GAME_PARENTAL_LEVEL11=11;
 
- //
+ // Enter button assign
  SCE_SYSTEM_PARAM_ENTER_BUTTON_ASSIGN_CIRCLE=0;
  SCE_SYSTEM_PARAM_ENTER_BUTTON_ASSIGN_CROSS =1;
 
@@ -125,6 +132,10 @@ const
  SCE_SYSTEM_SERVICE_EVENT_GAME_INTENT                       = $10000017;
  SCE_SYSTEM_SERVICE_EVENT_OPEN_SHARE_MENU                   = $30000000;
  SCE_SYSTEM_SERVICE_EVENT_UNIFIED_ENTITLEMENT_UPDATE        = $10000018;
+
+function GetHostSystemLang:Byte;
+function GetHostSystemDateFormat:Byte;
+function GetHostSystemTimeFormat:Byte;
 
 function ps4_sceSystemServiceParamGetInt(paramId:Integer;value:Pinteger):Integer;
 
@@ -205,15 +216,14 @@ type
   end;
  end;
 
-function GetHostSystemLang:Integer;
+////
+function GetHostSystemLang:Byte;
 var
  info:DWORD;
 begin
  Result:=SCE_SYSTEM_PARAM_LANG_ENGLISH_US;
 
- sig_lock;
  info:=GetThreadLocale;
- sig_unlock;
 
  info:=info and $FFFF;
 
@@ -280,16 +290,14 @@ begin
  end;
 end;
 
-function GetHostSystemDateFormat:Integer;
+function GetHostSystemDateFormat:Byte;
 var
  Format:array[0..0] of AnsiChar;
 begin
  Result:=0;
  Format[0]:=#0;
 
- sig_lock;
  GetLocaleInfo(LOCALE_USER_DEFAULT,LOCALE_ILDATE,@Format,1);
- sig_unlock;
 
  Case Format[0] of
   '0':Result:=SCE_SYSTEM_PARAM_DATE_FORMAT_MMDDYYYY;
@@ -298,22 +306,21 @@ begin
  end;
 end;
 
-function GetHostSystemTimeFormat:Integer;
+function GetHostSystemTimeFormat:Byte;
 var
  Format:array[0..0] of AnsiChar;
 begin
  Result:=0;
  Format[0]:=#0;
 
- sig_lock;
  GetLocaleInfo(LOCALE_USER_DEFAULT,LOCALE_ILDATE,@Format,1);
- sig_unlock;
 
  Case Format[0] of
   '0':Result:=SCE_SYSTEM_PARAM_TIME_FORMAT_12HOUR;
   '1':Result:=SCE_SYSTEM_PARAM_TIME_FORMAT_24HOUR;
  end;
 end;
+////
 
 function ps4_sceSystemServiceParamGetInt(paramId:Integer;value:Pinteger):Integer;
 var
@@ -327,17 +334,32 @@ begin
  Case paramId of
   SCE_SYSTEM_SERVICE_PARAM_ID_LANG:
    begin
-    value^:=GetHostSystemLang;
+    if (FLanguage=-1) then
+    begin
+     FLanguage:=GetHostSystemLang;
+    end;
+    //
+    value^:=FLanguage;
    end;
 
   SCE_SYSTEM_SERVICE_PARAM_ID_DATE_FORMAT:
    begin
-    value^:=GetHostSystemDateFormat;
+    if (FDateFormat=-1) then
+    begin
+     FDateFormat:=GetHostSystemDateFormat;
+    end;
+    //
+    value^:=FDateFormat;
    end;
 
   SCE_SYSTEM_SERVICE_PARAM_ID_TIME_FORMAT:
    begin
-    value^:=GetHostSystemTimeFormat;
+    if (FTimeFormat=-1) then
+    begin
+     FTimeFormat:=GetHostSystemTimeFormat;
+    end;
+    //
+    value^:=FTimeFormat;
    end;
 
   SCE_SYSTEM_SERVICE_PARAM_ID_TIME_ZONE:
@@ -352,27 +374,42 @@ begin
     value^:=z.tz_dsttime;
    end;
 
-  SCE_SYSTEM_SERVICE_PARAM_ID_SYSTEM_NAME:;
-  SCE_SYSTEM_SERVICE_PARAM_ID_GAME_PARENTAL_LEVEL:value^:=SCE_SYSTEM_PARAM_GAME_PARENTAL_OFF;
-  SCE_SYSTEM_SERVICE_PARAM_ID_ENTER_BUTTON_ASSIGN:value^:=SCE_SYSTEM_PARAM_ENTER_BUTTON_ASSIGN_CROSS;
+  SCE_SYSTEM_SERVICE_PARAM_ID_SYSTEM_NAME:; //error
+
+  SCE_SYSTEM_SERVICE_PARAM_ID_GAME_PARENTAL_LEVEL:
+   begin
+    value^:=SCE_SYSTEM_PARAM_GAME_PARENTAL_OFF;
+   end;
+
+  SCE_SYSTEM_SERVICE_PARAM_ID_ENTER_BUTTON_ASSIGN:
+   begin
+    value^:=FButtonAssign;
+   end
 
   else
    Exit(SCE_SYSTEM_SERVICE_ERROR_PARAMETER);
  end;
 end;
 
-const
- SYSTEM_NAME='PS4-123'#0;
-
 function ps4_sceSystemServiceParamGetString(paramId:Integer;buf:Pchar;bufSize:size_t):Integer;
+var
+ len:Integer;
 begin
  if (buf=nil) then Exit(SCE_SYSTEM_SERVICE_ERROR_PARAMETER);
 
  Case paramId of
   SCE_SYSTEM_SERVICE_PARAM_ID_SYSTEM_NAME:
    begin
-    if (bufSize<Length(SYSTEM_NAME)) then Exit(SCE_SYSTEM_SERVICE_ERROR_PARAMETER);
-    Move(PChar(SYSTEM_NAME)^,buf^,Length(SYSTEM_NAME));
+    //fixup
+    FSystemName[SCE_SYSTEM_SERVICE_MAX_SYSTEM_NAME_LENGTH]:=#0;
+    len:=strlen(@FSystemName);
+
+    if (bufSize<len) then
+    begin
+     Exit(SCE_SYSTEM_SERVICE_ERROR_PARAMETER);
+    end;
+
+    Move(FSystemName,buf^,len);
    end;
   else
    Exit(SCE_SYSTEM_SERVICE_ERROR_PARAMETER);
@@ -442,11 +479,15 @@ begin
  status^.isGameLiveStreamingOnAir:=false;
  status^.isOutOfVrPlayArea       :=false;
  Result:=0;
+
+ Writeln('sceSystemServiceGetStatus');
 end;
 
 function ps4_sceSystemServiceReceiveEvent(event:pSceSystemServiceEvent):Integer;
 begin
  if (event=nil) then Exit(SCE_SYSTEM_SERVICE_ERROR_PARAMETER);
+
+ Writeln('sceSystemServiceReceiveEvent');
 
  if CAS(display_safe_area_update,1,0) then
  begin

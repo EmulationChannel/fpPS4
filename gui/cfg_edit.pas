@@ -36,6 +36,11 @@ type
     BtnOk: TButton;
     BtnLogOpen: TButton;
     BtnDataOpen: TButton;
+    Edt_PS4SystemService_SystemName: TEdit;
+    Edt_PS4SystemService_ButtonAssign: TComboBox;
+    Edt_PS4SystemService_TimeFormat: TComboBox;
+    Edt_PS4SystemService_Language: TComboBox;
+    Edt_PS4SystemService_DateFormat: TComboBox;
     GrAppFlags: TCheckGroup;
     Edt_VulkanInfo_device_cmb: TComboBox;
     Edt_BootparamInfo_halt_on_exit: TCheckBox;
@@ -60,6 +65,13 @@ type
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
+    Label8: TLabel;
+    Label9: TLabel;
+    PanelHalf: TPanel;
+    Tab_PS4System: TTabSheet;
     Tab_Vulkan: TTabSheet;
     Tab_Misc: TTabSheet;
     Tab_JIT: TTabSheet;
@@ -94,7 +106,9 @@ implementation
 
 uses
  TypInfo,
- Rtti;
+ Rtti,
+
+ ps4_libSceSystemService;
 
 var
  FVulkanDeviceInit:Boolean=False;
@@ -266,26 +280,26 @@ end;
 
 procedure SetText(control:TComponent;const Text:RawByteString);
 begin
- if control.InheritsFrom(TControl) then
- begin
-  TMyControl(control).Text:=Text;
- end else
  if (control is TVulkanDevGuid) then
  begin
   TVulkanDevGuid(control).SetText(Text);
+ end else
+ if control.InheritsFrom(TControl) then
+ begin
+  TMyControl(control).Text:=Text;
  end;
 end;
 
 function GetText(control:TComponent):RawByteString;
 begin
  Result:='';
- if control.InheritsFrom(TControl) then
- begin
-  Result:=TMyControl(control).Text;
- end else
  if (control is TVulkanDevGuid) then
  begin
   Result:=TVulkanDevGuid(control).GetText;
+ end else
+ if control.InheritsFrom(TControl) then
+ begin
+  Result:=TMyControl(control).Text;
  end;
 end;
 
@@ -296,6 +310,28 @@ begin
  if (control is TVulkanAppFlags) then
  begin
   TVulkanAppFlags(control).SetInteger(i);
+ end else
+ if control.InheritsFrom(TCustomComboBox) then
+ begin
+  if (i=-1) then
+  begin
+   //preload default
+   if (control.Name='Edt_PS4SystemService_Language') then
+   begin
+    i:=GetHostSystemLang;
+   end else
+   if (control.Name='Edt_PS4SystemService_DateFormat') then
+   begin
+    i:=GetHostSystemDateFormat;
+   end else
+   if (control.Name='Edt_PS4SystemService_TimeFormat') then
+   begin
+    i:=GetHostSystemTimeFormat;
+   end;
+   //preload default
+  end;
+
+  TCustomComboBox(control).ItemIndex:=i;
  end;
 end;
 
@@ -305,6 +341,10 @@ begin
  if (control is TVulkanAppFlags) then
  begin
   Result:=TVulkanAppFlags(control).GetInteger;
+ end else
+ if control.InheritsFrom(TCustomComboBox) then
+ begin
+  Result:=TCustomComboBox(control).ItemIndex;
  end;
 end;
 

@@ -166,19 +166,38 @@ type
   property app_flags:DWORD read Fapp_flags write Fapp_flags;
  end;
 
+ TPS4SystemService=class(TAbstractObject)
+ private
+  FSystemName  :RawByteString;
+  FLanguage    :ShortInt;
+  FDateFormat  :ShortInt;
+  FTimeFormat  :ShortInt;
+  FButtonAssign:Byte;
+ published
+  property SystemName  :RawByteString read FSystemName   write FSystemName;
+  property Language    :ShortInt      read FLanguage     write FLanguage;
+  property DateFormat  :ShortInt      read FDateFormat   write FDateFormat;
+  property TimeFormat  :ShortInt      read FTimeFormat   write FTimeFormat;
+  property ButtonAssign:Byte          read FButtonAssign write FButtonAssign;
+ public
+  Constructor Create; override;
+ end;
+
  TConfigInfo=class(TAbstractObject)
   private
-   FMainInfo     :TMainInfo;
-   FBootParamInfo:TBootParamInfo;
-   FJITInfo      :TJITInfo;
-   FMiscInfo     :TMiscInfo;
-   FVulkanInfo   :TVulkanInfo;
+   FMainInfo        :TMainInfo;
+   FBootParamInfo   :TBootParamInfo;
+   FJITInfo         :TJITInfo;
+   FMiscInfo        :TMiscInfo;
+   FVulkanInfo      :TVulkanInfo;
+   FPS4SystemService:TPS4SystemService;
   published
-   property MainInfo     :TMainInfo      read FMainInfo      write FMainInfo;
-   property BootParamInfo:TBootParamInfo read FBootParamInfo write FBootParamInfo;
-   property JITInfo      :TJITInfo       read FJITInfo       write FJITInfo;
-   property MiscInfo     :TMiscInfo      read FMiscInfo      write FMiscInfo;
-   property VulkanInfo   :TVulkanInfo    read FVulkanInfo    write FVulkanInfo;
+   property MainInfo        :TMainInfo         read FMainInfo         write FMainInfo;
+   property BootParamInfo   :TBootParamInfo    read FBootParamInfo    write FBootParamInfo;
+   property JITInfo         :TJITInfo          read FJITInfo          write FJITInfo;
+   property MiscInfo        :TMiscInfo         read FMiscInfo         write FMiscInfo;
+   property VulkanInfo      :TVulkanInfo       read FVulkanInfo       write FVulkanInfo;
+   property PS4SystemService:TPS4SystemService read FPS4SystemService write FPS4SystemService;
  end;
 
  TGameInfo=class(TAbstractObject)
@@ -1054,6 +1073,16 @@ begin
  Fsystem :=DirectorySeparator+'system';
  Fdata   :=DirectorySeparator+'data';
  Ffork_proc:=True;
+end;
+
+Constructor TPS4SystemService.Create;
+begin
+ inherited;
+ FSystemName  :='PS4-123';
+ FLanguage    :=-1;
+ FDateFormat  :=-1;
+ FTimeFormat  :=-1;
+ FButtonAssign:=1;
 end;
 
 Constructor TGameInfo.Create;
