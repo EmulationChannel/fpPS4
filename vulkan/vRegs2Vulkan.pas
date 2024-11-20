@@ -1245,7 +1245,7 @@ begin
  Result.Z_READ_ADDR :=Pointer(QWORD(CX_REG^.DB_Z_READ_BASE ) shl 8);
  Result.Z_WRITE_ADDR:=Pointer(QWORD(CX_REG^.DB_Z_WRITE_BASE) shl 8);
 
- Assert(Result.Z_READ_ADDR=Result.Z_WRITE_ADDR,'Z_READ_ADDR<>Z_WRITE_ADDR');
+ Assert(Result.Z_READ_ADDR=Result.Z_WRITE_ADDR,'Z_READ_ADDR:'+HexStr(Result.Z_READ_ADDR)+'<>Z_WRITE_ADDR:'+HexStr(Result.Z_WRITE_ADDR));
 
  Result.STENCIL_READ_ADDR :=Pointer(QWORD(CX_REG^.DB_STENCIL_READ_BASE ) shl 8);
  Result.STENCIL_WRITE_ADDR:=Pointer(QWORD(CX_REG^.DB_STENCIL_WRITE_BASE) shl 8);
@@ -1645,6 +1645,11 @@ function _get_vsharp_cformat(PV:PVSharpResource4):TVkFormat;
 begin
  Result:=VK_FORMAT_UNDEFINED;
  if (PV=nil) then Exit;
+
+ if (PV^.dfmt=BUF_DATA_FORMAT_INVALID) then
+ begin
+  Exit(VK_FORMAT_UNDEFINED);
+ end;
 
  Case PV^.nfmt of
 
