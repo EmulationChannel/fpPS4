@@ -80,13 +80,13 @@ function  dmem_map_lookup_entry(
 
 function  dmem_map_insert(
             map   :p_dmem_map;
-            vaddr :DWORD;
             start :DWORD;
             __end :DWORD;
             m_type:DWORD):Integer;
 
 Function  dmem_map_query_available(map:p_dmem_map;start,__end,align:QWORD;var oaddr,osize:QWORD):Integer;
 Function  dmem_map_query(map:p_dmem_map;offset:QWORD;flags,id:Integer;info:Pointer;size:QWORD):Integer;
+Function  dmem_map_get_memory_type(map:p_dmem_map;info:Pointer):Integer;
 Function  dmem_map_alloc(map:p_dmem_map;start,__end,len,align:QWORD;mtype:DWORD;var oaddr:QWORD):Integer;
 Function  dmem_map_release(map:p_dmem_map;start,len:QWORD;check:Boolean):Integer;
 
@@ -514,7 +514,6 @@ end;
 
 function dmem_map_insert(
            map   :p_dmem_map;
-           vaddr :DWORD;
            start :DWORD;
            __end :DWORD;
            m_type:DWORD):Integer;
@@ -674,8 +673,8 @@ begin
 end;
 
 type
- pSceKernelDirectMemoryQueryInfo=^SceKernelDirectMemoryQueryInfo;
- SceKernelDirectMemoryQueryInfo=packed record
+ pSceKernelDirectMemoryQueryInfo=^TSceKernelDirectMemoryQueryInfo;
+ TSceKernelDirectMemoryQueryInfo=packed record
   start:QWORD;
   __end:QWORD;
   mtype:Integer;
@@ -684,8 +683,9 @@ type
 
 Function dmem_map_query(map:p_dmem_map;offset:QWORD;flags,id:Integer;info:Pointer;size:QWORD):Integer;
 var
- data:SceKernelDirectMemoryQueryInfo;
+ data:TSceKernelDirectMemoryQueryInfo;
  entry:p_dmem_map_entry;
+ index:DWORD;
 begin
  Result:=0;
 
@@ -696,7 +696,7 @@ begin
 
  Assert(id=0,'dmem_map_query (id<>0)');
 
- data:=Default(SceKernelDirectMemoryQueryInfo);
+ data:=Default(TSceKernelDirectMemoryQueryInfo);
 
  Result:=EACCES;
 
@@ -705,14 +705,16 @@ begin
  if (map^.root<>nil) then
  begin
 
-  map^.root:=dmem_map_entry_splay(OFF_TO_IDX(offset), map^.root);
+  index:=OFF_TO_IDX(offset);
+
+  map^.root:=dmem_map_entry_splay(index, map^.root);
   entry:=map^.root;
 
   if ((flags and 1)=0) then
   begin
    if (entry<>nil) then
-   if (entry^.start<=offset) and
-      (entry^.__end>offset) then
+   if (entry^.start<=index) and
+      (entry^.__end>index) then
    begin
     Result:=0;
    end;
@@ -721,7 +723,7 @@ begin
    while (entry<>nil) and (entry<>@map^.header) do
    begin
     if (entry^.m_type<>DWORD(-1)) and
-       (entry^.__end>offset) then
+       (entry^.__end>index) then
     begin
      Result:=0;
      Break;
@@ -732,8 +734,8 @@ begin
 
   if (Result=0) then
   begin
-   data.start:=entry^.start;
-   data.__end:=entry^.__end;
+   data.start:=IDX_TO_OFF(entry^.start);
+   data.__end:=IDX_TO_OFF(entry^.__end);
    data.mtype:=entry^.m_type;
   end;
 
@@ -743,12 +745,61 @@ begin
 
  if (Result<>0) then Exit;
 
- if (size>sizeof(SceKernelDirectMemoryQueryInfo)) then
+ if (size>sizeof(TSceKernelDirectMemoryQueryInfo)) then
  begin
-  size:=sizeof(SceKernelDirectMemoryQueryInfo);
+  size:=sizeof(TSceKernelDirectMemoryQueryInfo);
  end;
 
  Result:=copyout(@data,info,size);
+end;
+
+type
+ PGetDirectMemoryType=^TGetDirectMemoryType;
+ TGetDirectMemoryType=packed record
+  start    :QWORD; //in
+  start_out:QWORD; //out
+  __end_out:QWORD; //out
+  mtype_out:DWORD; //out
+  align    :Integer;
+ end;
+
+Function dmem_map_get_memory_type(map:p_dmem_map;info:Pointer):Integer;
+var
+ data:PGetDirectMemoryType;
+ entry:p_dmem_map_entry;
+ index:DWORD;
+begin
+ data:=info;
+
+ Result:=ENOENT;
+
+ dmem_map_lock(map);
+
+ if (map^.root<>nil) then
+ begin
+
+  index:=OFF_TO_IDX(data^.start);
+
+  map^.root:=dmem_map_entry_splay(index, map^.root);
+  entry:=map^.root;
+
+  if (entry<>nil) then
+  if (entry^.start<=index) and
+     (entry^.__end>index) then
+  begin
+   Result:=0;
+  end;
+
+  if (Result=0) then
+  begin
+   data^.start_out:=IDX_TO_OFF(entry^.start);
+   data^.__end_out:=IDX_TO_OFF(entry^.__end);
+   data^.mtype_out:=entry^.m_type;
+  end;
+
+ end;
+
+ dmem_map_unlock(map);
 end;
 
 Function dmem_map_alloc(map:p_dmem_map;start,__end,len,align:QWORD;mtype:DWORD;var oaddr:QWORD):Integer;
@@ -835,7 +886,7 @@ begin
    Exit(EAGAIN);
   end;
 
-  Result:=dmem_map_insert(map,0,OFF_TO_IDX(start),OFF_TO_IDX(start+len),mtype);
+  Result:=dmem_map_insert(map,OFF_TO_IDX(start),OFF_TO_IDX(start+len),mtype);
  until (Result<>EAGAIN);
 
  dmem_map_unlock(map);
@@ -1118,7 +1169,7 @@ begin
  begin
   dmem_map_delete(map, start, __end);
  end;
- Result:=dmem_map_insert(map, 0, start, __end, m_type);
+ Result:=dmem_map_insert(map, start, __end, m_type);
  dmem_map_unlock(map);
 end;
 

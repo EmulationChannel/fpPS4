@@ -42,6 +42,7 @@ type
   len  :QWORD; //in
   align:QWORD; //in
   mtype:DWORD;
+  _alig:DWORD;
  end;
 
  PReleaseDirectMemory=^TReleaseDirectMemory;
@@ -127,6 +128,11 @@ begin
 
               Result:=dmem_map_query(dmem_maps[d_pool_id].dmem,offset,flags,id,info,size);
              end;
+            end;
+
+  $C0208004: //sceKernelGetDirectMemoryType
+            begin
+             Result:=dmem_map_get_memory_type(dmap^.dmem,data);
             end;
 
   else

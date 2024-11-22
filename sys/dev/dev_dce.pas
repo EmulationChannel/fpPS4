@@ -414,7 +414,7 @@ var
 begin
  Result:=0;
 
- //Writeln('dce_flip_control(',data^.id,')');
+ Writeln('dce_flip_control(',data^.id,')');
 
  //id -> 0..0x24
 
@@ -1145,7 +1145,7 @@ Function dce_ioctl(dev:p_cdev;cmd:QWORD;data:Pointer;fflag:Integer):Integer;
 begin
  Result:=0;
 
- Writeln('dce_ioctl(0x',HexStr(cmd,8),')');
+ //Writeln('dce_ioctl(0x',HexStr(cmd,8),')');
 
  case cmd of
   $C0308203:Result:=dce_flip_control        (dev,data); //SCE_SYS_DCE_IOCTL_FLIP_CONTROL

@@ -341,8 +341,15 @@ begin
 
       if (self_hdr^.File_size>obj_size) then
       begin
-       FreeMem(self_hdr);
-       Exit(EFAULT);
+       //resize
+       self_hdr:=ReAllocMem(self_hdr,self_hdr^.File_size);
+       //fill zeros
+       FillChar(PBYTE(self_hdr)[obj_size],self_hdr^.File_size-obj_size,0);
+       //new size
+       obj_size:=self_hdr^.File_size;
+
+       //FreeMem(self_hdr);
+       //Exit(EFAULT);
       end;
 
       count:=self_hdr^.Num_Segments;
