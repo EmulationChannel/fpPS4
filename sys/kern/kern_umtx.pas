@@ -1000,57 +1000,59 @@ begin
 
     Continue;
    end;
+  end;
 
-   if ((flags and UMUTEX_ERROR_CHECK)<>0) and
-      ((owner and (not UMUTEX_CONTESTED))=id) then
-   begin
-    Exit(EDEADLK);
-   end;
+  if ((flags and UMUTEX_ERROR_CHECK)<>0) and
+     ((owner and (not UMUTEX_CONTESTED))=id) then
+  begin
+   Exit(EDEADLK);
+  end;
 
-   if (mode=_UMUTEX_TRY) then
-   begin
-    Exit(EBUSY);
-   end;
+  if (mode=_UMUTEX_TRY) then
+  begin
+   Exit(EBUSY);
+  end;
 
-   if (Result<>0) then Exit;
+  if (Result<>0) then Exit;
 
-   Result:=umtx_key_get(m, TYPE_NORMAL_UMUTEX, GET_SHARE(flags), @uq^.uq_key);
-   if (Result<>0) then Exit;
+  Result:=umtx_key_get(m, TYPE_NORMAL_UMUTEX, GET_SHARE(flags), @uq^.uq_key);
+  if (Result<>0) then Exit;
 
+  umtxq_lock  (@uq^.uq_key);
+  umtxq_busy  (@uq^.uq_key);
+  umtxq_insert(uq);
+  umtxq_unlock(@uq^.uq_key);
+
+  old:=casuword32(m^.m_owner,owner,owner or UMUTEX_CONTESTED);
+
+  if (old=DWORD(-1)) then
+  begin
    umtxq_lock  (@uq^.uq_key);
-   umtxq_busy  (@uq^.uq_key);
-   umtxq_insert(uq);
-   umtxq_unlock(@uq^.uq_key);
-
-   old:=casuword32(m^.m_owner,owner,owner or UMUTEX_CONTESTED);
-
-   if (old=DWORD(-1)) then
-   begin
-    umtxq_lock  (@uq^.uq_key);
-    umtxq_remove(uq);
-    umtxq_unbusy(@uq^.uq_key);
-    umtxq_unlock(@uq^.uq_key);
-
-    umtx_key_release(@uq^.uq_key);
-
-    Exit(EFAULT);
-   end;
-
-   umtxq_lock  (@uq^.uq_key);
-   umtxq_unbusy(@uq^.uq_key);
-
-   if (old=owner) then
-   begin
-    Result:=umtxq_sleep(uq,'umtxn',timo);
-   end;
-
    umtxq_remove(uq);
+   umtxq_unbusy(@uq^.uq_key);
    umtxq_unlock(@uq^.uq_key);
 
    umtx_key_release(@uq^.uq_key);
+
+   Exit(EFAULT);
   end;
 
+  umtxq_lock  (@uq^.uq_key);
+  umtxq_unbusy(@uq^.uq_key);
+
+  if (old=owner) then
+  begin
+   Result:=umtxq_sleep(uq,'umtxn',timo);
+  end;
+
+  umtxq_remove(uq);
+  umtxq_unlock(@uq^.uq_key);
+
+  umtx_key_release(@uq^.uq_key);
+
  until false;
+
+ Exit(0);
 end;
 
 function do_unlock_normal(td:p_kthread;m:p_umutex;flags:Integer):Integer;
@@ -1126,6 +1128,8 @@ begin
  begin
   Exit(EINVAL);
  end;
+
+ Exit(0);
 end;
 
 function do_wake_umutex(td:p_kthread;m:p_umutex):Integer;
@@ -1173,6 +1177,8 @@ begin
  umtxq_unlock(@key);
 
  umtx_key_release(@key);
+
+ Exit(0);
 end;
 
 function do_wake2_umutex(td:p_kthread;m:p_umutex;flags:DWORD):Integer;

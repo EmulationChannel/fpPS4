@@ -350,7 +350,7 @@ begin
     begin
      with p_pad_state_args(data)^ do
      begin
-      Writeln('handle=0x',HexStr(id,8));
+      //Writeln('handle=0x',HexStr(id,8));
 
       fill_device_info(u.pad_device_info);
 
@@ -387,7 +387,7 @@ begin
      with p_read_state_args(data)^ do
      begin
 
-      Writeln('handle=0x',HexStr(handle,8));
+      //Writeln('handle=0x',HexStr(handle,8));
 
       u.pad_state:=Default(t_pad_state);
 
