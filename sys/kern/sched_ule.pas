@@ -131,6 +131,9 @@ begin
  Result:=msleep_td(slptick);
 
  thread_lock(td);
+
+ //reset thread wakeup queue after lock
+ md_reset_wakeup;
 end;
 
 function setrunnable(td:p_kthread):Integer;

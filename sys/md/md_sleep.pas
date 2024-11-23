@@ -12,6 +12,7 @@ uses
 
 function  msleep_td(timo:Int64):Integer;
 function  wakeup_td(td:p_kthread):Integer;
+procedure md_reset_wakeup;
 procedure md_yield;
 
 implementation
@@ -67,6 +68,11 @@ end;
 function wakeup_td(td:p_kthread):Integer;
 begin
  Result:=ntw2px(NtQueueApcThread(td^.td_handle,@_apc_null,nil,nil,0));
+end;
+
+procedure md_reset_wakeup;
+begin
+ NtTestAlert();
 end;
 
 procedure md_yield;

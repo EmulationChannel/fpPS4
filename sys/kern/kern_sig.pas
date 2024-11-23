@@ -1785,8 +1785,6 @@ begin
 
  thread_unlock(td);
 
- md_test_alert;
-
  if ((flags and TDF_ALRMPEND)<>0) then
  begin
   PROC_LOCK;

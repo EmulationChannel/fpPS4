@@ -262,7 +262,8 @@ begin
  Assert(td^.td_sleepqueue=nil);
  Assert(wchan<>nil);
 
- td^.td_slptick:=time;
+ //Hack: callout_reset_curcpu(@td^.td_slpcallout, timo, sleepq_timeout, td);
+ td^.td_slptick   :=time;
  td^.td_slpcallout:=@sleepq_timeout;
 end;
 
@@ -440,6 +441,8 @@ begin
 
  r:=mi_switch(SW_VOL or SWT_SLEEPQ);
 
+ //Hack: call sleepq_timeout on timeout
+ if (r=ETIMEDOUT) then
  if (td^.td_slpcallout=Pointer(@sleepq_timeout)) then
  begin
   sleepq_timeout(td);
@@ -450,7 +453,10 @@ begin
  mtx_lock(td^.tdq_lock);
  thread_lock_set(td,@td^.tdq_lock);
 
- Assert(TD_IS_RUNNING(td),'running but not TDS_RUNNING');
+ if not TD_IS_RUNNING(td) then
+ begin
+  Assert(false,'running but not TDS_RUNNING');
+ end;
 end;
 
 {
@@ -474,6 +480,11 @@ begin
  if ((td^.td_flags and TDF_TIMOFAIL)<>0) then
  begin
   td^.td_flags:=td^.td_flags and (not TDF_TIMOFAIL);
+ end else
+ begin
+  //Hack: callout_stop(@td^.td_slpcallout)
+  td^.td_slptick   :=0;
+  td^.td_slpcallout:=nil;
  end;
 end;
 
