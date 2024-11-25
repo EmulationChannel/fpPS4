@@ -89,7 +89,6 @@ begin
     (Result=KERN_INVALID_ADDRESS) then
   begin
    Result:=vm_map_growstack(map, mem_addr);
-   vm_map_lookup_done(map,entry);
    if (Result<>KERN_SUCCESS) then
    begin
     Exit(KERN_FAILURE);
@@ -97,7 +96,6 @@ begin
    growstack:=false;
    goto RetryFault;
   end;
-  vm_map_lookup_done(map,entry);
   Exit();
  end;
 
