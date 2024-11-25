@@ -126,6 +126,9 @@ begin
 
  slptick:=System.InterlockedExchange64(td^.td_slptick,0);
 
+ //reset thread wakeup queue before unlock
+ md_reset_wakeup;
+
  thread_unlock(td);
 
  Result:=msleep_td(slptick);

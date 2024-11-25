@@ -528,16 +528,21 @@ begin
 
  if (oact<>nil) then
  begin
-  oact^.sa_mask:=p_sigacts.ps_catchmask[_SIG_IDX(sig)];
+  oact^.sa_mask :=p_sigacts.ps_catchmask[_SIG_IDX(sig)];
   oact^.sa_flags:=0;
+
   if (SIGISMEMBER(@p_sigacts.ps_sigonstack,sig)) then
    oact^.sa_flags:=oact^.sa_flags or SA_ONSTACK;
+
   if (not SIGISMEMBER(@p_sigacts.ps_sigintr,sig)) then
    oact^.sa_flags:=oact^.sa_flags or SA_RESTART;
+
   if (SIGISMEMBER(@p_sigacts.ps_sigreset,sig)) then
    oact^.sa_flags:=oact^.sa_flags or SA_RESETHAND;
+
   if (SIGISMEMBER(@p_sigacts.ps_signodefer,sig)) then
    oact^.sa_flags:=oact^.sa_flags or SA_NODEFER;
+
   if (SIGISMEMBER(@p_sigacts.ps_siginfo,sig)) then
   begin
    oact^.sa_flags:=oact^.sa_flags or SA_SIGINFO;
@@ -546,11 +551,15 @@ begin
   begin
    oact^.u.sa_handler:=p_sigacts.ps_sigact[_SIG_IDX(sig)];
   end;
+
   if (sig=SIGCHLD and p_sigacts.ps_flag and PS_NOCLDSTOP) then
    oact^.sa_flags:=oact^.sa_flags or SA_NOCLDSTOP;
+
   if (sig=SIGCHLD and p_sigacts.ps_flag and PS_NOCLDWAIT) then
    oact^.sa_flags:=oact^.sa_flags or SA_NOCLDWAIT;
+
  end;
+
  if (act<>nil) then
  begin
   if ((sig=SIGKILL) or (sig=SIGSTOP)) and
@@ -563,6 +572,7 @@ begin
 
   p_sigacts.ps_catchmask[_SIG_IDX(sig)]:=act^.sa_mask;
   SIG_CANTMASK(@p_sigacts.ps_catchmask[_SIG_IDX(sig)]);
+
   if ((act^.sa_flags and SA_SIGINFO)<>0) then
   begin
    p_sigacts.ps_sigact[_SIG_IDX(sig)]:=act^.u.sa_handler;
@@ -572,33 +582,40 @@ begin
    p_sigacts.ps_sigact[_SIG_IDX(sig)]:=act^.u.sa_handler;
    SIGDELSET(@p_sigacts.ps_siginfo,sig);
   end;
+
   if ((act^.sa_flags and SA_RESTART)=0) then
    SIGADDSET(@p_sigacts.ps_sigintr,sig)
   else
    SIGDELSET(@p_sigacts.ps_sigintr,sig);
+
   if ((act^.sa_flags and SA_ONSTACK)<>0) then
    SIGADDSET(@p_sigacts.ps_sigonstack,sig)
   else
    SIGDELSET(@p_sigacts.ps_sigonstack,sig);
+
   if ((act^.sa_flags and SA_RESETHAND)<>0) then
    SIGADDSET(@p_sigacts.ps_sigreset,sig)
   else
    SIGDELSET(@p_sigacts.ps_sigreset,sig);
+
   if ((act^.sa_flags and SA_NODEFER)<>0) then
    SIGADDSET(@p_sigacts.ps_signodefer,sig)
   else
    SIGDELSET(@p_sigacts.ps_signodefer,sig);
+
   if (sig=SIGCHLD) then
   begin
    if ((act^.sa_flags and SA_NOCLDSTOP)<>0) then
     p_sigacts.ps_flag:=p_sigacts.ps_flag or PS_NOCLDSTOP
    else
     p_sigacts.ps_flag:=p_sigacts.ps_flag and (not PS_NOCLDSTOP);
+
    if ((act^.sa_flags and SA_NOCLDWAIT)<>0) then
    begin
     p_sigacts.ps_flag:=p_sigacts.ps_flag or PS_NOCLDWAIT;
    end else
     p_sigacts.ps_flag:=p_sigacts.ps_flag and (not PS_NOCLDWAIT);
+
    if (p_sigacts.ps_sigact[_SIG_IDX(SIGCHLD)]=sig_t(SIG_IGN)) then
     p_sigacts.ps_flag:=p_sigacts.ps_flag or PS_CLDSIGIGN
    else
@@ -618,6 +635,7 @@ begin
   end else
   begin
    SIGDELSET(@p_sigacts.ps_sigignore,sig);
+
    if (p_sigacts.ps_sigact[_SIG_IDX(sig)]=sig_t(SIG_DFL)) then
     SIGDELSET(@p_sigacts.ps_sigcatch,sig)
    else
@@ -1412,6 +1430,8 @@ var
 begin
  Result:=0;
 
+ Writeln('tdsendsignal(',td^.td_tid,':',td^.td_name,',',sig,')');
+
  KNOTE_LOCKED(@p_proc.p_klist, NOTE_SIGNAL or sig);
  prop:=sigprop(sig);
 
@@ -1441,15 +1461,19 @@ begin
 
  if (SIGISMEMBER(@td^.td_sigmask,sig)) then
   action:=sig_t(SIG_HOLD)
- else if (SIGISMEMBER(@p_sigacts.ps_sigcatch,sig)) then
+ else
+ if (SIGISMEMBER(@p_sigacts.ps_sigcatch,sig)) then
   action:=sig_t(SIG_CATCH)
  else
   action:=sig_t(SIG_DFL);
 
  if (SIGISMEMBER(@p_sigacts.ps_sigintr,sig)) then
-  intrval:=EINTR
- else
+ begin
+  intrval:=EINTR;
+ end else
+ begin
   intrval:=ERESTART;
+ end;
 
  ps_mtx_unlock;
 
@@ -1756,6 +1780,8 @@ var
 begin
  td:=curkthread;
  if (td=nil) then Exit;
+
+ Writeln('ast');
 
  //teb stack
  if ((td^.pcb_flags and PCB_IS_JIT)=0) then

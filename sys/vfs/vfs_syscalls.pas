@@ -1938,7 +1938,7 @@ var
 begin
 
  begin
-  Writeln('sys_stat(',path,')');
+  Writeln('sys_stat("',path,'")');
  end;
 
  error:=kern_stat(path, UIO_USERSPACE, @sb);

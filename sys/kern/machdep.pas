@@ -406,6 +406,8 @@ var
 begin
  td:=curkthread;
 
+ Writeln('sendsig');
+
  sig:=ksi^.ksi_info.si_signo;
 
  regs:=@td^.td_frame;
@@ -538,6 +540,8 @@ var
  ucp:p_ucontext_t;
 begin
  td:=curkthread;
+
+ Writeln('sys_sigreturn');
 
  Result:=copyin(sigcntxp,@uc,sizeof(ucontext_t));
  if (Result<>0) then Exit;
