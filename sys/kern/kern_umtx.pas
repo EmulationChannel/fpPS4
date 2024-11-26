@@ -177,13 +177,10 @@ end;
 
 function UPRI(td:p_kthread):Integer; inline;
 begin
- if (td^.td_user_pri>=PRI_MIN_TIMESHARE) and
-    (td^.td_user_pri<=PRI_MAX_TIMESHARE) then
+ Result:=td^.td_user_pri;
+ if ((Result and Integer($ffffff80)) = 768) then
  begin
-  Result:=PRI_MAX_TIMESHARE;
- end else
- begin
-  Result:=td^.td_user_pri;
+  Result:=895;
  end;
 end;
 
@@ -553,6 +550,54 @@ begin
  Exit(ret);
 end;
 
+function umtxq_signal_by_tid(key:p_umtx_key;tid,q:Integer):Boolean;
+var
+ uc:p_umtxq_chain;
+ uh:p_umtxq_queue;
+ uq:p_umtx_q;
+begin
+ Result:=False;
+ uc:=umtxq_getchain(key);
+ UMTXQ_LOCKED_ASSERT(uc);
+ uh:=umtxq_queue_lookup(key, q);
+ if (uh<>nil) then
+ begin
+  uq:=TAILQ_FIRST(@uh^.head);
+  while (uq<>nil) do
+  begin
+   if (uq^.uq_thread^.td_tid=tid) then
+   begin
+    umtxq_remove_queue(uq, q);
+    wakeup(uq);
+    Result:=True;
+    Break;
+   end;
+   //
+   uq:=TAILQ_FIRST(@uh^.head);
+  end;
+ end;
+end;
+
+function umtxq_first_tid(key:p_umtx_key;q:Integer):Integer;
+var
+ uc:p_umtxq_chain;
+ uh:p_umtxq_queue;
+ uq:p_umtx_q;
+begin
+ Result:=-1;
+ uc:=umtxq_getchain(key);
+ UMTXQ_LOCKED_ASSERT(uc);
+ uh:=umtxq_queue_lookup(key, q);
+ if (uh<>nil) then
+ begin
+  uq:=TAILQ_FIRST(@uh^.head);
+  if (uq<>nil) then
+  begin
+   Result:=uq^.uq_thread^.td_tid;
+  end;
+ end;
+end;
+
 procedure umtxq_signal_thread(uq:p_umtx_q);
 var
  uc:p_umtxq_chain;
@@ -650,6 +695,8 @@ var
 begin
  Result:=0;
 
+ //Writeln('_do_lock_umtx(',HexStr(umtx),',',id,',',timo,')');
+
  uq:=td^.td_umtxq;
 
  repeat
@@ -670,6 +717,11 @@ begin
   if (owner=QWORD(-1)) then
   begin
    Exit(EFAULT);
+  end;
+
+  if (owner=QWORD($40000000)) then
+  begin
+   Exit(EINVAL);
   end;
 
   if (owner=UMTX_CONTESTED) then
@@ -770,15 +822,22 @@ function do_unlock_umtx(td:p_kthread;umtx:p_umtx;id:QWORD):Integer;
 var
  key:umtx_key;
  owner,old,t:QWORD;
- count:ptrint;
+ count:Integer;
 begin
  Result:=0;
+
+ //Writeln('do_unlock_umtx(',HexStr(umtx),',',id,')');
 
  owner:=fuword64(umtx^.u_owner);
 
  if (owner=QWORD(-1)) then
  begin
   Exit(EFAULT);
+ end;
+
+ if (owner=QWORD($40000000)) then
+ begin
+  Exit(EINVAL);
  end;
 
  if ((owner and (not UMTX_CONTESTED))<>id) then
@@ -853,6 +912,8 @@ var
 begin
  Result:=0;
 
+ //Writeln('do_wait(',HexStr(addr),',',id,')');
+
  uq:=td^.td_umtxq;
 
  Result:=umtx_key_get(addr, TYPE_SIMPLE_WAIT, GET_PRIV_SHARE(priv), @uq^.uq_key);
@@ -888,8 +949,9 @@ begin
   ts:=get_unit_uptime;
   ts:=ts+tv;
 
-  umtxq_lock(@uq^.uq_key);
   repeat
+   umtxq_lock(@uq^.uq_key);
+
    Result:=umtxq_sleep(uq,'uwait',tvtohz(tv));
 
    if ((uq^.uq_flags and UQF_UMTXQ)=0) then
@@ -931,6 +993,8 @@ var
 begin
  Result:=0;
 
+ //Writeln('kern_umtx_wake(',HexStr(umtx),',',n_wake,')');
+
  Result:=umtx_key_get(umtx, TYPE_SIMPLE_WAIT, GET_PRIV_SHARE(priv), @key);
  if (Result<>0) then Exit;
 
@@ -953,6 +1017,8 @@ var
 begin
  Result:=0;
 
+ //Writeln('_do_lock_normal(',HexStr(m),',',flags,',',timo,',',mode,')');
+
  id:=td^.td_tid;
  uq:=td^.td_umtxq;
 
@@ -962,6 +1028,16 @@ begin
   if (owner=DWORD(-1)) then
   begin
    Exit(EFAULT);
+  end;
+
+  if (owner and (not UMUTEX_CONTESTED) = id) then
+  begin
+   Exit(0);
+  end;
+
+  if (owner=DWORD($40000000)) then
+  begin
+   Exit(EINVAL);
   end;
 
   if (mode=_UMUTEX_WAIT) then
@@ -1003,7 +1079,7 @@ begin
   end;
 
   if ((flags and UMUTEX_ERROR_CHECK)<>0) and
-     ((owner and (not UMUTEX_CONTESTED))=id) then
+     ((owner and (not UMUTEX_CONTESTED)) = id) then
   begin
    Exit(EDEADLK);
   end;
@@ -1059,9 +1135,13 @@ function do_unlock_normal(td:p_kthread;m:p_umutex;flags:Integer):Integer;
 var
  key:umtx_key;
  id,owner,old,t:DWORD;
- count:ptrint;
+ count:Integer;
+
+ tid:Integer;
 begin
  Result:=0;
+
+ //Writeln('do_unlock_normal(',HexStr(m),',',flags,')');
 
  id:=td^.td_tid;
 
@@ -1070,6 +1150,11 @@ begin
  if (owner=DWORD(-1)) then
  begin
   Exit(EFAULT);
+ end;
+
+ if (owner=DWORD($40000000)) then
+ begin
+  Exit(EINVAL);
  end;
 
  if ((owner and (not UMUTEX_CONTESTED))<>id) then
@@ -1110,10 +1195,39 @@ begin
   t:=UMUTEX_CONTESTED;
  end;
 
- old:=casuword32(m^.m_owner,owner,t);
+ if ((flags and $80) <> 0) and (count <> 0) then
+ begin
+  umtxq_lock(@key);
 
- umtxq_lock  (@key);
- umtxq_signal(@key,1);
+  tid:=umtxq_first_tid(@key,UMTX_SHARED_QUEUE);
+
+  umtxq_unlock(@key);
+
+  if (tid=-1) then
+  begin
+   old:=0;
+  end else
+  begin
+   old:=tid;
+  end;
+
+  old:=casuword32(m^.m_owner,owner,old or t);
+
+  umtxq_lock(@key);
+
+  if (tid <> -1) and (old <> DWORD(-1)) then
+  begin
+   umtxq_signal_by_tid(@key,tid,UMTX_SHARED_QUEUE);
+  end;
+
+ end else
+ begin
+  old:=casuword32(m^.m_owner,owner,t);
+
+  umtxq_lock  (@key);
+  umtxq_signal(@key,1);
+ end;
+
  umtxq_unbusy(@key);
  umtxq_unlock(@key);
 
@@ -1136,10 +1250,12 @@ function do_wake_umutex(td:p_kthread;m:p_umutex):Integer;
 var
  key:umtx_key;
  owner:DWORD;
- count:ptrint;
+ count:Integer;
  flags:DWORD;
 begin
  Result:=0;
+
+ //Writeln('do_wake_umutex(',HexStr(m),')');
 
  owner:=fuword32(m^.m_owner);
 
@@ -1155,6 +1271,11 @@ begin
 
  flags:=fuword32(m^.m_flags);
 
+ if (flags=DWORD(-1)) then
+ begin
+  Exit(EFAULT);
+ end;
+
  Result:=umtx_key_get(m, TYPE_NORMAL_UMUTEX, GET_SHARE(flags), @key);
  if (Result<>0) then Exit;
 
@@ -1163,16 +1284,18 @@ begin
  count:=umtxq_count(@key);
  umtxq_unlock(@key);
 
- if (count>=1) then
+ if (count <= 1) then
  begin
   owner:=casuword32(m^.m_owner,UMUTEX_CONTESTED,UMUTEX_UNOWNED);
  end;
 
  umtxq_lock(@key);
+
  if (count<>0) and ((owner and (not UMUTEX_CONTESTED))=0) then
  begin
   umtxq_signal(@key, 1);
  end;
+
  umtxq_unbusy(@key);
  umtxq_unlock(@key);
 
@@ -1181,67 +1304,40 @@ begin
  Exit(0);
 end;
 
-function do_wake2_umutex(td:p_kthread;m:p_umutex;flags:DWORD):Integer;
+function do_cv_signalto(td:p_kthread;cv:p_ucond;tid:Integer):Integer;
 var
  key:umtx_key;
- ktype:Integer;
- owner,old:DWORD;
- count:ptrint;
+ count,flags:Integer;
 begin
  Result:=0;
 
- Case (flags and (UMUTEX_PRIO_INHERIT or UMUTEX_PRIO_PROTECT)) of
-                    0:ktype:=TYPE_NORMAL_UMUTEX;
-  UMUTEX_PRIO_INHERIT:ktype:=TYPE_PI_UMUTEX;
-  UMUTEX_PRIO_PROTECT:ktype:=TYPE_PP_UMUTEX;
-  else
-   Exit(EINVAL);
+ //Writeln('do_cv_signalto(',HexStr(cv),',',tid,')');
+
+ flags:=fuword32(cv^.c_flags);
+
+ if (flags=-1) then
+ begin
+  Exit(EFAULT);
  end;
 
- Result:=umtx_key_get(m, ktype, GET_SHARE(flags), @key);
+ Result:=umtx_key_get(cv, TYPE_CV, GET_SHARE(flags), @key);
  if (Result<>0) then Exit;
-
- owner:=0;
 
  umtxq_lock(@key);
  umtxq_busy(@key);
+
  count:=umtxq_count(@key);
- umtxq_unlock(@key);
 
- if (count>1) then
+ if (count <> 0) then
  begin
-  owner:=fuword32(m^.m_owner);
-  While ((owner and UMUTEX_CONTESTED)=0) do
+  if umtxq_signal_by_tid(@key,tid,UMTX_SHARED_QUEUE) then
+  if (count = 1) then
   begin
-   old:=casuword32(m^.m_owner,owner,owner or UMUTEX_CONTESTED);
-   if (old=owner) then Break;
-   owner:=old;
-   if (old=DWORD(-1)) then Break;
+   umtxq_unlock(@key);
+   Result:=suword32(cv^.c_has_waiters,0);
+   umtxq_lock(@key);
+   if (Result<>0) then Result:=EFAULT;
   end;
- end else
- if (count=1) then
- begin
-  owner:=fuword32(m^.m_owner);
-  While ((owner and (not UMUTEX_CONTESTED))<>0) and
-        ((owner and UMUTEX_CONTESTED)=0) do
-  begin
-   old:=casuword32(m^.m_owner,owner,owner or UMUTEX_CONTESTED);
-   if (old=owner) then Break;
-   owner:=old;
-   if (old=DWORD(-1)) then Break;
-  end;
- end;
-
- umtxq_lock(@key);
-
- if (owner=DWORD(-1)) then
- begin
-  Result:=EFAULT;
-  umtxq_signal(@key, High(Integer));
- end else
- if (count<>0) and ((owner and (not UMUTEX_CONTESTED))=0) then
- begin
-  umtxq_signal(@key, 1);
  end;
 
  umtxq_unbusy(@key);
@@ -1258,7 +1354,6 @@ label
 var
  key:umtx_key;
  ktype:Integer;
- flag_shr_7:Integer;
  owner,old:DWORD;
  count:ptrint;
 
@@ -1273,7 +1368,7 @@ var
 begin
  Result:=0;
 
- flag_shr_7:=(flags shr 7) and 1;
+ //Writeln('do_wake3_umutex(',HexStr(m),',',flags,')');
 
  Case (flags and (UMUTEX_PRIO_INHERIT or UMUTEX_PRIO_PROTECT)) of
                     0:ktype:=TYPE_NORMAL_UMUTEX;
@@ -1302,7 +1397,7 @@ begin
    tid      :=-1;
    is_signal:=(count<>0);
 
-   if (flag_shr_7 = 0) or (count = 0) then
+   if ((flags and $80) = 0) or (count = 0) then
    begin
     goto _umtxq_count_end;
    end;
@@ -1311,8 +1406,8 @@ begin
 
    if (uh=nil) then
    begin
-    is_signal :=true;
-    flag_shr_7:=1;
+    is_signal:=true;
+    flags    :=flags or $80;
     goto _umtxq_count_end;
    end;
 
@@ -1330,8 +1425,8 @@ begin
     uh:=LIST_NEXT(uh,@uh^.link);
    end;
 
-   is_signal :=true;
-   flag_shr_7:=1;
+   is_signal:=true;
+   flags    :=flags or $80;
    goto _umtxq_count_end;
   end;
 
@@ -1350,7 +1445,7 @@ begin
  begin
   if (count = 1) then
   begin
-   if (flag_shr_7 = 0) then
+   if ((flags and $80) = 0) then
    begin
     owner:=fuword32(m^.m_owner);
     if (owner = DWORD(-1)) then
@@ -1419,7 +1514,7 @@ begin
    Result   :=0;
   end;
  end else //(count < 2)
- if (flag_shr_7 = 0) then
+ if ((flags and $80) = 0) then
  begin
   owner:=fuword32(m^.m_owner);
   if (owner <> DWORD(-1)) then
@@ -1495,31 +1590,17 @@ begin
  if (Result = EFAULT) then
  begin
   //umtxq_signal_queue all
-  umtxq_signal_queue(@key,High(Integer),UMTX_SHARED_QUEUE);
+  umtxq_signal(@key,High(Integer));
  end else
  if (is_cur_td) then
  begin
   //umtxq_signal_queue by tid
-  uh:=umtxq_queue_lookup(@key,0);
-  if (uh<>nil) then
-  begin
-   uq:=TAILQ_FIRST(@uh^.head);
-   while (uq<>nil) do
-   begin
-    if (uq^.uq_thread^.td_tid=tid) then
-    begin
-     umtxq_remove(uq);
-     wakeup(uq);
-     Break;
-    end;
-    uq:=TAILQ_NEXT(uq, @uq^.uq_link);
-   end;
-  end;
+  umtxq_signal_by_tid(@key,tid,UMTX_SHARED_QUEUE);
  end else
- if (not ((is_signal xor True) or ((owner and (not UMUTEX_CONTESTED)) <> 0))) then
+ if is_signal and ((owner and (not UMUTEX_CONTESTED)) = 0) then
  begin
   //umtxq_signal_queue one
-  umtxq_signal_queue(@key,1,UMTX_SHARED_QUEUE);
+  umtxq_signal(@key,1);
  end;
 
  //unlock and release
@@ -1752,8 +1833,12 @@ begin
  mtx_unlock(umtx_lock);
 end;
 
-function umtxq_sleep_pi(uq:p_umtx_q;pi:p_umtx_pi;
-                        owner:DWORD;wmesg:pchar;timo:Int64):Integer;
+function umtxq_sleep_pi(uq:p_umtx_q;
+                        pi:p_umtx_pi;
+                        owner:DWORD;
+                        wmesg:pchar;
+                        timo:Int64;
+                        flags:DWORD):Integer;
 var
  uc:p_umtxq_chain;
  td,td1:p_kthread;
@@ -1827,6 +1912,14 @@ begin
   end;
  end;
  mtx_lock(umtx_lock);
+
+ if ((flags and $280) = $280) and
+    ((td^.td_flags and TDF_UPIBLOCKED) = 0) then
+ begin
+  mtx_unlock(umtx_lock);
+  umtxq_unlock(@uq^.uq_key);
+  Exit;
+ end;
 
  uq^.uq_pi_blocked:=nil;
 
@@ -1920,6 +2013,8 @@ var
 begin
  Result:=0;
 
+ //Writeln('_do_lock_pi(',HexStr(m),',',flags,',',timo,',',mode,')');
+
  id:=td^.td_tid;
  uq:=td^.td_umtxq;
 
@@ -1968,6 +2063,12 @@ begin
    Break;
   end;
 
+  if (owner=DWORD($40000000)) then
+  begin
+   Result:=EINVAL;
+   Break;
+  end;
+
   if (owner=DWORD(-1)) then
   begin
    Result:=EFAULT;
@@ -1995,6 +2096,12 @@ begin
    end;
 
    continue;
+  end;
+
+  if (owner and (not UMUTEX_CONTESTED) = id) then
+  begin
+   Result:=0;
+   Break;
   end;
 
   if ((flags and UMUTEX_ERROR_CHECK)<>0) and
@@ -2031,7 +2138,7 @@ begin
 
   if (old=owner) then
   begin
-   Result:=umtxq_sleep_pi(uq, pi, owner and (not UMUTEX_CONTESTED),'umtxpi', timo);
+   Result:=umtxq_sleep_pi(uq, pi, owner and (not UMUTEX_CONTESTED),'umtxpi', timo, flags);
   end else
   begin
    umtxq_unbusy(@uq^.uq_key);
@@ -2051,7 +2158,6 @@ end;
 
 function do_unlock_pi(td:p_kthread;m:p_umutex;flags:Integer):Integer;
 var
- cur:p_kthread;
  key:umtx_key;
  uq_first,uq_first2,uq_me:p_umtx_q;
  pi,pi2:p_umtx_pi;
@@ -2060,8 +2166,7 @@ var
 begin
  Result:=0;
 
- cur:=curkthread;
- if (cur=nil) then Exit(-1);
+ //Writeln('do_unlock_pi(',HexStr(m),',',flags,')');
 
  id:=td^.td_tid;
 
@@ -2070,6 +2175,11 @@ begin
  if (owner=DWORD(-1)) then
  begin
   Exit(EFAULT);
+ end;
+
+ if (owner=DWORD($40000000)) then
+ begin
+  Exit(EINVAL);
  end;
 
  if ((owner and (not UMUTEX_CONTESTED))<>id) then
@@ -2104,9 +2214,11 @@ begin
  if (uq_first<>nil) then
  begin
   mtx_lock(umtx_lock);
+
   pi:=uq_first^.uq_pi_blocked;
   Assert(pi<>nil,'pi=nil?');
-  if (pi^.pi_owner<>cur) then
+
+  if (pi^.pi_owner<>td) then
   begin
    mtx_unlock(umtx_lock);
    umtxq_unbusy(@key);
@@ -2115,7 +2227,8 @@ begin
 
    Exit(EPERM);
   end;
-  uq_me:=cur^.td_umtxq;
+
+  uq_me:=td^.td_umtxq;
 
   umtx_pi_clearowner(pi);
 
@@ -2128,7 +2241,7 @@ begin
    uq_first:=TAILQ_NEXT(uq_first, @uq_first^.uq_lockq);
   end;
 
-  pri:=PRI_MAX;
+  pri:=1023;
 
   pi2:=TAILQ_FIRST(@uq_me^.uq_pi_contested);
   while (pi2<>nil) do
@@ -2145,24 +2258,85 @@ begin
    pi2:=TAILQ_NEXT(pi2,@pi2^.pi_link);
   end;
 
-  thread_lock(cur);
-  sched_lend_user_prio(cur, pri);
-  thread_unlock(cur);
+  thread_lock(td);
+  sched_lend_user_prio(td, pri);
+  thread_unlock(td);
 
   mtx_unlock(umtx_lock);
-  if (uq_first<>nil) then
-  begin
-   umtxq_signal_thread(uq_first);
-  end;
- end;
- umtxq_unlock(@key);
 
- if (count<=1) then
- begin
-  t:=UMUTEX_UNOWNED;
- end else
- begin
-  t:=UMUTEX_CONTESTED;
+  if (count<=1) then
+  begin
+   t:=UMUTEX_UNOWNED;
+  end else
+  begin
+   t:=UMUTEX_CONTESTED;
+  end;
+
+  if (uq_first=nil) then
+  begin
+   umtxq_unlock(@key);
+  end else
+  begin
+
+   if ((flags and $80) = 0) then
+   begin
+    umtxq_signal_thread(uq_first);
+    umtxq_unlock(@key);
+   end else
+   begin
+    id:=uq_first^.uq_thread^.td_tid;
+
+    if ((flags and $200) <> 0) then
+    begin
+     mtx_lock(umtx_lock);
+
+     uq_first^.uq_pi_blocked:=nil;
+
+     thread_lock(uq_first^.uq_thread);
+     uq_first^.uq_thread^.td_flags:=uq_first^.uq_thread^.td_flags and (not TDF_UPIBLOCKED);
+     thread_unlock(uq_first^.uq_thread);
+
+     pi:=uq_first^.uq_pi_blocked;
+
+     TAILQ_REMOVE(@pi^.pi_blocked, uq_first, @uq_first^.uq_lockq);
+
+     umtx_repropagate_priority(pi);
+
+     mtx_unlock(umtx_lock);
+
+     if (count > 1) then
+     begin
+      Result:=umtx_pi_claim(pi, uq_first^.uq_thread);
+
+      if (Result <> 0) then
+      begin
+       umtxq_unbusy(@key);
+       umtxq_unlock(@key);
+
+       umtx_key_release(@key);
+
+       Exit(EINVAL);
+      end;
+     end;
+
+    end;//(flags and $200) <> 0)
+
+    umtxq_signal_thread(uq_first);
+    umtxq_unlock(@key);
+
+    if (count < 2) then
+    begin
+     t:=id;
+    end else
+    begin
+     t:=id or UMUTEX_CONTESTED;
+    end;
+
+    owner:=id;
+   end; //((flags and $80) <> 0)
+
+  end; //(uq_first<>nil)
+
  end;
 
  old:=casuword32(m^.m_owner, owner, t);
@@ -2199,6 +2373,8 @@ var
 begin
  Result:=0;
 
+ //Writeln('_do_lock_pp(',HexStr(m),',',flags,',',timo,',',mode,')');
+
  id:=td^.td_tid;
  uq:=td^.td_umtxq;
 
@@ -2215,32 +2391,84 @@ begin
   umtxq_busy(@uq^.uq_key);
   umtxq_unlock(@uq^.uq_key);
 
-  ceiling:=RTP_PRIO_MAX - fuword32(m^.m_ceilings[0]);
-  if (ceiling > RTP_PRIO_MAX) then
+  ceiling:=fuword32(m^.m_ceilings[0]);
+
+  if (ceiling=DWORD(-1)) then
   begin
-   Result:=EINVAL;
+   Result:=EFAULT;
    goto _out;
+  end;
+
+  if ((flags and $400) = 0) then
+  begin
+   if (ceiling > 767) then
+   begin
+    Result:=EINVAL;
+    goto _out;
+   end;
+   ceiling:=767 - ceiling;
+  end else
+  begin
+   if ((ceiling - 256) > 639) then
+   begin
+    Result:=EINVAL;
+    goto _out;
+   end;
   end;
 
   mtx_lock(umtx_lock);
 
-  if (UPRI(td) < (PRI_MIN_REALTIME + ceiling)) then
+  if ((flags and $400) = 0) then
   begin
-   mtx_unlock(umtx_lock);
-   Result:=EINVAL;
-   goto _out;
+   ceiling:=ceiling + 256;
+
+   if (UPRI(td) < ceiling) then
+   begin
+    mtx_unlock(umtx_lock);
+    Result:=EINVAL;
+    goto _out;
+   end;
+
+   if (su<>0) and (ceiling < uq^.uq_inherited_pri) then
+   begin
+    uq^.uq_inherited_pri:=ceiling;
+    //
+    thread_lock(td);
+    //
+    if (uq^.uq_inherited_pri < UPRI(td)) then
+    begin
+     sched_lend_user_prio(td, uq^.uq_inherited_pri);
+    end;
+    //
+    thread_unlock(td);
+   end;
+
+  end else
+  begin
+
+   if (UPRI(td) < ceiling) then
+   begin
+    mtx_unlock(umtx_lock);
+    Result:=EINVAL;
+    goto _out;
+   end;
+
+   if (ceiling < uq^.uq_inherited_pri) then
+   begin
+    uq^.uq_inherited_pri:=ceiling;
+    //
+    thread_lock(td);
+    //
+    if (uq^.uq_inherited_pri < UPRI(td)) then
+    begin
+     sched_lend_user_prio(td, uq^.uq_inherited_pri);
+    end;
+    //
+    thread_unlock(td);
+   end;
+
   end;
 
-  if (su<>0) and ((PRI_MIN_REALTIME + ceiling) < uq^.uq_inherited_pri) then
-  begin
-   uq^.uq_inherited_pri:=PRI_MIN_REALTIME + ceiling;
-   thread_lock(td);
-   if (uq^.uq_inherited_pri < UPRI(td)) then
-   begin
-    sched_lend_user_prio(td, uq^.uq_inherited_pri);
-   end;
-   thread_unlock(td);
-  end;
   mtx_unlock(umtx_lock);
 
   owner:=casuword32(m^.m_owner, UMUTEX_CONTESTED, id or UMUTEX_CONTESTED);
@@ -2248,6 +2476,12 @@ begin
   if (owner=UMUTEX_CONTESTED) then
   begin
    Result:=0;
+   Break;
+  end;
+
+  if (owner=DWORD($40000000)) then
+  begin
+   Result:=EINVAL;
    Break;
   end;
 
@@ -2359,8 +2593,12 @@ var
  pi:p_umtx_pi;
  owner,id,rceiling:DWORD;
  pri,new_inherited_pri,su:Integer;
+
+ tid:Integer;
 begin
  Result:=0;
+
+ //Writeln('do_unlock_pp(',HexStr(m),',',flags,')');
 
  id:=td^.td_tid;
  uq:=td^.td_umtxq;
@@ -2375,6 +2613,11 @@ begin
   Exit(EFAULT);
  end;
 
+ if (owner=DWORD($40000000)) then
+ begin
+  Exit(EINVAL);
+ end;
+
  if ((owner and (not UMUTEX_CONTESTED))<>id) then
  begin
   Exit(EPERM);
@@ -2383,17 +2626,17 @@ begin
  Result:=copyin(@m^.m_ceilings[1], @rceiling, sizeof(DWORD));
  if (Result<>0) then Exit;
 
- if (rceiling=-1) then
+ if (rceiling=DWORD(-1)) then
  begin
-  new_inherited_pri:=PRI_MAX;
+  new_inherited_pri:=1023;
  end else
  begin
-  rceiling:=RTP_PRIO_MAX - rceiling;
-  if (rceiling > RTP_PRIO_MAX) then
+  if (rceiling > 767) then
   begin
-   Exit (EINVAL);
+   Exit(EINVAL);
   end;
-  new_inherited_pri:=PRI_MIN_REALTIME + rceiling;
+  rceiling:=767 - rceiling;
+  new_inherited_pri:=1023 - rceiling;
  end;
 
  Result:=umtx_key_get(m, TYPE_PP_UMUTEX, GET_SHARE(flags), @key);
@@ -2401,15 +2644,48 @@ begin
 
  umtxq_lock  (@key);
  umtxq_busy  (@key);
+
+ if ((flags and $80) <> 0) then
+ begin
+  tid:=umtxq_first_tid(@key,UMTX_SHARED_QUEUE);
+ end;
+
  umtxq_unlock(@key);
 
- Result:=suword32(m^.m_owner, UMUTEX_CONTESTED);
-
- umtxq_lock(@key);
- if (Result=0) then
+ if ((flags and $80) <> 0) then
  begin
-  umtxq_signal(@key, 1);
+
+  if (tid <> -1) then
+  begin
+   id:=tid or UMUTEX_CONTESTED;
+  end else
+  begin
+   id:=UMUTEX_CONTESTED;
+  end;
+
+  Result:=suword32(m^.m_owner, id);
+
+  umtxq_lock(@key);
+
+  if (tid <> -1) and (Result = 0) then
+  begin
+   umtxq_signal_by_tid(@key,tid,UMTX_SHARED_QUEUE);
+  end;
+
+ end else
+ begin
+
+  Result:=suword32(m^.m_owner, UMUTEX_CONTESTED);
+
+  umtxq_lock(@key);
+
+  if (Result=0) then
+  begin
+   umtxq_signal(@key, 1);
+  end;
+
  end;
+
  umtxq_unbusy(@key);
  umtxq_unlock(@key);
 
@@ -2419,12 +2695,13 @@ begin
  end else
  begin
   mtx_lock(umtx_lock);
-  if (su<>0) then
+
+  if ((flags and $400) <> 0) or (su<>0) then
   begin
    uq^.uq_inherited_pri:=new_inherited_pri;
   end;
 
-  pri:=PRI_MAX;
+  pri:=1023;
 
   pi:=TAILQ_FIRST(@uq^.uq_pi_contested);
   while (pi<>nil) do
@@ -2465,7 +2742,14 @@ var
 begin
  Result:=0;
 
+ //Writeln('do_set_ceiling(',HexStr(m),',',ceiling,')');
+
  flags:=fuword32(m^.m_flags);
+
+ if (flags=DWORD(-1)) then
+ begin
+  Exit(EFAULT);
+ end;
 
  if ((flags and UMUTEX_PRIO_PROTECT)=0) then Exit(EINVAL);
  if (ceiling>PRI_MAX) then Exit(EINVAL);
@@ -2565,6 +2849,11 @@ begin
 
  flags:=fuword32(m^.m_flags);
 
+ if (flags=DWORD(-1)) then
+ begin
+  Exit(EFAULT);
+ end;
+
  if (timeout=nil) then
  begin
   Result:=_do_lock_umutex(td,m,flags,0,mode);
@@ -2629,13 +2918,20 @@ var
  clockid:Integer;
  oldlen:Integer;
  flags:Integer;
- cts,ets,tts,tv:Int64;
+ cts,ets,tts:Int64;
 begin
  Result:=0;
+
+ //Writeln('do_cv_wait(',HexStr(cv),',',HexStr(m),',',wflags,')');
 
  uq:=td^.td_umtxq;
 
  flags:=fuword32(cv^.c_flags);
+
+ if (flags=-1) then
+ begin
+  Exit(EFAULT);
+ end;
 
  Result:=umtx_key_get(cv, TYPE_CV, GET_SHARE(flags), @uq^.uq_key);
  if (Result<>0) then Exit;
@@ -2644,14 +2940,18 @@ begin
  begin
   clockid:=fuword32(cv^.c_clockid);
   if (clockid<CLOCK_REALTIME) or
-     (clockid>=CLOCK_THREAD_CPUTIME_ID) then
+     (clockid>CLOCK_SECOND) then
   begin
    umtx_key_release(@uq^.uq_key);
    Exit(EINVAL);
   end;
  end else
+ if ((wflags and CVWAIT_ABSTIME)<>0) then
  begin
   clockid:=CLOCK_REALTIME;
+ end else
+ begin
+  clockid:=CLOCK_PROCTIME;
  end;
 
  umtxq_lock  (@uq^.uq_key);
@@ -2689,19 +2989,18 @@ begin
    end else
    begin
     ets:=TIMESPEC_TO_UNIT(timeout);
-    tts:=ets;
 
     cts:=0;
     kern_clock_gettime_unit(clockid,@cts);
 
-    tts:=tts-cts;
+    tts:=ets-cts;
    end;
 
-   tv:=tts;
    repeat
-    Result:=umtxq_sleep(uq, 'ucond', tvtohz(tv));
+    Result:=umtxq_sleep(uq, 'ucond', tvtohz(tts));
     if (Result<>ETIMEDOUT) then Break;
 
+    cts:=0;
     kern_clock_gettime_unit(clockid,@cts);
 
     if (cts>=ets) then
@@ -2710,9 +3009,7 @@ begin
      Break;
     end;
 
-    tts:=ets;
-    tts:=tts-cts;
-    tv :=tts;
+    tts:=ets-cts;
    until false;
   end;
  end;
@@ -2757,7 +3054,14 @@ var
 begin
  Result:=0;
 
+ //Writeln('do_cv_signal(',HexStr(cv),')');
+
  flags:=fuword32(cv^.c_flags);
+
+ if (flags=-1) then
+ begin
+  Exit(EFAULT);
+ end;
 
  Result:=umtx_key_get(cv, TYPE_CV, GET_SHARE(flags), @key);
  if (Result<>0) then Exit;
@@ -2789,7 +3093,14 @@ var
 begin
  Result:=0;
 
+ //Writeln('do_cv_broadcast(',HexStr(cv),')');
+
  flags:=fuword32(cv^.c_flags);
+
+ if (flags=-1) then
+ begin
+  Exit(EFAULT);
+ end;
 
  Result:=umtx_key_get(cv, TYPE_CV, GET_SHARE(flags), @key);
  if (Result<>0) then Exit;
@@ -2825,6 +3136,11 @@ begin
  uq:=td^.td_umtxq;
 
  flags:=fuword32(rwlock^.rw_flags);
+
+ if (flags=DWORD(-1)) then
+ begin
+  Exit(EFAULT);
+ end;
 
  Result:=umtx_key_get(rwlock, TYPE_RWLOCK, GET_SHARE(flags), @uq^.uq_key);
  if (Result<>0) then Exit;
@@ -3009,6 +3325,11 @@ begin
  uq:=td^.td_umtxq;
 
  flags:=fuword32(rwlock^.rw_flags);
+
+ if (flags=-1) then
+ begin
+  Exit(EFAULT);
+ end;
 
  Result:=umtx_key_get(rwlock, TYPE_RWLOCK, GET_SHARE(flags), @uq^.uq_key);
  if (Result<>0) then Exit;
@@ -3201,6 +3522,11 @@ begin
 
  flags:=fuword32(rwlock^.rw_flags);
 
+ if (flags=DWORD(-1)) then
+ begin
+  Exit(EFAULT);
+ end;
+
  Result:=umtx_key_get(rwlock, TYPE_RWLOCK, GET_SHARE(flags), @uq^.uq_key);
  if (Result<>0) then Exit;
 
@@ -3307,17 +3633,26 @@ end;
 ////
 
 function do_sem_wait(td:p_kthread;sem:p__usem;timeout:p_timespec):Integer;
+label
+ _fault;
 var
  uq:p_umtx_q;
  flags:Integer;
- count:DWORD;
+ has_waiters,count:DWORD;
  cts,ets,tv:Int64;
 begin
  Result:=0;
 
+ //Writeln('do_sem_wait(',HexStr(sem),')');
+
  uq:=td^.td_umtxq;
 
  flags:=fuword32(sem^._flags);
+
+ if (flags=-1) then
+ begin
+  Exit(EFAULT);
+ end;
 
  Result:=umtx_key_get(sem, TYPE_SEM, GET_SHARE(flags), @uq^.uq_key);
  if (Result<>0) then Exit;
@@ -3327,17 +3662,40 @@ begin
  umtxq_insert(uq);
  umtxq_unlock(@uq^.uq_key);
 
- if ((fuword32(sem^._has_waiters))=0) then
+ has_waiters:=fuword32(sem^._has_waiters);
+
+ if (has_waiters=DWORD(-1)) then
  begin
-  casuword32(sem^._has_waiters,0,1);
+  _fault:
+  umtxq_lock  (@uq^.uq_key);
+  umtxq_unbusy(@uq^.uq_key);
+  umtxq_remove(uq);
+  umtxq_unlock(@uq^.uq_key);
+
+  umtx_key_release(@uq^.uq_key);
+
+  Exit(EFAULT);
+ end;
+
+ has_waiters:=casuword32(sem^._has_waiters,0,1);
+
+ if (has_waiters=DWORD(-1)) then
+ begin
+  goto _fault;
  end;
 
  count:=fuword32(sem^._count);
 
+ if (count=DWORD(-1)) then
+ begin
+  goto _fault;
+ end;
+
+ umtxq_lock  (@uq^.uq_key);
+ umtxq_unbusy(@uq^.uq_key);
+
  if (count<>0) then
  begin
-  umtxq_lock  (@uq^.uq_key);
-  umtxq_unbusy(@uq^.uq_key);
   umtxq_remove(uq);
   umtxq_unlock(@uq^.uq_key);
 
@@ -3345,11 +3703,6 @@ begin
   Exit(0);
  end;
 
- umtxq_lock  (@uq^.uq_key);
- umtxq_unbusy(@uq^.uq_key);
- umtxq_unlock(@uq^.uq_key);
-
- umtxq_lock(@uq^.uq_key);
  if (timeout=nil) then
  begin
   Result:=umtxq_sleep(uq, 'usem', 0);
@@ -3382,7 +3735,7 @@ begin
  begin
   umtxq_remove(uq);
 
-  if (Result=ERESTART) and (timeout<>nil) then
+  if (Result=ERESTART) then
   begin
    Result:=EINTR;
   end;
@@ -3397,26 +3750,36 @@ function do_sem_wake(td:p_kthread;sem:p__usem):Integer;
 var
  key:umtx_key;
  flags:Integer;
- count,nwake:Integer;
+ count:Integer;
 begin
  Result:=0;
 
+ //Writeln('do_sem_wake(',HexStr(sem),')');
+
  flags:=fuword32(sem^._flags);
+
+ if (flags=-1) then
+ begin
+  Exit(EFAULT);
+ end;
 
  Result:=umtx_key_get(sem, TYPE_SEM, GET_SHARE(flags), @key);
  if (Result<>0) then Exit;
 
  umtxq_lock(@key);
  umtxq_busy(@key);
- count:=umtxq_count (@key);
- nwake:=umtxq_signal(@key, 1);
+ count:=umtxq_count(@key);
 
- if (count<=nwake) then
+ if (count>0) then
  begin
-  umtxq_unlock(@key);
-  Result:=suword32(sem^._has_waiters,0);
-  if (Result<>0) then Result:=EFAULT;
-  umtxq_lock(@key);
+  if (count=1) then
+  begin
+   umtxq_unlock(@key);
+   Result:=suword32(sem^._has_waiters,0);
+   if (Result<>0) then Result:=EFAULT;
+   umtxq_lock(@key);
+  end;
+  umtxq_signal(@key, 1);
  end;
 
  umtxq_unbusy(@key);
@@ -3596,11 +3959,6 @@ begin
  Result:=do_wake_umutex(td,obj);
 end;
 
-function __umtx_op_wake2_umutex(td:p_kthread;obj:Pointer;val:QWORD;uaddr1,uaddr2:Pointer):Integer; inline;
-begin
- Result:=do_wake2_umutex(td,obj,val);
-end;
-
 function __umtx_op_unlock_umutex(td:p_kthread;obj:Pointer;val:QWORD;uaddr1,uaddr2:Pointer):Integer; inline;
 begin
  Result:=do_unlock_umutex(td,obj);
@@ -3714,6 +4072,16 @@ begin
  Result:=do_sem_wake(td,obj)
 end;
 
+function __umtx_op_sem_signalto(td:p_kthread;obj:Pointer;val:QWORD;uaddr1,uaddr2:Pointer):Integer; inline;
+begin
+ Result:=do_cv_signalto(td,obj,val);
+end;
+
+function __umtx_op_wake3_umutex(td:p_kthread;obj:Pointer;val:QWORD;uaddr1,uaddr2:Pointer):Integer; inline;
+begin
+ Result:=do_wake3_umutex(td,obj,val);
+end;
+
 function sys__umtx_op(obj:Pointer;op:Integer;val:QWORD;uaddr1,uaddr2:Pointer):Integer;
 var
  td:p_kthread;
@@ -3744,12 +4112,13 @@ begin
   UMTX_OP_SEM_WAIT         :Result:=__umtx_op_sem_wait         (td,obj,val,uaddr1,uaddr2);
   UMTX_OP_SEM_WAKE         :Result:=__umtx_op_sem_wake         (td,obj,val,uaddr1,uaddr2);
   UMTX_OP_NWAKE_PRIVATE    :Result:=__umtx_op_nwake_private    (td,obj,val,uaddr1,uaddr2);
-  UMTX_OP_MUTEX_WAKE2      :Result:=__umtx_op_wake2_umutex     (td,obj,val,uaddr1,uaddr2);
-                        $17:Result:=do_wake3_umutex            (td,obj,val); //Sony extension
+  UMTX_OP_SEM_SIGNALTO     :Result:=__umtx_op_sem_signalto     (td,obj,val,uaddr1,uaddr2); //Sony extension
+  UMTX_OP_MUTEX_WAKE3      :Result:=__umtx_op_wake3_umutex     (td,obj,val,uaddr1,uaddr2); //Sony extension
   else
    Exit(EINVAL);
  end;
 
+ //Writeln('umtx_op(',HexStr(obj),',',op,',',val,',',HexStr(uaddr1),',',HexStr(uaddr2),')');
 end;
 
 procedure _umutex_init(mtx:p_umutex); inline;

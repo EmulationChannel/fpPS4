@@ -24,7 +24,7 @@ type
   c_has_waiters:DWORD; // Has waiters in kernel
   c_flags      :DWORD; // Flags of the condition variable
   c_clockid    :DWORD; // Clock id
-  c_spare      :QWORD; // Spare space
+  c_spare      :DWORD; // Spare space
  end;
 
  p_urwlock=^urwlock;
@@ -100,8 +100,9 @@ const
  UMTX_OP_SEM_WAIT         =19;
  UMTX_OP_SEM_WAKE         =20;
  UMTX_OP_NWAKE_PRIVATE    =21;
- UMTX_OP_MUTEX_WAKE2      =22;
- UMTX_OP_MAX              =23;
+ UMTX_OP_SEM_SIGNALTO     =22; //Sony extension
+ UMTX_OP_MUTEX_WAKE3      =23; //Sony extension
+ UMTX_OP_MAX              =24;
 
  // Flags for UMTX_OP_CV_WAIT
  CVWAIT_CHECK_UNPARKING=$01;

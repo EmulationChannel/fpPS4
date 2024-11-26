@@ -351,7 +351,7 @@ begin
  begin
   test:=DEFAULT_UMUTEX;
 
-  if (_umtx_op(@test, UMTX_OP_MUTEX_WAKE2, test.m_flags,nil,nil)=-1) then
+  if (_umtx_op(@test, UMTX_OP_MUTEX_WAKE3, test.m_flags,nil,nil)=-1) then
    wake2_avail:=-1
   else
    wake2_avail:=1;
@@ -370,7 +370,7 @@ begin
     Exit(EPERM);
   until (atomic_cmpset_rel_32(@mtx^.m_owner,owner,UMUTEX_UNOWNED)<>0);
   if ((owner and UMUTEX_CONTESTED)<>0) then
-   _umtx_op_err(mtx, UMTX_OP_MUTEX_WAKE2,flags,nil,nil);
+   _umtx_op_err(mtx, UMTX_OP_MUTEX_WAKE3,flags,nil,nil);
   Exit (0);
  end;
 unlock:
