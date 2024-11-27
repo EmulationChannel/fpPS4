@@ -235,7 +235,8 @@ begin
  Writeln(Item.FMountList.system);
  Writeln(Item.FMountList.data);
 
-
+ //temp hack
+ err:=vfs_mount_mkdir('ufs','/savedata0'  ,'savedata',nil,0);
 
                        //fs  guest     host
  err:=vfs_mount_mkdir('ufs','/app0'  ,pchar(Item.FMountList.app0  ),nil,0);

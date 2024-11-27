@@ -396,6 +396,9 @@ begin
  if (mount=nil) or (mountResult=nil) then Exit(SCE_SAVE_DATA_ERROR_PARAMETER);
  mountResult^:=Default(SceSaveDataMountResult);
 
+ mountResult^.mountPoint :='/savedata0';
+ mountResult^.mountStatus:=SCE_SAVE_DATA_MOUNT_STATUS_CREATED;
+
  Result:=0;
  {
  _sig_lock;
@@ -418,6 +421,9 @@ function ps4_sceSaveDataMount2(mount:PSceSaveDataMount2;
 begin
  if (mount=nil) or (mountResult=nil) then Exit(SCE_SAVE_DATA_ERROR_PARAMETER);
  mountResult^:=Default(SceSaveDataMountResult);
+
+ mountResult^.mountPoint :='/savedata0';
+ mountResult^.mountStatus:=SCE_SAVE_DATA_MOUNT_STATUS_CREATED;
 
  Result:=0;
  {
