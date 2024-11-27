@@ -197,7 +197,7 @@ function ps4_sceNpGetState(userId:SceUserServiceUserId;state:PInteger):Integer;
 begin
  if (state=nil) then Exit(SCE_NP_ERROR_INVALID_ARGUMENT);
 
- state^:=SCE_NP_STATE_SIGNED_OUT;
+ state^:=SCE_NP_STATE_SIGNED_IN;
  Result:=0;
 end;
 
@@ -229,7 +229,7 @@ function ps4_sceNpHasSignedUp(userId:SceUserServiceUserId;hasSignedUp:PBoolean):
 begin
  if (hasSignedUp=nil) then Exit(SCE_NP_ERROR_INVALID_ARGUMENT);
 
- hasSignedUp^:=False;
+ hasSignedUp^:=True;
  Result:=0;
 end;
 
