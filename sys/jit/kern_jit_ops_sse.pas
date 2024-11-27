@@ -884,6 +884,11 @@ begin
  jit_cbs[OPPnone,OPmax ,OPSx_ss]:=@op_reg_mem_rw;
  jit_cbs[OPPnone,OPmax ,OPSx_sd]:=@op_reg_mem_rw;
 
+ jit_cbs[OPPnone,OPpinsr,OPSx_b]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpinsr,OPSx_d]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpinsr,OPSx_q]:=@op_reg_mem_rw;
+ jit_cbs[OPPnone,OPpinsr,OPSx_w]:=@op_reg_mem_rw;
+
  jit_cbs[OPPnone,OPpacksswb,OPSnone]:=@op_reg_mem_rw;
  jit_cbs[OPPnone,OPpackssdw,OPSnone]:=@op_reg_mem_rw;
  jit_cbs[OPPnone,OPpackusdw,OPSnone]:=@op_reg_mem_rw;

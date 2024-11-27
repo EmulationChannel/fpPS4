@@ -1433,7 +1433,7 @@ const
   reg_mem:(opt:[not_impl]);
   reg_imm:(opt:[not_impl]);
   reg_im8:(opt:[not_impl]);
-  hint:[his_rw];
+  hint:[his_xchg,his_rw];
  );
 
 procedure op_xadd(var ctx:t_jit_context2);
@@ -1958,6 +1958,9 @@ begin
  jit_cbs[OPPnone,OPfdivr  ,OPSnone]:=@op_emit1_ro_np;
 
  jit_cbs[OPPnone,OPclflush,OPSnone]:=@op_emit1_rw_np;
+
+ jit_cbs[OPPnone,OPfnsave ,OPSnone]:=@op_emit1_gn_np;
+ jit_cbs[OPPnone,OPfsave  ,OPSnone]:=@op_emit1_gn_np;
 
  //fpu
 

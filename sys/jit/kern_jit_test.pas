@@ -1178,21 +1178,25 @@ begin
   case y of
    OPaddsub,
    OPcomi,
-   OPmaskmov, OPmova,
+   OPmaskmov..OPmonitor,
+   OPmova,
    OPmovddup..OPmovsldup,
    OPmovu,
+   OPmpsadbw,
    OPcvtdq2..OPcvttss2,
    OPextrq,
-   OPpabs..OPpmuludq,
-   OPpor..OPpxor,
-   opDP     ,
-   opBLEND  ,
-   opBLENDV ,
-   opROUND  ,
-   opINSERT ,
-   opEXTRACT,
-   opMPSADBW,
-   opLDDQU  ,
+   OPpabs..OPpandn,
+   OPpavg..OPpmuludq,
+   OPpor,
+   OPpsadbw..OPpunpcklwd,
+   OPpxor   ,
+   OPdp     ,
+   OPblend  ,
+   OPblendv ,
+   OPround  ,
+   OPinsert ,
+   OPextract,
+   OPlddqu  ,
 
    OPaesimc,
    OPaesenc,
@@ -1201,7 +1205,12 @@ begin
    OPaesdeclast,
    OPaeskeygenassist,
 
-   OPxabort..OPxtest:Result:=True;
+   OPxabort..OPxbegin,
+   OPxend..OPxgetbv,
+   OPxrelease..OPxtest:
+
+    Result:=True;
+
   end;
  end;
 end;
