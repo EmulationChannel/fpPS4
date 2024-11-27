@@ -84,16 +84,45 @@ begin
 end;
 
 function TAudioOutNull.Output(ptr:Pointer):Integer;
+label
+ _repeat;
 var
- time:QWORD;
+ time,d:QWORD;
 begin
  Result:=0;
  if (ptr<>nil) then
  begin
   //async send
 
+  _repeat:
+
   time:=GetProcessTime;
 
+  if (f_last_time=0) then
+  begin
+   f_last_time:=time;
+   Exit;
+  end;
+
+  d:=time-f_last_time;
+
+  if (d>=f_period) then
+  begin
+   f_last_time:=time;
+  end else
+  begin
+   d:=f_period-d;
+   //
+   if d>10 then d:=d-10;
+   //
+   usleep(d);
+
+   goto _repeat;
+
+   //Result:=-1; //BUSY
+  end;
+
+  {
   if (f_last_time=0) or
      ((time-f_last_time)>=f_period) then
   begin
@@ -102,6 +131,7 @@ begin
   begin
    Result:=-1; //BUSY
   end;
+  }
 
  end else
  begin
@@ -119,13 +149,15 @@ begin
    Exit;
   end;
 
-  time:=(time-f_last_time);
+  d:=(time-f_last_time);
 
-  if (time<f_period) then
+  if (d<f_period) then
   begin
-   time:=f_period-time;
+   d:=f_period-d;
    //
-   usleep(time);
+   if d>10 then d:=d-10;
+   //
+   usleep(d);
   end;
 
  end;
