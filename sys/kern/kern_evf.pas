@@ -134,6 +134,8 @@ var
 begin
  mtx_lock(evf^.mtx);
 
+ //Writeln('evf_cancel(',HexStr(evf),',',HexStr(setPattern,16),')');
+
  if ((evf^.attr and EVF_ATTR_DELF)=0) then
  begin
   evf^.bitPattern:=setPattern;
@@ -185,6 +187,8 @@ var
  nwaitMode:DWORD;
 begin
  mtx_lock(evf^.mtx);
+
+ //Writeln('evf_set(',HexStr(evf),',',HexStr(bitPattern,16),')');
 
  if ((evf^.attr and EVF_ATTR_DELF)=0) then
  begin
@@ -261,6 +265,8 @@ var
  pattern:QWORD;
 begin
  mtx_lock(evf^.mtx);
+
+ //Writeln('evf_trywait(',HexStr(evf),',',HexStr(bitPattern,16),',',waitMode,')');
 
  if ((evf^.attr and EVF_ATTR_DELF)=0) then
  begin
@@ -348,6 +354,8 @@ var
  count:Integer;
 begin
  td:=curkthread;
+
+ //Writeln('evf_wait(',HexStr(evf),',',HexStr(bitPattern,16),',',waitMode,')');
 
  mtx_lock(evf^.mtx);
 
@@ -564,6 +572,8 @@ begin
 
  evf_init(evf,attr,initPattern);
  evf^.name:=_name;
+
+ //Writeln('evf_create(',HexStr(evf),',',name,',',HexStr(attr,2),',',HexStr(initPattern,16),')');
 
  if not id_name_new(@named_table,evf,@key) then
  begin
