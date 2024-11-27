@@ -2158,6 +2158,7 @@ end;
 
 function do_unlock_pi(td:p_kthread;m:p_umutex;flags:Integer):Integer;
 var
+ uq_thread:p_kthread;
  key:umtx_key;
  uq_first,uq_first2,uq_me:p_umtx_q;
  pi,pi2:p_umtx_pi;
@@ -2284,19 +2285,21 @@ begin
     umtxq_unlock(@key);
    end else
    begin
-    id:=uq_first^.uq_thread^.td_tid;
+    uq_thread:=uq_first^.uq_thread;
+    id:=uq_thread^.td_tid;
 
     if ((flags and $200) <> 0) then
     begin
      mtx_lock(umtx_lock);
 
+     pi:=uq_first^.uq_pi_blocked;
+     Assert(pi<>nil,'pi=nil?');
+
      uq_first^.uq_pi_blocked:=nil;
 
-     thread_lock(uq_first^.uq_thread);
-     uq_first^.uq_thread^.td_flags:=uq_first^.uq_thread^.td_flags and (not TDF_UPIBLOCKED);
-     thread_unlock(uq_first^.uq_thread);
-
-     pi:=uq_first^.uq_pi_blocked;
+     thread_lock(uq_thread);
+     uq_thread^.td_flags:=uq_thread^.td_flags and (not TDF_UPIBLOCKED);
+     thread_unlock(uq_thread);
 
      TAILQ_REMOVE(@pi^.pi_blocked, uq_first, @uq_first^.uq_lockq);
 
@@ -2306,7 +2309,7 @@ begin
 
      if (count > 1) then
      begin
-      Result:=umtx_pi_claim(pi, uq_first^.uq_thread);
+      Result:=umtx_pi_claim(pi, uq_thread);
 
       if (Result <> 0) then
       begin
