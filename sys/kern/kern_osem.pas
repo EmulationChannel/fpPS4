@@ -124,6 +124,9 @@ var
  node,next:p_osem_node;
 begin
  Result:=0;
+
+ //Writeln('osem_cancel(',HexStr(sem),',',setCount,')');
+
  mtx_lock(sem^.mtx);
  if ((sem^.attr and SEMA_ATTR_DELF)=0) then
  begin
@@ -175,6 +178,9 @@ var
  count:Integer;
 begin
  Result:=0;
+
+ //Writeln('osem_post(',HexStr(sem),',',signalCount,')');
+
  mtx_lock(sem^.mtx);
 
  if ((sem^.attr and SEMA_ATTR_DELF)=0) then
@@ -221,6 +227,9 @@ var
  max_count:Integer;
 begin
  Result:=0;
+
+ //Writeln('osem_trywait(',HexStr(sem),',',needCount,')');
+
  mtx_lock(sem^.mtx);
 
  if (sem^.count<needCount) then
@@ -259,6 +268,8 @@ begin
  Result:=0;
  td:=curkthread;
  mtx_lock(sem^.mtx);
+
+ //Writeln('osem_wait(',HexStr(sem),',',needCount,')');
 
  if ((sem^.attr and SEMA_ATTR_DELF)=0) then
  begin
@@ -416,6 +427,8 @@ begin
 
  osem_init(sem,attr,initCount,maxCount);
  sem^.name:=_name;
+
+ //Writeln('osem_create(',HexStr(sem),',',name,',',HexStr(attr,2),',',initCount,',',maxCount,')');
 
  if not id_name_new(@named_table,@sem^.desc,@key) then
  begin
