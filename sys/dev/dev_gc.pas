@@ -769,6 +769,8 @@ begin
  Writeln('gc_ioctl(0x',HexStr(cmd,8),')');
 
  case cmd of
+  $C0088111:; //sceGnmDebugHardwareStatus
+
   $C0108120: //call in neo mode (Tca)
             begin
              Exit(19);
