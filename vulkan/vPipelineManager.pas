@@ -351,6 +351,7 @@ begin
  end;
 
  if limits.VK_EXT_depth_clip_control then
+ if (Key.ClipSpace=VK_TRUE) then
  begin
   ClipSpace:=Default(TVkPipelineViewportDepthClipControlCreateInfoEXT);
   ClipSpace.sType           :=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT;

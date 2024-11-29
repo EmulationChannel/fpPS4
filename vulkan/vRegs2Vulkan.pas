@@ -10,6 +10,7 @@ uses
  half16,
  sys_bootparam,
  Vulkan,
+ vDevice,
  vImage,
  vShader,
  ps4_shader,
@@ -202,6 +203,7 @@ Function TGPU_REGS.GET_VPORT(i:Byte):TVkViewport; //0..15
 var
  V:TVPORT_SCALE_OFFSET;
  VTE_CNTL:TPA_CL_VTE_CNTL;
+ reduce_z:Single;
 begin
  Result:=Default(TVkViewport);
  V:=CX_REG^.PA_CL_VPORT_SCALE_OFFSET[i];
@@ -219,12 +221,23 @@ begin
  Assert(VTE_CNTL.VTX_Z_FMT =0,'VTE_CNTL.VTX_Z_FMT' );
  Assert(VTE_CNTL.VTX_W0_FMT=1,'VTE_CNTL.VTX_W0_FMT');
 
+ if  limits.VK_EXT_depth_clip_control and
+     (CX_REG^.PA_CL_CLIP_CNTL.DX_CLIP_SPACE_DEF=0) then
+ begin
+  //[-1..1]
+  reduce_z:=1;
+ end else
+ begin
+  //[0..1]
+  reduce_z:=0;
+ end;
+
  Result.x       :=V.XOFFSET-V.XSCALE;
  Result.y       :=V.YOFFSET-V.YSCALE;
  Result.width   :=V.XSCALE*2;
  Result.height  :=V.YSCALE*2;
- Result.minDepth:=V.ZOFFSET;
- Result.maxDepth:=V.ZOFFSET+V.ZSCALE;
+ Result.minDepth:=V.ZOFFSET - V.ZSCALE * reduce_z;
+ Result.maxDepth:=V.ZOFFSET + V.ZSCALE;
 end;
 
 Function _fix_scissor_range(i:Word):Word;
@@ -1418,7 +1431,7 @@ begin
  end;
 
  //VK_EXT_depth_clip_control:TVkPipelineViewportDepthClipControlCreateInfoEXT
- Result.ClipSpace:=ord(PA_CL_CLIP_CNTL.DX_CLIP_SPACE_DEF=0);
+ Result.ClipSpace:=ord(PA_CL_CLIP_CNTL.DX_CLIP_SPACE_DEF=0); //[-1..1]
 
  //VK_EXT_depth_clip_enable:TVkPipelineRasterizationDepthClipStateCreateInfoEXT
  Result.DepthClip:=ord(PA_CL_CLIP_CNTL.CLIP_DISABLE=0);
