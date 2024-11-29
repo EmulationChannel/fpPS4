@@ -320,6 +320,20 @@ begin
  viewportState.scissorCount :=Key.viewportCount;
  viewportState.pScissors    :=@Key.Scissors;
 
+ pFeature:=nil; //init ext
+
+ if limits.VK_EXT_depth_clip_control then
+ if (Key.ClipSpace=VK_TRUE) then
+ begin
+  ClipSpace:=Default(TVkPipelineViewportDepthClipControlCreateInfoEXT);
+  ClipSpace.sType           :=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT;
+  ClipSpace.negativeOneToOne:=Key.ClipSpace;
+  //
+  add_feature(@ClipSpace);
+ end;
+
+ viewportState.pNext:=pFeature; //save ext
+
  colorBlending:=Default(TVkPipelineColorBlendStateCreateInfo);
  colorBlending.sType          :=VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
  colorBlending.logicOpEnable  :=ord(Key.colorBlending.logicOp<>ord(VK_LOGIC_OP_COPY));
@@ -339,7 +353,8 @@ begin
  end;
 
  rasterizer:=Key.rasterizer;
- pFeature:=nil;
+
+ pFeature:=nil; //init ext
 
  if limits.VK_EXT_provoking_vertex then
  begin
@@ -348,16 +363,6 @@ begin
   ProvokingVertex.provokingVertexMode:=TVkProvokingVertexModeEXT(Key.provokingVertex);
   //
   add_feature(@ProvokingVertex);
- end;
-
- if limits.VK_EXT_depth_clip_control then
- if (Key.ClipSpace=VK_TRUE) then
- begin
-  ClipSpace:=Default(TVkPipelineViewportDepthClipControlCreateInfoEXT);
-  ClipSpace.sType           :=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT;
-  ClipSpace.negativeOneToOne:=Key.ClipSpace;
-  //
-  add_feature(@ClipSpace);
  end;
 
  if limits.VK_EXT_depth_clip_enable then
@@ -369,7 +374,7 @@ begin
   add_feature(@DepthClip);
  end;
 
- rasterizer.pNext:=pFeature;
+ rasterizer.pNext:=pFeature; //save ext
 
  info.sType              :=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
  info.pStages            :=@Stages;

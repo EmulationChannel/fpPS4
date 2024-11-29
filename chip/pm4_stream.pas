@@ -226,14 +226,14 @@ type
   init_scope:t_pm4_resource_init_scope;
   //
   function  find_image_resource          (const rkey:TvImageKey):p_pm4_resource;
-  function  fetch_image_resource         (const rkey:TvImageKey):p_pm4_resource;
+  function  fetch_image_resource         (const rkey:TvImageKey;hint:PChar):p_pm4_resource;
   function  find_buffer_resource         (addr:Pointer;size:DWORD):p_pm4_resource;
-  function  fetch_buffer_resource        (addr:Pointer;size:DWORD):p_pm4_resource;
+  function  fetch_buffer_resource        (addr:Pointer;size:DWORD;hint:PChar):p_pm4_resource;
   function  find_htile_resource          (addr:Pointer;size:DWORD):p_pm4_resource;
   function  fetch_htile_resource         (const rkey:TvImageKey;size:DWORD):p_pm4_resource;
   function  fetch_resource_instance      (scope:p_pm4_resource_curr_scope;r:p_pm4_resource;mem_usage:Integer;img_usage:s_image_usage):p_pm4_resource_instance;
-  function  insert_image_resource        (scope:p_pm4_resource_curr_scope;const rkey:TvImageKey;mem_usage:Integer;img_usage:s_image_usage):p_pm4_resource_instance;
-  function  insert_buffer_resource       (scope:p_pm4_resource_curr_scope;addr:Pointer;size:DWORD;mem_usage:Integer):p_pm4_resource_instance;
+  function  insert_image_resource        (scope:p_pm4_resource_curr_scope;const rkey:TvImageKey;mem_usage:Integer;img_usage:s_image_usage;hint:PChar):p_pm4_resource_instance;
+  function  insert_buffer_resource       (scope:p_pm4_resource_curr_scope;addr:Pointer;size:DWORD;mem_usage:Integer;hint:PChar):p_pm4_resource_instance;
   function  insert_htile_resource        (scope:p_pm4_resource_curr_scope;const rkey:TvImageKey;size:DWORD;mem_usage:Integer):p_pm4_resource_instance;
   procedure connect_resource_instance    (i:p_pm4_resource_instance);
   procedure connect_resource_scope       (scope:p_pm4_resource_curr_scope);
@@ -390,7 +390,7 @@ type
   procedure Acquire;
   function  Release:Boolean;
   //
-  procedure Hint         (P1,P2:PChar);
+  procedure Hint         (P1,P2:PChar;maxsize:Integer);
   procedure LoadConstRam (addr:Pointer;num_dw,offset:Word);
   procedure IncrementCE  ();
   procedure WaitOnDECounterDiff(diff:DWORD);
@@ -594,7 +594,7 @@ begin
  Result:=resource_set.Find(@tmp);
 end;
 
-function t_pm4_resource_stream_scope.fetch_image_resource(const rkey:TvImageKey):p_pm4_resource;
+function t_pm4_resource_stream_scope.fetch_image_resource(const rkey:TvImageKey;hint:PChar):p_pm4_resource;
 var
  tmp:t_pm4_resource;
 begin
@@ -607,6 +607,11 @@ begin
  if (Result=nil) then
  begin
   tmp.rsize:=get_image_size(rkey);
+
+  if p_print_gpu_ops then
+  begin
+   Writeln('fetch_image_resource:0x',HexStr(rkey.Addr),' 0x',HexStr(tmp.rsize,4));
+  end;
 
   Result:=allocator.Alloc(SizeOf(t_pm4_resource));
   Result^:=tmp;
@@ -627,7 +632,7 @@ begin
  Result:=resource_set.Find(@tmp);
 end;
 
-function t_pm4_resource_stream_scope.fetch_buffer_resource(addr:Pointer;size:DWORD):p_pm4_resource;
+function t_pm4_resource_stream_scope.fetch_buffer_resource(addr:Pointer;size:DWORD;hint:PChar):p_pm4_resource;
 var
  tmp:t_pm4_resource;
 begin
@@ -642,6 +647,11 @@ begin
  begin
   Result:=allocator.Alloc(SizeOf(t_pm4_resource));
   Result^:=tmp;
+
+  if p_print_gpu_ops then
+  begin
+   Writeln('fetch_buffer_resource(',hint,'):0x',HexStr(addr),' 0x',HexStr(size,4));
+  end;
 
   resource_set.Insert(Result);
  end;
@@ -717,14 +727,14 @@ begin
  Result^.curr:=Result^.curr + curr;
 end;
 
-function t_pm4_resource_stream_scope.insert_image_resource(scope:p_pm4_resource_curr_scope;const rkey:TvImageKey;mem_usage:Integer;img_usage:s_image_usage):p_pm4_resource_instance;
+function t_pm4_resource_stream_scope.insert_image_resource(scope:p_pm4_resource_curr_scope;const rkey:TvImageKey;mem_usage:Integer;img_usage:s_image_usage;hint:PChar):p_pm4_resource_instance;
 var
  r:p_pm4_resource;
  i:p_pm4_resource_instance;
 begin
  if (rkey.cformat=VK_FORMAT_UNDEFINED) then Exit(nil);
 
- r:=fetch_image_resource(rkey);
+ r:=fetch_image_resource(rkey,hint);
  i:=fetch_resource_instance(scope,r,mem_usage,img_usage);
 
  if ((mem_usage and TM_READ)<>0) then
@@ -739,12 +749,12 @@ begin
  Result:=i;
 end;
 
-function t_pm4_resource_stream_scope.insert_buffer_resource(scope:p_pm4_resource_curr_scope;addr:Pointer;size:DWORD;mem_usage:Integer):p_pm4_resource_instance;
+function t_pm4_resource_stream_scope.insert_buffer_resource(scope:p_pm4_resource_curr_scope;addr:Pointer;size:DWORD;mem_usage:Integer;hint:PChar):p_pm4_resource_instance;
 var
  r:p_pm4_resource;
  i:p_pm4_resource_instance;
 begin
- r:=fetch_buffer_resource(addr,size);
+ r:=fetch_buffer_resource(addr,size,hint);
  i:=fetch_resource_instance(scope,r,mem_usage,[iu_buffer]);
 
  if ((mem_usage and TM_READ)<>0) then
@@ -900,20 +910,32 @@ end;
 
 //
 
-procedure t_pm4_stream.Hint(P1,P2:PChar);
+procedure t_pm4_stream.Hint(P1,P2:PChar;maxsize:Integer);
 var
- len1,len2:ptruint;
+ len1,len2:Integer;
  node:p_pm4_node_Hint;
 begin
  len1:=StrLen(P1);
- len2:=StrLen(P2);
+
+ len2:=0;
+ while (maxsize<>0) do
+ begin
+  Inc(len2);
+  if (P2[len2]=#0) then
+  begin
+   Break;
+  end;
+  Dec(maxsize);
+ end;
+
  node:=allocator.Alloc(SizeOf(t_pm4_node_Hint)+len1+len2+1);
 
  node^.ntype :=ntHint;
  node^.scope :=Default(t_pm4_resource_curr_scope);
 
- Move(P1^,node^.data,len1);
- Move(P2^,PChar(@node^.data)[len1],len2+1);
+ Move(P1^,PChar(@node^.data)[0]   ,len1);
+ Move(P2^,PChar(@node^.data)[len1],len2);
+ PChar(@node^.data)[len1+len2]:=#0;
 
  add_node(node);
 end;
@@ -933,7 +955,8 @@ begin
  insert_buffer_resource(@node^.scope,
                         addr,
                         num_dw*SizeOf(DWORD),
-                        TM_READ);
+                        TM_READ,
+                        'LoadConstRam');
 
  add_node(node);
 end;
@@ -1009,7 +1032,8 @@ begin
   insert_buffer_resource(@node^.scope,
                          addr,
                          get_data_size,
-                         TM_WRITE);
+                         TM_WRITE,
+                         'EventWriteEop');
  end;
 
  add_node(node);
@@ -1044,7 +1068,8 @@ begin
   insert_buffer_resource(@node^.scope,
                          addr,
                          get_data_size,
-                         TM_WRITE);
+                         TM_WRITE,
+                         'EventWriteEos');
  end;
 
  add_node(node);
@@ -1098,7 +1123,8 @@ begin
   insert_buffer_resource(@node^.scope,
                          addr,
                          get_data_size,
-                         TM_WRITE);
+                         TM_WRITE,
+                         'ReleaseMem');
  end;
 
  add_node(node);
@@ -1127,7 +1153,8 @@ begin
     insert_buffer_resource(@node^.scope,
                            Pointer(srcOrData),
                            numBytes,
-                           TM_READ);
+                           TM_READ,
+                           'DmaData');
    end;
   else;
  end;
@@ -1140,7 +1167,8 @@ begin
    insert_buffer_resource(@node^.scope,
                           Pointer(dst),
                           numBytes,
-                          TM_WRITE);
+                          TM_WRITE,
+                          'DmaData');
   end;
  end;
 
@@ -1172,7 +1200,8 @@ begin
   insert_buffer_resource(@node^.scope,
                          src,
                          num_dw*SizeOf(DWORD),
-                         TM_READ);
+                         TM_READ,
+                         'WriteData');
  end;
 
  case dstSel of
@@ -1184,7 +1213,8 @@ begin
     insert_buffer_resource(@node^.scope,
                            Pointer(dst),
                            num_dw*SizeOf(DWORD),
-                           TM_WRITE);
+                           TM_WRITE,
+                           'WriteData');
    end;
   else;
  end;
@@ -1323,7 +1353,8 @@ begin
       insert_image_resource(@node^.scope,
                             FImage,
                             memuse,
-                            [iu_sampled]);
+                            [iu_sampled],
+                            'Init_Uniforms');
      end;
     vbStorage,
     vbMipStorage:
@@ -1331,7 +1362,8 @@ begin
       insert_image_resource(@node^.scope,
                             FImage,
                             memuse,
-                            [iu_storage]);
+                            [iu_storage],
+                            'Init_Uniforms');
      end;
     else
      Assert(false);
@@ -1351,7 +1383,8 @@ begin
    insert_buffer_resource(@node^.scope,
                           addr,
                           size,
-                          memuse);
+                          memuse,
+                          'Init_Uniforms');
 
   end;
  end;
@@ -1380,7 +1413,8 @@ begin
    insert_buffer_resource(@node^.scope,
                           addr,
                           Shader.FPushConst.size,
-                          TM_READ);
+                          TM_READ,
+                          'Init_Pushs');
 
   end;
  end;
@@ -1418,7 +1452,8 @@ begin
    insert_image_resource(@node^.scope,
                          RT.FImageInfo,
                          RT.IMAGE_USAGE,
-                         [iu_attachment]);
+                         [iu_attachment],
+                         'Build_rt_info');
 
    //
 
@@ -1438,7 +1473,8 @@ begin
   resource_instance:=insert_image_resource(@node^.scope,
                                            GetDepthOnly(rt_info.DB_INFO.FImageInfo),
                                            rt_info.DB_INFO.DEPTH_USAGE,
-                                           [iu_depthstenc]);
+                                           [iu_depthstenc],
+                                           'Build_rt_info');
 
   if (resource_instance<>nil) then
   with resource_instance^.resource^ do
@@ -1449,7 +1485,8 @@ begin
   resource_instance:=insert_image_resource(@node^.scope,
                                            GetStencilOnly(rt_info.DB_INFO.FImageInfo),
                                            rt_info.DB_INFO.STENCIL_USAGE,
-                                           [iu_depthstenc]);
+                                           [iu_depthstenc],
+                                           'Build_rt_info');
 
   if (resource_instance<>nil) then
   with resource_instance^.resource^ do

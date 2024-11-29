@@ -1689,13 +1689,13 @@ begin
  pctx^.Flush_stream(stGfxDcb);
 end;
 
-procedure onPushMarker(pctx:p_pfp_ctx;Body:PChar);
+procedure onPushMarker(pctx:p_pfp_ctx;Body:PChar;size:Integer);
 begin
  if p_print_gpu_hint then
  begin
   Writeln('\HINT_PUSH_MARKER:',Body);
  end;
- pctx^.stream[pctx^.stream_type].Hint('\HINT_PUSH_MARKER:',Body);
+ pctx^.stream[pctx^.stream_type].Hint('\HINT_PUSH_MARKER:',Body,size);
 end;
 
 procedure onPopMarker(pctx:p_pfp_ctx);
@@ -1704,16 +1704,25 @@ begin
  begin
   Writeln('\HINT_POP_MARKER');
  end;
- pctx^.stream[pctx^.stream_type].Hint('\HINT_POP_MARKER','');
+ pctx^.stream[pctx^.stream_type].Hint('\HINT_POP_MARKER','',0);
 end;
 
-procedure onSetMarker(pctx:p_pfp_ctx;Body:PChar);
+procedure onSetMarker(pctx:p_pfp_ctx;Body:PChar;size:Integer);
 begin
  if p_print_gpu_hint then
  begin
   Writeln('\HINT_SET_MARKER:',Body);
  end;
- pctx^.stream[pctx^.stream_type].Hint('\HINT_SET_MARKER:',Body);
+ pctx^.stream[pctx^.stream_type].Hint('\HINT_SET_MARKER:',Body,size);
+end;
+
+procedure onMarker(pctx:p_pfp_ctx;Body:PChar;size:Integer);
+begin
+ if p_print_gpu_hint then
+ begin
+  Writeln('\HINT_MARKER');
+ end;
+ pctx^.stream[pctx^.stream_type].Hint('\HINT_MARKER','',0);
 end;
 
 procedure onWidthHeight(Body:PWORD);
@@ -1796,7 +1805,7 @@ begin
 
   OP_HINT_PUSH_MARKER:
    begin
-    onPushMarker(pctx,@Body[2]);
+    onPushMarker(pctx,@Body[2],PM4_LENGTH(Body[0]) - 8);
    end;
 
   OP_HINT_POP_MARKER:
@@ -1804,10 +1813,14 @@ begin
     onPopMarker(pctx);
    end;
 
-  OP_HINT_SET_MARKER,
+  OP_HINT_SET_MARKER:
+   begin
+    onSetMarker(pctx,@Body[2],PM4_LENGTH(Body[0]) - 8);
+   end;
+
   OP_HINT_MARKER:
    begin
-    onSetMarker(pctx,@Body[2]);
+    onMarker(pctx,@Body[2],PM4_LENGTH(Body[0]) - 8);
    end;
 
   OP_HINT_PREPARE_FLIP_LABEL:

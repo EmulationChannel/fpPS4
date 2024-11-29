@@ -6,6 +6,7 @@ interface
 
 uses
  sysutils,
+ math,
  bittype,
  half16,
  sys_bootparam,
@@ -203,7 +204,6 @@ Function TGPU_REGS.GET_VPORT(i:Byte):TVkViewport; //0..15
 var
  V:TVPORT_SCALE_OFFSET;
  VTE_CNTL:TPA_CL_VTE_CNTL;
- reduce_z:Single;
 begin
  Result:=Default(TVkViewport);
  V:=CX_REG^.PA_CL_VPORT_SCALE_OFFSET[i];
@@ -221,23 +221,33 @@ begin
  Assert(VTE_CNTL.VTX_Z_FMT =0,'VTE_CNTL.VTX_Z_FMT' );
  Assert(VTE_CNTL.VTX_W0_FMT=1,'VTE_CNTL.VTX_W0_FMT');
 
- if  limits.VK_EXT_depth_clip_control and
-     (CX_REG^.PA_CL_CLIP_CNTL.DX_CLIP_SPACE_DEF=0) then
- begin
-  //[-1..1]
-  reduce_z:=1;
- end else
- begin
-  //[0..1]
-  reduce_z:=0;
- end;
-
  Result.x       :=V.XOFFSET-V.XSCALE;
  Result.y       :=V.YOFFSET-V.YSCALE;
  Result.width   :=V.XSCALE*2;
  Result.height  :=V.YSCALE*2;
- Result.minDepth:=V.ZOFFSET - V.ZSCALE * reduce_z;
- Result.maxDepth:=V.ZOFFSET + V.ZSCALE;
+
+ if  limits.VK_EXT_depth_clip_control and //or emulate in shader?
+     (CX_REG^.PA_CL_CLIP_CNTL.DX_CLIP_SPACE_DEF=0) then
+ begin
+  //[-1..1]
+  Result.minDepth:=V.ZOFFSET-V.ZSCALE;
+ end else
+ begin
+  //[0..1]
+  Result.minDepth:=V.ZOFFSET;
+ end;
+ Result.maxDepth:=V.ZOFFSET+V.ZSCALE;
+
+ if (not SameValue(Result.minDepth,CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMIN)) or
+    (not SameValue(Result.maxDepth,CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMAX)) then
+ begin
+  //VK_EXT_depth_clamp_control
+  //VkPipelineViewportDepthClampControlCreateInfoEXT
+  Writeln(stderr,'TODO:VK_EXT_depth_clamp_control');
+  Writeln(stderr,' minDepth:',Result.minDepth,' ZMIN:',CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMIN);
+  Writeln(stderr,' maxDepth:',Result.maxDepth,' ZMAX:',CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMAX);
+  Assert(false,'TODO:VK_EXT_depth_clamp_control');
+ end;
 end;
 
 Function _fix_scissor_range(i:Word):Word;
@@ -1206,14 +1216,18 @@ begin
  if ((Result.DEPTH_USAGE and TM_CLEAR)=0) then
  begin
   Result.ds_state.depthCompareOp:=TVkCompareOp(DEPTH_CONTROL.ZFUNC); //1:1
+  //
+  Result.ds_state.minDepthBounds:=PSingle(@CX_REG^.DB_DEPTH_BOUNDS_MIN)^;
+  Result.ds_state.maxDepthBounds:=PSingle(@CX_REG^.DB_DEPTH_BOUNDS_MAX)^;
  end else
  begin
   //force clear all
-  Result.ds_state.depthCompareOp:=VK_COMPARE_OP_NEVER;
+  Result.ds_state.depthCompareOp:=VK_COMPARE_OP_ALWAYS;
+  //
+  Result.ds_state.depthBoundsTestEnable:=VK_TRUE;
+  Result.ds_state.minDepthBounds:=Result.CLEAR_VALUE.depthStencil.depth;
+  Result.ds_state.maxDepthBounds:=Result.CLEAR_VALUE.depthStencil.depth;
  end;
-
- Result.ds_state.minDepthBounds:=PSingle(@CX_REG^.DB_DEPTH_BOUNDS_MIN)^;
- Result.ds_state.maxDepthBounds:=PSingle(@CX_REG^.DB_DEPTH_BOUNDS_MAX)^;
 
  Assert(DEPTH_CONTROL.ENABLE_COLOR_WRITES_ON_DEPTH_FAIL =0,'ENABLE_COLOR_WRITES_ON_DEPTH_FAIL' );
  Assert(DEPTH_CONTROL.DISABLE_COLOR_WRITES_ON_DEPTH_PASS=0,'DISABLE_COLOR_WRITES_ON_DEPTH_PASS');
