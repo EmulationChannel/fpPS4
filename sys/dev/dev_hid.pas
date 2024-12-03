@@ -540,6 +540,11 @@ begin
      //with p_set_light_bar_args(data)^ do
     end;
 
+  $80044825: //scePadResetLightBar
+    begin
+     //PInteger(data)^ -> handle
+    end;
+
   $80204819: //sceHidMouseReadForUser
     begin
      with p_mouse_read_ioctl(data)^ do
