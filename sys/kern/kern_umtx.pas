@@ -149,7 +149,7 @@ var
  umtxq_chains:array[0..1,0..UMTX_CHAINS-1] of umtxq_chain;
  umtx_pi_allocated:Integer=0;
 
- size_of_umtx_q:Integer=sizeof(umtx_q)+sizeof(umtxq_queue); public;
+ size_of_umtx_q:Integer=sizeof(umtx_q); public;
 
 implementation
 
@@ -259,9 +259,10 @@ end;
 procedure umtxq_alloc(uq:p_umtx_q);
 begin
  Assert(uq<>nil);
- uq^.uq_spare_queue:=Pointer(uq)+sizeof(umtx_q);
  //uq:=AllocMem(sizeof(umtx_q));
- //uq^.uq_spare_queue:=AllocMem(sizeof(umtxq_queue));
+
+ //do not allocate uq_spare_queue satically, can migrate to another thread
+ uq^.uq_spare_queue:=AllocMem(sizeof(umtxq_queue));
  //
  TAILQ_INIT(@uq^.uq_spare_queue^.head);
  TAILQ_INIT(@uq^.uq_pi_contested);
@@ -271,7 +272,7 @@ end;
 procedure umtxq_free(uq:p_umtx_q);
 begin
  Assert(uq^.uq_spare_queue<>nil);
- //FreeMem(uq^.uq_spare_queue);
+ FreeMem(uq^.uq_spare_queue);
  //FreeMem(uq);
 end;
 
