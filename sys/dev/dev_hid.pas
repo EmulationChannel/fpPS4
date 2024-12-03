@@ -13,6 +13,7 @@ procedure hid_init();
 implementation
 
 uses
+ windows,
  errno,
  systm,
  vuio,
@@ -283,6 +284,13 @@ begin
  device_info.stick_info.deadZoneRight:=$d;
 end;
 
+
+
+function GetAsyncKeyState(vKey:longint):Boolean; inline;
+begin
+ Result:=(Windows.GetKeyState(vKey) and $8000)<>0;
+end;
+
 Function hidIoctl(dev:p_cdev;cmd:QWORD;data:Pointer;fflag:Integer):Integer;
 var
  td:p_kthread;
@@ -425,6 +433,87 @@ begin
       u.pad_state.unique_len :=7;
       u.pad_state.unique_data[6]:=7;
 
+      //
+
+      if GetAsyncKeyState(VK_W) then
+       u.pad_state.leftStick.y:=0;
+
+      if GetAsyncKeyState(VK_S) then
+       u.pad_state.leftStick.y:=$FF;
+
+      if GetAsyncKeyState(VK_A) then
+       u.pad_state.leftStick.x:=0;
+
+      if GetAsyncKeyState(VK_D) then
+       u.pad_state.leftStick.x:=$FF;
+
+      //
+
+      if GetAsyncKeyState(VK_I) then
+       u.pad_state.rightStick.y:=0;
+
+      if GetAsyncKeyState(VK_K) then
+       u.pad_state.rightStick.y:=$FF;
+
+      if GetAsyncKeyState(VK_J) then
+       u.pad_state.rightStick.x:=0;
+
+      if GetAsyncKeyState(VK_L) then
+       u.pad_state.rightStick.x:=$FF;
+
+      if GetAsyncKeyState(VK_RETURN) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_OPTIONS;
+
+      if GetAsyncKeyState(VK_UP) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_UP;
+
+      if GetAsyncKeyState(VK_RIGHT) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_RIGHT;
+
+      if GetAsyncKeyState(VK_DOWN) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_DOWN;
+
+      if GetAsyncKeyState(VK_LEFT) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_LEFT;
+
+      if GetAsyncKeyState(VK_NUMPAD8) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_TRIANGLE;
+
+      if GetAsyncKeyState(VK_NUMPAD6) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_CIRCLE;
+
+      if GetAsyncKeyState(VK_NUMPAD2) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_CROSS;
+
+      if GetAsyncKeyState(VK_NUMPAD4) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_SQUARE;
+
+      if GetAsyncKeyState(VK_Q) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_L1;
+
+      if GetAsyncKeyState(VK_1) then
+      begin
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_L2;
+       u.pad_state.analogButtons.l2:=255;
+      end;
+
+      if GetAsyncKeyState(VK_Z) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_L3;
+
+
+      if GetAsyncKeyState(VK_E) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_R1;
+
+      if GetAsyncKeyState(VK_4) then
+      begin
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_R2;
+       u.pad_state.analogButtons.r2:=255;
+      end;
+
+      if GetAsyncKeyState(VK_C) then
+       u.pad_state.buttons:=u.pad_state.buttons or SCE_PAD_BUTTON_R3;
+
+      //
 
       Result:=copyout(@u.pad_state,state,sizeof(t_pad_state));
 

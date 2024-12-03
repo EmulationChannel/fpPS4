@@ -146,13 +146,13 @@ type
   fsbase :Pointer;                 //0x1C8
   gsbase :Pointer;                 //0x1D0
   jitcall:Pointer;                 //0x1D8
-  _resrv2:array[0..20] of QWORD;
+  jit_trp:Pointer;                 //0x1E0
+  jit____:Pointer;                 //0x1E8
+  iflag  :QWORD;                   //0x1F0
+  _resrv2:array[0..17] of QWORD;
   _align3:array[0..7] of QWORD;
   actctx :Pointer;                 //0x2C8
   _align4:array[0..180] of QWORD;
-  jit_trp:Pointer;                 //0x878
-  jit____:Pointer;                 //0x880
-  iflag  :Integer;                 //0x888
  end;
 
 const
@@ -169,8 +169,6 @@ const
  {$IF teb_jitcall<>$1D8}{$STOP teb_jitcall<>$1D8}{$ENDIF}
  {$IF teb_thread <>$1C0}{$STOP teb_thread <>$1C0}{$ENDIF}
  {$IF teb_actctx <>$2C8}{$STOP teb_actctx <>$2C8}{$ENDIF}
- {$IF teb_jit_trp<>$878}{$STOP teb_jit_trp<>$878}{$ENDIF}
- {$IF teb_iflag  <>$888}{$STOP teb_iflag  <>$888}{$ENDIF}
 
 type
  t_td_name=array[0..31] of AnsiChar;

@@ -3997,6 +3997,11 @@ begin
  if (din.OpCode.Prefix=OPPnone) then
  begin
   case din.OpCode.Opcode of
+   OPpush,
+   OPpop,
+   OPpushf,
+   OPpopf:Result.mema_size:=OPERAND_BYTES[din.Operand[1].Size];
+   //
    OPins ,
    OPouts,
    OPmovs,
