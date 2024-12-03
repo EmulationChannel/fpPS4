@@ -893,13 +893,6 @@ begin
  if (RENDER_TARGET.INFO.LINEAR_GENERAL<>0) then
  begin
   Result.FImageInfo.Addr:=Pointer(QWORD(Result.FImageInfo.Addr) or Byte(RENDER_TARGET.VIEW.SLICE_START));
- end else
- begin
-  if (RENDER_TARGET.VIEW.SLICE_START<>0) then
-  begin
-   Writeln(stderr,'TODO:RENDER_TARGET.VIEW.SLICE_START=',RENDER_TARGET.VIEW.SLICE_START);
-   Assert (false ,'TODO:RENDER_TARGET.VIEW.SLICE_START='+IntToStr(RENDER_TARGET.VIEW.SLICE_START));
-  end;
  end;
 
  Result.FImageInfo.params.width :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_X);
@@ -943,10 +936,18 @@ begin
 
  //Result.FImageView.dstSel -> swizzle in shader
 
- //Result.FImageView.base_level:Byte;  //first mip level (0..15)
- //Result.FImageView.last_level:Byte;  //last mip level (0..15)
- //Result.FImageView.base_array:Word;  //first array index (0..16383)
- //Result.FImageView.last_array:Word;  //texture height (0..16383)
+ if (RENDER_TARGET.INFO.LINEAR_GENERAL=0) then
+ begin
+  Result.FImageInfo.params.arrayLayers:=RENDER_TARGET.VIEW.SLICE_MAX+1;
+
+  if (Result.FImageInfo.params.arrayLayers>1) then
+  begin
+   Result.FImageView.vtype:=ord(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
+  end;
+
+  Result.FImageView.base_array:=RENDER_TARGET.VIEW.SLICE_START;
+  Result.FImageView.last_array:=Result.FImageView.base_array;
+ end;
 
  Result.blend:=GET_RT_BLEND(i);
 
