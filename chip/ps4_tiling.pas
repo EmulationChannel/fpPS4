@@ -1489,30 +1489,44 @@ const
   m_pipeSwizzleMask:0         ;
  );
 
- function  GetTiler2d(Width,m_bitsPerElement:DWORD):Tiler2d;
- procedure detile32bppDisplaySse2(dst,src:Pointer;destPitch:DWORD); assembler; MS_ABI_CDecl;
- procedure detile32bppBuf(var T:Tiler2d;src,dst:Pointer);
+function  GetTiler2d(Width,m_bitsPerElement:DWORD):Tiler2d;
+procedure detile32bppDisplaySse2(dst,src:Pointer;destPitch:DWORD); assembler; MS_ABI_CDecl;
+procedure detile32bppBuf(var T:Tiler2d;src,dst:Pointer);
 
- function getMicroTileMode(outMicroTileMode:PByte;tmode:Byte):Integer;
- Function computeSurfaceMacroTileMode(outMacroTileMode:PByte;tileMode,bitsPerElement,numFragmentsPerPixel:Byte):Integer;
+function  getMicroTileMode(outMicroTileMode:PByte;tmode:Byte):Integer;
+Function  computeSurfaceMacroTileMode(outMacroTileMode:PByte;tileMode,bitsPerElement,numFragmentsPerPixel:Byte):Integer;
 
- procedure computeHtileInfo(outHtileSizeBytes:PPtruint;
-                            outHtileAlign    :PPtruint;
-                            outHtilePitch    :PWord;
-                            outHtileHeight   :PWord;
-                            //
-                            Pitch :DWORD;
-                            Height:DWORD;
-                            Slice :DWORD;
-                            //
-                            isHtileLinear :Boolean;
-                            isTcCompatible:Boolean;
-                            tileMode      :Byte
-                           );
+procedure computeHtileInfo(outHtileSizeBytes:PPtruint;
+                           outHtileAlign    :PPtruint;
+                           outHtilePitch    :PWord;
+                           outHtileHeight   :PWord;
+                           //
+                           Pitch :DWORD;
+                           Height:DWORD;
+                           Slice :DWORD;
+                           //
+                           isHtileLinear :Boolean;
+                           isTcCompatible:Boolean;
+                           tileMode      :Byte
+                          );
 
- function getArrayMode(outArrayMode:PByte;tmode:Byte):Integer;
+procedure computeCmaskInfo(outCmaskSizeBytes:PPtruint;
+                           outCmaskAlign    :PInteger;
+                           outCmaskPitch    :PWord;
+                           outCmaskHeight   :PWord;
+                           //
+                           PITCH            :TCB_COLOR0_PITCH;
+                           VIEW             :TCB_COLOR0_VIEW;
+                           INFO             :TCB_COLOR0_INFO;
+                           ATTRIB           :TCB_COLOR0_ATTRIB;
+                           //
+                           GpuMode          :Byte;
+                           Height           :Word
+                          );
 
- function getMicroTileThickness(arrayMode:Byte):Byte;
+function getArrayMode(outArrayMode:PByte;tmode:Byte):Integer;
+
+function getMicroTileThickness(arrayMode:Byte):Byte;
 
 function IsTileModeDepth(tiling_idx:Byte):Boolean;
 
@@ -2131,6 +2145,110 @@ end;
 
 function getPipeCount(pipeConfig:Byte):DWORD; forward;
 
+procedure computeCmaskInfo(outCmaskSizeBytes:PPtruint;
+                           outCmaskAlign    :PInteger;
+                           outCmaskPitch    :PWord;
+                           outCmaskHeight   :PWord;
+                           //
+                           PITCH            :TCB_COLOR0_PITCH;
+                           VIEW             :TCB_COLOR0_VIEW;
+                           INFO             :TCB_COLOR0_INFO;
+                           ATTRIB           :TCB_COLOR0_ATTRIB;
+                           //
+                           GpuMode          :Byte;
+                           Height           :Word
+                          );
+var
+ pipeConfig     :DWORD;
+ numPipes       :DWORD;
+ cmask_is_linear:Boolean;
+ res1           :DWORD;
+ res2           :DWORD;
+ prev           :DWORD;
+ next           :DWORD;
+ CmaskPitch     :DWORD;
+ CmaskAlign     :DWORD;
+ size           :Ptruint;
+begin
+ PipeConfig:=0;
+
+ if (INFO.ALT_TILE_MODE<>0) then
+ begin
+  getAltPipeConfig(@pipeConfig,ATTRIB.TILE_MODE_INDEX);
+ end else
+ begin
+  getPipeConfig   (@pipeConfig,ATTRIB.TILE_MODE_INDEX);
+ end;
+
+ Assert(pipeConfig<>0);
+
+ numPipes:=getPipeCount(pipeConfig);
+
+ if (GpuMode<>1) then
+ begin
+  cmask_is_linear:=(INFO.CMASK_IS_LINEAR<>0);
+ end else
+ begin
+  cmask_is_linear:=(INFO.CMASK_ADDR_TYPE=CMASK_ADDR_COMPATIBLE);
+ end;
+
+ res1:=64;
+ res2:=64;
+
+ if (not cmask_is_linear) then
+ begin
+  next:=1;
+  res1:=256;
+
+  repeat
+   res2:=res1;
+   prev:=next;
+   next:=next*2;
+   if (res2<=(next * numPipes)) then break;
+   res1:=res2 shr 1;
+  until ((res2 and 1) <> 0);
+
+  res2:=res2 * 8;
+  res1:=prev * numPipes * 8;
+ end;
+
+ Assert(isPowerOfTwo(res1));
+ Assert(isPowerOfTwo(res2));
+
+ CmaskPitch:=(-res2) and (PITCH.TILE_MAX*8+7) + res2;
+ CmaskAlign:=numPipes shl 8;
+
+ res2:=(-res1) and (Height - 1) + res1;
+
+ repeat
+  size:=res2;
+  res2:=res2 + res1;
+  size:=size * (CmaskPitch shr 7);
+ until ((size mod CmaskAlign) = 0);
+
+ if (outCmaskSizeBytes<>nil) then
+ begin
+  outCmaskSizeBytes^:=size * (VIEW.SLICE_MAX + 1);
+ end;
+
+ if (outCmaskAlign<>nil) then
+ begin
+  outCmaskAlign^:=CmaskAlign;
+ end;
+
+ if (outCmaskPitch<>nil) then
+ begin
+  outCmaskPitch^:=CmaskPitch;
+ end;
+
+ if (outCmaskHeight<>nil) then
+ begin
+  outCmaskHeight^:=res2 - res1;
+ end;
+
+end;
+
+
 procedure computeHtileInfo(outHtileSizeBytes:PPtruint;
                            outHtileAlign    :PPtruint;
                            outHtilePitch    :PWord;
@@ -2337,7 +2455,7 @@ var
  sVar1:Integer;
  _NumBanks:Byte;
 begin
- if (Integer(INFO) < 0) then
+ if (INFO.ALT_TILE_MODE <> 0) then
  begin
    dataFormat:=getDataFormat;
    if (dataFormat.m_surfaceFormat <> 0) then
@@ -2346,7 +2464,7 @@ begin
      if (_isMacroTiled <> false) then
      begin
        m_bitsPerFragment:=getTotalBitsPerElement(dataFormat);
-       if (Integer(INFO) < 0) then
+       if (INFO.ALT_TILE_MODE <> 0) then
        begin
          getAltNumBanks(@_NumBanks,ATTRIB.TILE_MODE_INDEX,m_bitsPerFragment,ATTRIB.NUM_FRAGMENTS);
          sVar1:=4;

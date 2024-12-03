@@ -22,6 +22,11 @@ uses
  si_ci_vi_merged_groups;
 
 type
+ TCMASK_INFO=record
+  KEY :TvImageKey;
+  SIZE:Ptruint;
+ end;
+
  TRT_INFO=record
 
   attachment:TVkUInt32;
@@ -34,6 +39,8 @@ type
   IMAGE_USAGE:Byte;
 
   CLEAR_COLOR:TVkClearColorValue;
+
+  CMASK_INFO:TCMASK_INFO;
 
   blend:TVkPipelineColorBlendAttachmentState;
  end;
@@ -226,6 +233,9 @@ begin
  Result.width   :=V.XSCALE*2;
  Result.height  :=V.YSCALE*2;
 
+ //emulate: [-1,1] to [0,1]
+ //position.z = (position.z + position.w) * 0.5;
+
  if  limits.VK_EXT_depth_clip_control and //or emulate in shader?
      (CX_REG^.PA_CL_CLIP_CNTL.DX_CLIP_SPACE_DEF=0) then
  begin
@@ -246,7 +256,7 @@ begin
   Writeln(stderr,'TODO:VK_EXT_depth_clamp_control');
   Writeln(stderr,' minDepth:',Result.minDepth,' ZMIN:',CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMIN);
   Writeln(stderr,' maxDepth:',Result.maxDepth,' ZMAX:',CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMAX);
-  Assert(false,'TODO:VK_EXT_depth_clamp_control');
+  //Assert(false,'TODO:VK_EXT_depth_clamp_control');
  end;
 end;
 
@@ -879,9 +889,17 @@ begin
  RENDER_TARGET:=CX_REG^.RENDER_TARGET[i];
 
  Result.FImageInfo.Addr:=Pointer(QWORD(RENDER_TARGET.BASE) shl 8);
+
  if (RENDER_TARGET.INFO.LINEAR_GENERAL<>0) then
  begin
   Result.FImageInfo.Addr:=Pointer(QWORD(Result.FImageInfo.Addr) or Byte(RENDER_TARGET.VIEW.SLICE_START));
+ end else
+ begin
+  if (RENDER_TARGET.VIEW.SLICE_START<>0) then
+  begin
+   Writeln(stderr,'TODO:RENDER_TARGET.VIEW.SLICE_START=',RENDER_TARGET.VIEW.SLICE_START);
+   Assert (false ,'TODO:RENDER_TARGET.VIEW.SLICE_START='+IntToStr(RENDER_TARGET.VIEW.SLICE_START));
+  end;
  end;
 
  Result.FImageInfo.params.width :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_X);
@@ -923,12 +941,7 @@ begin
  Result.FImageView.cformat   :=Result.FImageInfo.cformat;
  Result.FImageView.vtype     :=ord(VK_IMAGE_VIEW_TYPE_2D);
 
- //Result.FImageView.dstSel.r:=ord(VK_COMPONENT_SWIZZLE_R);
- //Result.FImageView.dstSel.g:=ord(VK_COMPONENT_SWIZZLE_G);
- //Result.FImageView.dstSel.b:=ord(VK_COMPONENT_SWIZZLE_B);
- //Result.FImageView.dstSel.a:=ord(VK_COMPONENT_SWIZZLE_A);
-
- //Result.FImageView.dstSel:TvDstSel; TODO
+ //Result.FImageView.dstSel -> swizzle in shader
 
  //Result.FImageView.base_level:Byte;  //first mip level (0..15)
  //Result.FImageView.last_level:Byte;  //last mip level (0..15)
@@ -939,13 +952,31 @@ begin
 
  Result.COMP_SWAP:=RENDER_TARGET.INFO.COMP_SWAP;
 
+ //RENDER_TARGET.INFO.FAST_CLEAR CMASK
+
  if (RENDER_TARGET.INFO.FAST_CLEAR<>0) then
  begin
-  Result.IMAGE_USAGE:=TM_CLEAR or TM_WRITE;
- end else
- begin
-  Result.IMAGE_USAGE:=TM_READ  or TM_WRITE;
+
+  Result.CMASK_INFO.KEY.Addr:=Pointer(QWORD(RENDER_TARGET.CMASK) shl 8);
+
+  computeCmaskInfo(@Result.CMASK_INFO.SIZE,
+                   nil,
+                   @Result.CMASK_INFO.KEY.params.pad_width,
+                   @Result.CMASK_INFO.KEY.params.pad_height,
+                   //
+                   RENDER_TARGET.PITCH,
+                   RENDER_TARGET.VIEW,
+                   RENDER_TARGET.INFO,
+                   RENDER_TARGET.ATTRIB,
+                   //
+                   p_neomode,
+                   Result.FImageInfo.params.height
+                  );
+
  end;
+
+ //Initially set READ/WRITE, for CLEAR/WRITE state it is necessary to check CMASK state
+ Result.IMAGE_USAGE:=TM_READ or TM_WRITE;
 
  //if (Result.blend.blendEnable<>0) then
  //begin
@@ -1267,17 +1298,29 @@ begin
 
  ////
 
- Assert(DB_DEPTH_VIEW.SLICE_START=0,'DB_DEPTH_VIEW.SLICE_START');
+ if (DB_DEPTH_VIEW.SLICE_START<>0) then
+ begin
+  Writeln(stderr,'TODO:DB_DEPTH_VIEW.SLICE_START=',DB_DEPTH_VIEW.SLICE_START);
+  Assert (false ,'TODO:DB_DEPTH_VIEW.SLICE_START='+IntToStr(DB_DEPTH_VIEW.SLICE_START));
+ end;
 
  Result.Z_READ_ADDR :=Pointer(QWORD(CX_REG^.DB_Z_READ_BASE ) shl 8);
  Result.Z_WRITE_ADDR:=Pointer(QWORD(CX_REG^.DB_Z_WRITE_BASE) shl 8);
 
- Assert(Result.Z_READ_ADDR=Result.Z_WRITE_ADDR,'Z_READ_ADDR:'+HexStr(Result.Z_READ_ADDR)+'<>Z_WRITE_ADDR:'+HexStr(Result.Z_WRITE_ADDR));
+ if (Result.Z_READ_ADDR<>Result.Z_WRITE_ADDR) then
+ begin
+  Writeln(stderr,'Z_READ_ADDR:'+HexStr(Result.Z_READ_ADDR)+'<>Z_WRITE_ADDR:'+HexStr(Result.Z_WRITE_ADDR));
+  Assert (false ,'Z_READ_ADDR:'+HexStr(Result.Z_READ_ADDR)+'<>Z_WRITE_ADDR:'+HexStr(Result.Z_WRITE_ADDR));
+ end;
 
  Result.STENCIL_READ_ADDR :=Pointer(QWORD(CX_REG^.DB_STENCIL_READ_BASE ) shl 8);
  Result.STENCIL_WRITE_ADDR:=Pointer(QWORD(CX_REG^.DB_STENCIL_WRITE_BASE) shl 8);
 
- Assert(Result.STENCIL_READ_ADDR=Result.STENCIL_WRITE_ADDR,'STENCIL_READ_ADDR<>STENCIL_WRITE_ADDR');
+ if (Result.STENCIL_READ_ADDR<>Result.STENCIL_WRITE_ADDR) then
+ begin
+  Writeln(stderr,'STENCIL_READ_ADDR:'+HexStr(Result.STENCIL_READ_ADDR)+'<>STENCIL_WRITE_ADDR:'+HexStr(Result.STENCIL_WRITE_ADDR));
+  Assert (false ,'STENCIL_READ_ADDR:'+HexStr(Result.STENCIL_READ_ADDR)+'<>STENCIL_WRITE_ADDR:'+HexStr(Result.STENCIL_WRITE_ADDR));
+ end;
 
  Assert(SHADER_CONTROL.Z_EXPORT_ENABLE=0               ,'Z_EXPORT_ENABLE');
  Assert(SHADER_CONTROL.STENCIL_TEST_VAL_EXPORT_ENABLE=0,'STENCIL_TEST_VAL_EXPORT_ENABLE');

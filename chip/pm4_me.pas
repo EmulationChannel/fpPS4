@@ -942,7 +942,7 @@ begin
   With UniformBuilder.FBuffers[i] do
   begin
 
-   resource_instance:=ctx.node^.scope.find_buffer_resource_instance(addr,size);
+   resource_instance:=ctx.node^.scope.find_buffer_resource_instance(R_BUF,addr,size);
 
    Assert(resource_instance<>nil);
 
@@ -1126,7 +1126,7 @@ begin
   With UniformBuilder.FBuffers[i] do
   begin
 
-   resource_instance:=ctx.node^.scope.find_buffer_resource_instance(addr,size);
+   resource_instance:=ctx.node^.scope.find_buffer_resource_instance(R_BUF,addr,size);
 
    {
    if (resource_instance<>nil) then
@@ -1210,6 +1210,7 @@ var
 
  ri:TvImage2;
  ht:TvMetaHtile;
+ hc:TvMetaCmask;
 begin
  if ctx.stream^.init then Exit;
 
@@ -1250,6 +1251,12 @@ begin
    ht:=FetchHtile(ctx.Cmd,resource^.rkey,resource^.rsize);
 
    resource^.rclear:=ht.rclear;
+  end else
+  if (resource^.rtype=R_CMASK) then
+  begin
+   hc:=FetchCmask(ctx.Cmd,resource^.rkey,resource^.rsize);
+
+   resource^.rclear:=hc.rclear;
   end;
 
   i:=TAILQ_NEXT(i,@i^.init_entry);
@@ -1341,7 +1348,7 @@ var
 
  color_instance:array[0..7] of p_pm4_resource_instance;
 
- htile_instance:p_pm4_resource_instance;
+ meta_instance:p_pm4_resource_instance;
  d_instance:p_pm4_resource_instance;
  s_instance:p_pm4_resource_instance;
 begin
@@ -1350,6 +1357,24 @@ begin
  if (ctx.rt_info^.RT_COUNT<>0) then
  For i:=0 to ctx.rt_info^.RT_COUNT-1 do
   begin
+
+   if (ctx.rt_info^.RT_INFO[i].CMASK_INFO.KEY.Addr<>nil) then
+   begin
+
+    meta_instance:=ctx.node^.scope.find_buffer_resource_instance(R_CMASK,
+                                                                 ctx.rt_info^.RT_INFO[i].CMASK_INFO.KEY.Addr,
+                                                                 ctx.rt_info^.RT_INFO[i].CMASK_INFO.SIZE);
+    Assert(meta_instance<>nil);
+
+    if meta_instance^.resource^.rclear then
+    begin
+     //-TM_READ +TM_CLEAR
+     ctx.rt_info^.RT_INFO[i].IMAGE_USAGE:=ctx.rt_info^.RT_INFO[i].IMAGE_USAGE and (not TM_READ) or TM_CLEAR;
+
+     meta_instance^.resource^.rclear:=False;
+    end;
+
+   end;
 
    color_instance[i]:=ctx.node^.scope.find_image_resource_instance(ctx.rt_info^.RT_INFO[i].FImageInfo);
 
@@ -1371,18 +1396,17 @@ begin
   //set clear flag on cleared htile
   if (ctx.rt_info^.DB_INFO.HTILE_INFO.TILE_SURFACE_ENABLE<>0) then
   begin
-   htile_instance:=ctx.node^.scope.find_htile_resource_instance(ctx.rt_info^.DB_INFO.HTILE_INFO.KEY.Addr,
-                                                                ctx.rt_info^.DB_INFO.HTILE_INFO.SIZE);
-   Assert(htile_instance<>nil);
+   meta_instance:=ctx.node^.scope.find_buffer_resource_instance(R_HTILE,
+                                                                 ctx.rt_info^.DB_INFO.HTILE_INFO.KEY.Addr,
+                                                                 ctx.rt_info^.DB_INFO.HTILE_INFO.SIZE);
+   Assert(meta_instance<>nil);
 
-   if htile_instance^.resource^.rclear then
+   if meta_instance^.resource^.rclear then
    begin
-    //clear TM_READ
-    ctx.rt_info^.DB_INFO.DEPTH_USAGE:=ctx.rt_info^.DB_INFO.DEPTH_USAGE and (not TM_READ);
-    //set   TM_CLEAR
-    ctx.rt_info^.DB_INFO.DEPTH_USAGE:=ctx.rt_info^.DB_INFO.DEPTH_USAGE or TM_CLEAR;
+    //-TM_READ +TM_CLEAR
+    ctx.rt_info^.DB_INFO.DEPTH_USAGE:=ctx.rt_info^.DB_INFO.DEPTH_USAGE and (not TM_READ) or TM_CLEAR;
 
-    htile_instance^.resource^.rclear:=False;
+    meta_instance^.resource^.rclear:=False;
    end;
 
   end;
@@ -1805,6 +1829,7 @@ procedure pm4_Writeback_Finish(var ctx:t_me_render_context);
 var
  ri:TvImage2;
  ht:TvMetaHtile;
+ hc:TvMetaCmask;
 
  resource:p_pm4_resource;
 begin
@@ -1840,6 +1865,12 @@ begin
    ht:=FetchHtile(ctx.Cmd,resource^.rkey,resource^.rsize);
 
    ht.rclear:=resource^.rclear;
+  end else
+  if (resource^.rtype=R_CMASK) then
+  begin
+   hc:=FetchCmask(ctx.Cmd,resource^.rkey,resource^.rsize);
+
+   hc.rclear:=resource^.rclear;
   end;
 
   resource:=ctx.stream^.resource_set.Next(resource);
@@ -1962,18 +1993,17 @@ begin
 }
 end;
 
-procedure Prepare_htile(var ctx:t_me_render_context;
-                        var UniformBuilder:TvUniformBuilder);
+procedure Prepare_buf_clear(var ctx:t_me_render_context;
+                            var UniformBuilder:TvUniformBuilder);
 var
  i:Integer;
 
  resource_instance:p_pm4_resource_instance;
- resource:p_pm4_resource;
+ buffer,meta:p_pm4_resource;
 
- //ht:TvMetaHtile;
  hb:TvMetaBuffer;
 begin
- resource:=nil;
+ buffer:=nil;
 
  //buffers
  if (Length(UniformBuilder.FBuffers)<>0) then
@@ -1985,10 +2015,10 @@ begin
    //get buffer with write usege
    if ((memuse and TM_WRITE)<>0) then
    begin
-    resource_instance:=ctx.node^.scope.find_buffer_resource_instance(addr,size);
+    resource_instance:=ctx.node^.scope.find_buffer_resource_instance(R_BUF,addr,size);
     if (resource_instance<>nil) then
     begin
-     resource:=resource_instance^.resource;
+     buffer:=resource_instance^.resource;
      Break;
     end;
    end;
@@ -1997,21 +2027,29 @@ begin
  end;
  //buffers
 
- Assert(resource<>nil);
+ Assert(buffer<>nil);
 
  //set flag by buffer in current stream
- resource^.rclear:=True;
+ buffer^.rclear:=True;
 
  //set flag by buffer to next stream
- hb:=FetchBuffer(ctx.Cmd,resource^.rkey.Addr,resource^.rsize);
+ hb:=FetchBuffer(ctx.Cmd,buffer^.rkey.Addr,buffer^.rsize);
  hb.rclear:=True;
 
  //set flag by htile in current stream
- resource:=ctx.stream^.find_htile_resource(resource^.rkey.Addr,resource^.rsize);
+ meta:=ctx.stream^.find_buffer_resource(R_HTILE,buffer^.rkey.Addr,buffer^.rsize);
  //
- if (resource<>nil) then
+ if (meta<>nil) then
  begin
-  resource^.rclear:=True;
+  meta^.rclear:=True;
+ end;
+
+ //set flag by cmask in current stream
+ meta:=ctx.stream^.find_buffer_resource(R_CMASK,buffer^.rkey.Addr,buffer^.rsize);
+ //
+ if (meta<>nil) then
+ begin
+  meta^.rclear:=True;
  end;
 
 end;
@@ -2037,12 +2075,12 @@ begin
  FUniformBuilder:=Default(TvUniformBuilder);
  CP_KEY.FShaderGroup.ExportUnifBuilder(FUniformBuilder,dst);
 
- //htile heuristic
+ //htile/cmask/rt heuristic
  if (CP_KEY.FShaderGroup.FKey.FShaders[vShaderStageCs].IsCSClearShader) then
  begin
-  Prepare_htile(ctx,FUniformBuilder);
+  Prepare_buf_clear(ctx,FUniformBuilder);
   //
-  ctx.InsertLabel('clear htile/rendertarget');
+  ctx.InsertLabel('clear htile/cmask/rt');
  end;
 
  Prepare_Uniforms(ctx,BP_COMPUTE,FUniformBuilder);

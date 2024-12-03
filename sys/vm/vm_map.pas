@@ -3424,7 +3424,8 @@ end;
 
 function vm_map_track_trigger(map:vm_map_t;start,__end:vm_offset_t;exclude:Pointer;mode:T_TRIGGER_MODE):Integer;
 begin
- Result:=vm_track_map_trigger2(@map^.pmap^.tr_map,start,__end,exclude,mode);
+ //vm_track_map_trigger2 is broken
+ Result:=vm_track_map_trigger(@map^.pmap^.tr_map,start,__end,exclude,mode);
 
  if (mode=M_CPU_WRITE) then
  begin

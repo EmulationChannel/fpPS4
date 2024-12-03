@@ -131,6 +131,7 @@ const
  R_IMG  =0;
  R_BUF  =1;
  R_HTILE=2;
+ R_CMASK=3;
 
 type
  t_pm4_usage=packed record
@@ -174,6 +175,7 @@ type
   //
   rcombined :Boolean;
   rclear    :Boolean;
+  rcmask    :Boolean;
   rwriteback:Boolean;
   //
   function c(n1,n2:p_pm4_resource):Integer; static;
@@ -213,8 +215,7 @@ type
   procedure insert(i:p_pm4_resource_instance);
   function  find_resource_instance(r:p_pm4_resource):p_pm4_resource_instance;
   function  find_image_resource_instance (const rkey:TvImageKey):p_pm4_resource_instance;
-  function  find_buffer_resource_instance(addr:Pointer;size:DWORD):p_pm4_resource_instance;
-  function  find_htile_resource_instance (addr:Pointer;size:DWORD):p_pm4_resource_instance;
+  function  find_buffer_resource_instance(rtype:Integer;addr:Pointer;size:DWORD):p_pm4_resource_instance;
  end;
 
  t_pm4_resource_stream_scope=object
@@ -227,14 +228,11 @@ type
   //
   function  find_image_resource          (const rkey:TvImageKey):p_pm4_resource;
   function  fetch_image_resource         (const rkey:TvImageKey;hint:PChar):p_pm4_resource;
-  function  find_buffer_resource         (addr:Pointer;size:DWORD):p_pm4_resource;
-  function  fetch_buffer_resource        (addr:Pointer;size:DWORD;hint:PChar):p_pm4_resource;
-  function  find_htile_resource          (addr:Pointer;size:DWORD):p_pm4_resource;
-  function  fetch_htile_resource         (const rkey:TvImageKey;size:DWORD):p_pm4_resource;
+  function  find_buffer_resource         (rtype:Integer;addr:Pointer;size:DWORD):p_pm4_resource;
+  function  fetch_buffer_resource        (rtype:Integer;addr:Pointer;size:DWORD;hint:PChar):p_pm4_resource;
   function  fetch_resource_instance      (scope:p_pm4_resource_curr_scope;r:p_pm4_resource;mem_usage:Integer;img_usage:s_image_usage):p_pm4_resource_instance;
   function  insert_image_resource        (scope:p_pm4_resource_curr_scope;const rkey:TvImageKey;mem_usage:Integer;img_usage:s_image_usage;hint:PChar):p_pm4_resource_instance;
-  function  insert_buffer_resource       (scope:p_pm4_resource_curr_scope;addr:Pointer;size:DWORD;mem_usage:Integer;hint:PChar):p_pm4_resource_instance;
-  function  insert_htile_resource        (scope:p_pm4_resource_curr_scope;const rkey:TvImageKey;size:DWORD;mem_usage:Integer):p_pm4_resource_instance;
+  function  insert_buffer_resource       (scope:p_pm4_resource_curr_scope;rtype:Integer;addr:Pointer;size:DWORD;mem_usage:Integer;hint:PChar):p_pm4_resource_instance;
   procedure connect_resource_instance    (i:p_pm4_resource_instance);
   procedure connect_resource_scope       (scope:p_pm4_resource_curr_scope);
  end;
@@ -460,7 +458,8 @@ begin
     Result:=CompareNormalized(n1^.rkey,n2^.rkey);
    end;
   R_BUF,
-  R_HTILE:
+  R_HTILE,
+  R_CMASK:
    begin
     //2 rsize
     Result:=Integer(n1^.rsize>n2^.rsize)-Integer(n1^.rsize<n2^.rsize);
@@ -559,24 +558,12 @@ begin
  Result:=find_resource_instance(@tmp);
 end;
 
-function t_pm4_resource_curr_scope.find_buffer_resource_instance(addr:Pointer;size:DWORD):p_pm4_resource_instance;
+function t_pm4_resource_curr_scope.find_buffer_resource_instance(rtype:Integer;addr:Pointer;size:DWORD):p_pm4_resource_instance;
 var
  tmp:t_pm4_resource;
 begin
  tmp:=Default(t_pm4_resource);
- tmp.rtype:=R_BUF;
- tmp.rkey.Addr:=addr;
- tmp.rsize:=size;
-
- Result:=find_resource_instance(@tmp);
-end;
-
-function t_pm4_resource_curr_scope.find_htile_resource_instance(addr:Pointer;size:DWORD):p_pm4_resource_instance;
-var
- tmp:t_pm4_resource;
-begin
- tmp:=Default(t_pm4_resource);
- tmp.rtype:=R_HTILE;
+ tmp.rtype:=rtype;
  tmp.rkey.Addr:=addr;
  tmp.rsize:=size;
 
@@ -620,24 +607,24 @@ begin
  end;
 end;
 
-function t_pm4_resource_stream_scope.find_buffer_resource(addr:Pointer;size:DWORD):p_pm4_resource;
+function t_pm4_resource_stream_scope.find_buffer_resource(rtype:Integer;addr:Pointer;size:DWORD):p_pm4_resource;
 var
  tmp:t_pm4_resource;
 begin
  tmp:=Default(t_pm4_resource);
- tmp.rtype:=R_BUF;
+ tmp.rtype:=rtype;
  tmp.rkey.Addr:=addr;
  tmp.rsize:=size;
 
  Result:=resource_set.Find(@tmp);
 end;
 
-function t_pm4_resource_stream_scope.fetch_buffer_resource(addr:Pointer;size:DWORD;hint:PChar):p_pm4_resource;
+function t_pm4_resource_stream_scope.fetch_buffer_resource(rtype:Integer;addr:Pointer;size:DWORD;hint:PChar):p_pm4_resource;
 var
  tmp:t_pm4_resource;
 begin
  tmp:=Default(t_pm4_resource);
- tmp.rtype:=R_BUF;
+ tmp.rtype:=rtype;
  tmp.rkey.Addr:=addr;
  tmp.rsize:=size;
 
@@ -652,38 +639,6 @@ begin
   begin
    Writeln('fetch_buffer_resource(',hint,'):0x',HexStr(addr),' 0x',HexStr(size,4));
   end;
-
-  resource_set.Insert(Result);
- end;
-end;
-
-function t_pm4_resource_stream_scope.find_htile_resource(addr:Pointer;size:DWORD):p_pm4_resource;
-var
- tmp:t_pm4_resource;
-begin
- tmp:=Default(t_pm4_resource);
- tmp.rtype:=R_HTILE;
- tmp.rkey.Addr:=addr;
- tmp.rsize:=size;
-
- Result:=resource_set.Find(@tmp);
-end;
-
-function t_pm4_resource_stream_scope.fetch_htile_resource(const rkey:TvImageKey;size:DWORD):p_pm4_resource;
-var
- tmp:t_pm4_resource;
-begin
- tmp:=Default(t_pm4_resource);
- tmp.rtype:=R_HTILE;
- tmp.rkey :=rkey;
- tmp.rsize:=size;
-
- Result:=resource_set.Find(@tmp);
-
- if (Result=nil) then
- begin
-  Result:=allocator.Alloc(SizeOf(t_pm4_resource));
-  Result^:=tmp;
 
   resource_set.Insert(Result);
  end;
@@ -734,7 +689,7 @@ var
 begin
  if (rkey.cformat=VK_FORMAT_UNDEFINED) then Exit(nil);
 
- r:=fetch_image_resource(rkey,hint);
+ r:=fetch_image_resource   (rkey,hint);
  i:=fetch_resource_instance(scope,r,mem_usage,img_usage);
 
  if ((mem_usage and TM_READ)<>0) then
@@ -749,33 +704,13 @@ begin
  Result:=i;
 end;
 
-function t_pm4_resource_stream_scope.insert_buffer_resource(scope:p_pm4_resource_curr_scope;addr:Pointer;size:DWORD;mem_usage:Integer;hint:PChar):p_pm4_resource_instance;
+function t_pm4_resource_stream_scope.insert_buffer_resource(scope:p_pm4_resource_curr_scope;rtype:Integer;addr:Pointer;size:DWORD;mem_usage:Integer;hint:PChar):p_pm4_resource_instance;
 var
  r:p_pm4_resource;
  i:p_pm4_resource_instance;
 begin
- r:=fetch_buffer_resource(addr,size,hint);
+ r:=fetch_buffer_resource  (rtype,addr,size,hint);
  i:=fetch_resource_instance(scope,r,mem_usage,[iu_buffer]);
-
- if ((mem_usage and TM_READ)<>0) then
- if (i^.prev.mem_usage=0) then //no prev usage
- begin
-  //init
-  init_scope.insert(i);
- end;
-
- scope^.insert(i);
-
- Result:=i;
-end;
-
-function t_pm4_resource_stream_scope.insert_htile_resource(scope:p_pm4_resource_curr_scope;const rkey:TvImageKey;size:DWORD;mem_usage:Integer):p_pm4_resource_instance;
-var
- r:p_pm4_resource;
- i:p_pm4_resource_instance;
-begin
- r:=fetch_htile_resource(rkey,size);
- i:=fetch_resource_instance(scope,r,mem_usage,[iu_htile]); //iu_htile
 
  if ((mem_usage and TM_READ)<>0) then
  if (i^.prev.mem_usage=0) then //no prev usage
@@ -953,6 +888,7 @@ begin
  node^.offset:=offset;
 
  insert_buffer_resource(@node^.scope,
+                        R_BUF,
                         addr,
                         num_dw*SizeOf(DWORD),
                         TM_READ,
@@ -1030,6 +966,7 @@ begin
  if (addr<>nil) then
  begin
   insert_buffer_resource(@node^.scope,
+                         R_BUF,
                          addr,
                          get_data_size,
                          TM_WRITE,
@@ -1066,6 +1003,7 @@ begin
  if (addr<>nil) then
  begin
   insert_buffer_resource(@node^.scope,
+                         R_BUF,
                          addr,
                          get_data_size,
                          TM_WRITE,
@@ -1121,6 +1059,7 @@ begin
  if (addr<>nil) then
  begin
   insert_buffer_resource(@node^.scope,
+                         R_BUF,
                          addr,
                          get_data_size,
                          TM_WRITE,
@@ -1151,6 +1090,7 @@ begin
    if (srcOrData<>0) then
    begin
     insert_buffer_resource(@node^.scope,
+                           R_BUF,
                            Pointer(srcOrData),
                            numBytes,
                            TM_READ,
@@ -1165,6 +1105,7 @@ begin
   if (dst<>0) then
   begin
    insert_buffer_resource(@node^.scope,
+                          R_BUF,
                           Pointer(dst),
                           numBytes,
                           TM_WRITE,
@@ -1198,6 +1139,7 @@ begin
  if (src<>nil) then
  begin
   insert_buffer_resource(@node^.scope,
+                         R_BUF,
                          src,
                          num_dw*SizeOf(DWORD),
                          TM_READ,
@@ -1211,6 +1153,7 @@ begin
    if (dst<>nil) then
    begin
     insert_buffer_resource(@node^.scope,
+                           R_BUF,
                            Pointer(dst),
                            num_dw*SizeOf(DWORD),
                            TM_WRITE,
@@ -1244,6 +1187,8 @@ var
  RT:TRT_INFO;
 
  node:p_pm4_node_FastClear;
+
+ resource_instance:p_pm4_resource_instance;
 begin
  GPU_REGS:=Default(TGPU_REGS);
  GPU_REGS.CX_REG:=@CX_REG;
@@ -1256,20 +1201,22 @@ begin
  //
  RT:=GPU_REGS.GET_RT_INFO(0);
 
- {
- //clear TM_READ
- RT.IMAGE_USAGE:=RT.IMAGE_USAGE and (not TM_READ);
- //set   TM_CLEAR
- RT.IMAGE_USAGE:=RT.IMAGE_USAGE or TM_CLEAR;
+ //-TM_READ +TM_CLEAR
+ RT.IMAGE_USAGE:=RT.IMAGE_USAGE and (not TM_READ) or TM_CLEAR;
+
+ Assert(RT.CMASK_INFO.KEY.Addr<>nil);
 
  //
 
- insert_image_resource(@node^.scope,
-                       RT.FImageInfo,
-                       RT.IMAGE_USAGE,
-                       [iu_attachment]);
+ resource_instance:=insert_buffer_resource(@node^.scope,
+                                           R_CMASK,
+                                           RT.CMASK_INFO.KEY.Addr,
+                                           RT.CMASK_INFO.SIZE,
+                                           RT.IMAGE_USAGE,
+                                           'FastClear'
+                                          );
 
- }
+ resource_instance^.resource^.rcmask:=True;
 
  //
  node^.RT:=RT;
@@ -1381,6 +1328,7 @@ begin
   begin
 
    insert_buffer_resource(@node^.scope,
+                          R_BUF,
                           addr,
                           size,
                           memuse,
@@ -1411,6 +1359,7 @@ begin
    addr :=Shader.GetPushConstData(FData);
 
    insert_buffer_resource(@node^.scope,
+                          R_BUF,
                           addr,
                           Shader.FPushConst.size,
                           TM_READ,
@@ -1431,6 +1380,7 @@ var
  pa:TPushConstAllocator;
  pp:PPushConstAllocator;
 
+ r:p_pm4_resource;
  resource_instance:p_pm4_resource_instance;
 begin
  for i:=0 to 31 do
@@ -1448,6 +1398,28 @@ begin
    RT:=GPU_REGS.GET_RT_INFO(i);
 
    //
+
+   if (RT.CMASK_INFO.KEY.Addr<>nil) then
+   begin
+    //perfetch check
+    r:=find_buffer_resource(R_CMASK,RT.CMASK_INFO.KEY.Addr,RT.CMASK_INFO.SIZE);
+
+    if (r<>nil) then
+    if (r^.rcmask) then
+    begin
+     //-TM_READ +TM_CLEAR
+     RT.IMAGE_USAGE:=RT.IMAGE_USAGE and (not TM_READ) or TM_CLEAR;
+     //
+     r^.rcmask:=False;
+    end;
+
+    insert_buffer_resource(@node^.scope,
+                           R_CMASK,
+                           RT.CMASK_INFO.KEY.Addr,
+                           RT.CMASK_INFO.SIZE,
+                           RT.IMAGE_USAGE,
+                           'Build_rt_info');
+   end;
 
    insert_image_resource(@node^.scope,
                          RT.FImageInfo,
@@ -1496,10 +1468,12 @@ begin
 
   if (rt_info.DB_INFO.HTILE_INFO.TILE_SURFACE_ENABLE<>0) then
   begin
-   resource_instance:=insert_htile_resource(@node^.scope,
-                                            rt_info.DB_INFO.HTILE_INFO.KEY,
-                                            rt_info.DB_INFO.HTILE_INFO.SIZE,
-                                            rt_info.DB_INFO.DEPTH_USAGE);
+   resource_instance:=insert_buffer_resource(@node^.scope,
+                                             R_HTILE,
+                                             rt_info.DB_INFO.HTILE_INFO.KEY.Addr,
+                                             rt_info.DB_INFO.HTILE_INFO.SIZE,
+                                             rt_info.DB_INFO.DEPTH_USAGE,
+                                             'Build_rt_info');
   end;
 
  end;
@@ -1595,6 +1569,10 @@ begin
 
   node^.ntype:=ntClearDepth;
  end;
+
+ //clearRenderTarget
+ //VS 0xFE54CC4687E2FF59
+ //PS 0x91E6C1F562F6F2DE
 
  add_node(node);
 end;

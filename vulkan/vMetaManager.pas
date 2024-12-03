@@ -37,7 +37,18 @@ type
    property rclear:Boolean read get_rclear write set_rclear;
  end;
 
+ //
+ TvMetaCmask=class(TvCustomMeta)
+  private
+   function  get_rclear:Boolean;
+   procedure set_rclear(b:Boolean);
+  public
+   buffer:TvMetaBuffer;
+   property rclear:Boolean read get_rclear write set_rclear;
+ end;
+
 function FetchHtile (cmd:TvDependenciesObject;const F:TvImageKey;size:DWORD;force:Boolean=True):TvMetaHtile;
+function FetchCmask (cmd:TvDependenciesObject;const F:TvImageKey;size:DWORD;force:Boolean=True):TvMetaCmask;
 function FetchBuffer(cmd:TvDependenciesObject;addr:Pointer;size:DWORD;force:Boolean=True):TvMetaBuffer;
 
 implementation
@@ -75,6 +86,18 @@ begin
 end;
 
 procedure TvMetaHtile.set_rclear(b:Boolean); inline;
+begin
+ buffer.rclear:=b;
+end;
+
+//
+
+function TvMetaCmask.get_rclear:Boolean; inline;
+begin
+ Result:=buffer.rclear;
+end;
+
+procedure TvMetaCmask.set_rclear(b:Boolean); inline;
 begin
  buffer.rclear:=b;
 end;
@@ -156,6 +179,7 @@ begin
   case mtype of
    iu_buffer:t:=TvMetaBuffer.Create;
    iu_htile :t:=TvMetaHtile .Create;
+   iu_cmask :t:=TvMetaCmask .Create;
    else;
   end;
 
@@ -181,6 +205,29 @@ begin
  rw_wlock(lock);
 
  Result:=TvMetaHtile(_FetchMeta(iu_htile,F,size,force));
+
+ if (Result<>nil) then
+ if (Result.buffer=nil) then
+ begin
+  //link buffer
+  B:=Default(TvImageKey);
+  B.Addr:=F.Addr;
+  //
+  Result.buffer:=TvMetaBuffer(_FetchMeta(iu_buffer,B,size,True));
+ end;
+
+ cmd.RefTo(Result);
+
+ rw_wunlock(lock);
+end;
+
+function FetchCmask(cmd:TvDependenciesObject;const F:TvImageKey;size:DWORD;force:Boolean=True):TvMetaCmask;
+var
+ B:TvImageKey;
+begin
+ rw_wlock(lock);
+
+ Result:=TvMetaCmask(_FetchMeta(iu_cmask,F,size,force));
 
  if (Result<>nil) then
  if (Result.buffer=nil) then
