@@ -1308,23 +1308,34 @@ begin
  Result.Z_READ_ADDR :=Pointer(QWORD(CX_REG^.DB_Z_READ_BASE ) shl 8);
  Result.Z_WRITE_ADDR:=Pointer(QWORD(CX_REG^.DB_Z_WRITE_BASE) shl 8);
 
- if (Result.Z_READ_ADDR<>Result.Z_WRITE_ADDR) then
+ if (DEPTH_CONTROL.Z_ENABLE<>0) then
+ if (DB_DEPTH_VIEW.Z_READ_ONLY=0) then
  begin
-  Writeln(stderr,'Z_READ_ADDR:'+HexStr(Result.Z_READ_ADDR)+'<>Z_WRITE_ADDR:'+HexStr(Result.Z_WRITE_ADDR));
-  Assert (false ,'Z_READ_ADDR:'+HexStr(Result.Z_READ_ADDR)+'<>Z_WRITE_ADDR:'+HexStr(Result.Z_WRITE_ADDR));
+  if (Result.Z_READ_ADDR<>Result.Z_WRITE_ADDR) then
+  begin
+   Writeln(stderr,'Z_R_ADDR:'+HexStr(Result.Z_READ_ADDR)+'<>Z_W_ADDR:'+HexStr(Result.Z_WRITE_ADDR));
+   Assert (false ,'Z_R_ADDR:'+HexStr(Result.Z_READ_ADDR)+'<>Z_W_ADDR:'+HexStr(Result.Z_WRITE_ADDR));
+  end;
  end;
 
  Result.STENCIL_READ_ADDR :=Pointer(QWORD(CX_REG^.DB_STENCIL_READ_BASE ) shl 8);
  Result.STENCIL_WRITE_ADDR:=Pointer(QWORD(CX_REG^.DB_STENCIL_WRITE_BASE) shl 8);
 
- if (Result.STENCIL_READ_ADDR<>Result.STENCIL_WRITE_ADDR) then
+ if (DEPTH_CONTROL.STENCIL_ENABLE<>0) then
+ if (DB_DEPTH_VIEW.STENCIL_READ_ONLY=0) then
  begin
-  Writeln(stderr,'STENCIL_READ_ADDR:'+HexStr(Result.STENCIL_READ_ADDR)+'<>STENCIL_WRITE_ADDR:'+HexStr(Result.STENCIL_WRITE_ADDR));
-  Assert (false ,'STENCIL_READ_ADDR:'+HexStr(Result.STENCIL_READ_ADDR)+'<>STENCIL_WRITE_ADDR:'+HexStr(Result.STENCIL_WRITE_ADDR));
+  if (Result.STENCIL_READ_ADDR<>Result.STENCIL_WRITE_ADDR) then
+  begin
+   Writeln(stderr,'S_R_ADDR:'+HexStr(Result.STENCIL_READ_ADDR)+'<>S_W_ADDR:'+HexStr(Result.STENCIL_WRITE_ADDR));
+   Assert (false ,'S_R_ADDR:'+HexStr(Result.STENCIL_READ_ADDR)+'<>S_W_ADDR:'+HexStr(Result.STENCIL_WRITE_ADDR));
+  end;
  end;
 
- Assert(SHADER_CONTROL.Z_EXPORT_ENABLE=0               ,'Z_EXPORT_ENABLE');
- Assert(SHADER_CONTROL.STENCIL_TEST_VAL_EXPORT_ENABLE=0,'STENCIL_TEST_VAL_EXPORT_ENABLE');
+ //Z_EXPORT_ENABLE                -> shader export mrtz.R
+ //STENCIL_TEST_VAL_EXPORT_ENABLE -> shader export mrtz.G bits [0:7]
+ //STENCIL_OP_VAL_EXPORT_ENABLE   -> shader export mrtz.G bits [8:15]
+ //MASK_EXPORT_ENABLE             -> shader export mrtz.B
+ //COVERAGE_TO_MASK_ENABLE        -> shader export mrtz.A
 
  //VK_EXT_depth_range_unrestricted
  Assert(CX_REG^.DB_RENDER_OVERRIDE.DISABLE_VIEWPORT_CLAMP=0,'DISABLE_VIEWPORT_CLAMP');

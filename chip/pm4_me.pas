@@ -193,22 +193,41 @@ type
 
 var
  use_renderdoc_capture:Boolean=False;
+ act_renderdoc_capture:Boolean=False;
  wait_loop_detect     :Boolean=True;
  wait_loop_autoskip   :Boolean=False;
 
 implementation
 
 uses
+ windows,
  kern_dmem,
  kern_proc,
  vm_map,
  vm_tracking_map,
  dev_dce;
 
+function GetAsyncKeyState(vKey:longint):Boolean; inline;
+begin
+ Result:=(Windows.GetKeyState(vKey) and $8000)<>0;
+end;
+
 procedure StartFrameCapture;
 begin
  if use_renderdoc_capture then
  begin
+
+  if GetAsyncKeyState(VK_F1) then
+  begin
+   act_renderdoc_capture:=True;
+  end;
+
+  if GetAsyncKeyState(VK_F2) then
+  begin
+   act_renderdoc_capture:=False;
+  end;
+
+  if act_renderdoc_capture then
   if (renderdoc.IsFrameCapturing()=0) then
   begin
    SetCaptureOptionU32(eRENDERDOC_Option_RefAllResources,1);
@@ -915,6 +934,8 @@ begin
                     FImage,
                     resource_instance^.curr.img_usage
                    );
+
+     Assert(ri<>nil);
 
      resource_instance^.resource^.rimage:=ri;
     end;

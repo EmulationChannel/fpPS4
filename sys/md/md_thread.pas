@@ -178,6 +178,7 @@ begin
  td^.td_cpuset:=P_TBI^.AffinityMask;
 
  td^.td_teb^.thread:=td; //self
+ td^.td_teb^.DeallocationStack:=nil; //dont free memory
 end;
 
 procedure BaseInitializeStack(InitialTeb  :PINITIAL_TEB;
@@ -188,7 +189,7 @@ begin
  InitialTeb^.PreviousStackLimit:=nil;
  InitialTeb^.StackBase         :=StackAddress+StackSize;  //start addr
  InitialTeb^.StackLimit        :=StackAddress;            //lo addr
- InitialTeb^.AllocatedStackBase:=StackAddress;            //lo addr
+ InitialTeb^.AllocatedStackBase:=StackAddress;            //DeallocationStack
 end;
 
 procedure BaseInitializeContext(Context     :PCONTEXT;
@@ -349,6 +350,7 @@ begin
   begin
    cpu_thread_terminate(td);
   end;
+
  end;
 end;
 

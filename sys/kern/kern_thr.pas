@@ -153,6 +153,8 @@ type
   _align3:array[0..7] of QWORD;
   actctx :Pointer;                 //0x2C8
   _align4:array[0..180] of QWORD;
+  _align5:array[0..383] of QWORD;
+  DeallocationStack:Pointer;       //0x1478
  end;
 
 const
@@ -165,10 +167,12 @@ const
  teb_actctx =ptruint(@teb(nil^).actctx );
  teb_jit_trp=ptruint(@teb(nil^).jit_trp);
  teb_iflag  =ptruint(@teb(nil^).iflag  );
+ teb_dealloc=ptruint(@teb(nil^).DeallocationStack);
 
- {$IF teb_jitcall<>$1D8}{$STOP teb_jitcall<>$1D8}{$ENDIF}
- {$IF teb_thread <>$1C0}{$STOP teb_thread <>$1C0}{$ENDIF}
- {$IF teb_actctx <>$2C8}{$STOP teb_actctx <>$2C8}{$ENDIF}
+ {$IF teb_jitcall<>$01D8}{$STOP teb_jitcall<>$01D8}{$ENDIF}
+ {$IF teb_thread <>$01C0}{$STOP teb_thread <>$01C0}{$ENDIF}
+ {$IF teb_actctx <>$02C8}{$STOP teb_actctx <>$02C8}{$ENDIF}
+ {$IF teb_dealloc<>$1478}{$STOP teb_dealloc<>$1478}{$ENDIF}
 
 type
  t_td_name=array[0..31] of AnsiChar;
