@@ -218,7 +218,7 @@ begin
 
    Invert:=Invert xor pCond.Cond.FNormalOrder;
 
-   node:=NewReg_q(old.dtype,ord(Invert),@pLine);
+   node:=NewImm_q(old.dtype,ord(Invert),pLine);
 
    if (pIf<>nil) then
    begin
@@ -434,6 +434,7 @@ begin
   end else
   begin //bitcast
    node:=BitcastList.FetchCast(old.dtype,node);
+
    Inc(Result);
   end;
  end else
@@ -676,6 +677,8 @@ begin
 end;
 
 function TSprvEmit_post.OnDecorate(node:TspirvOp):Integer;
+var
+ r:TsrRegNode;
 begin
  Result:=0;
 
@@ -694,6 +697,29 @@ begin
   Op.OpImageQueryLod:
     begin
      AddCapability(Capability.ImageQuery);
+    end;
+  Op.OpGroupNonUniformQuadBroadcast:
+    begin
+     r:=node.ParamNode(2).Value;
+     r:=RegDown(r);
+     //
+     if r.is_const then
+     begin
+      //upgrade version to 1.3
+      if (Config.SpvVersion<$10300) then
+      begin
+       Config.SpvVersion:=$10300;
+      end;
+     end else
+     begin
+      //upgrade version to 1.5
+      if (Config.SpvVersion<$10500) then
+      begin
+       Config.SpvVersion:=$10500;
+      end;
+     end;
+     //
+     AddCapability(Capability.GroupNonUniformQuad);
     end;
   else;
  end;
@@ -874,7 +900,7 @@ begin
   end else
   begin
    pLine :=init_line;
-   pIndex:=NewReg_q(dtUint32,_count,@pLine);
+   pIndex:=NewImm_q(dtUint32,_count,pLine);
   end;
   pChain.pIndex:=pIndex;
   pChain.stride:=_stride;
@@ -1225,7 +1251,7 @@ begin
    Case Parent.Fdtype of
     dtTypeStruct:
       begin
-       pReg:=NewReg_i(dtUint32,pField.FID,@pLine);
+       pReg:=NewImm_i(dtUint32,pField.FID,pLine);
        pLine.AddParamAfter(pParam,pReg);
       end;
     dtTypeArray,
@@ -1233,7 +1259,7 @@ begin
       begin
        if not Parent.IsStructNotUsed then
        begin
-        pReg:=NewReg_i(dtUint32,pField.FID,@pLine);
+        pReg:=NewImm_i(dtUint32,pField.FID,pLine);
         pLine.AddParamAfter(pParam,pReg);
        end;
        Assert(pIndex<>nil);
@@ -1242,7 +1268,7 @@ begin
     else
      if Parent.Fdtype.isVector then
      begin
-      pReg:=NewReg_i(dtUint32,pField.FID,@pLine);
+      pReg:=NewImm_i(dtUint32,pField.FID,pLine);
       pLine.AddParamAfter(pParam,pReg);
      end;
    end;

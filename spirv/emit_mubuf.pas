@@ -54,7 +54,7 @@ procedure TEmit_MUBUF.make_load_comp(dst:PsrRegSlot;dtype:TsrDataType;rsl:TsrReg
 begin
  if rsl.dtype.isVector then
  begin
-  dst^.New(line,dtype);
+  dst^.New(dtype);
   OpExtract(line,dst^.current,rsl,i);
  end else
  begin

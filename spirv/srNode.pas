@@ -71,6 +71,7 @@ type
    Procedure _SetWriter(w,line:TsrNode);     virtual;
    Procedure _ResetWriter(w:TsrNode);        virtual;
    Function  _is_used:Boolean                virtual;
+   Function  _GetPline:TsrNode;              virtual;
    Function  _GetPtype:TsrNode;              virtual;
    Function  _GetStorageClass:DWORD;         virtual;
    function  _GetStorageName:RawByteString;  virtual;
@@ -405,6 +406,11 @@ end;
 function TsrNode._is_used:Boolean;
 begin
  Result:=(read_count<>0) or (write_count<>0);
+end;
+
+Function TsrNode._GetPline:TsrNode;
+begin
+ Result:=nil;
 end;
 
 function TsrNode._GetPtype:TsrNode;

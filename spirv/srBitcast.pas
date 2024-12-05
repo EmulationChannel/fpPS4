@@ -37,6 +37,7 @@ type
   function  _Find(dtype:TsrDataType;src:TsrRegNode):TsrBitcast;
   function  Find(dtype:TsrDataType;src:TsrRegNode):TsrRegNode;
   Procedure Save(dtype:TsrDataType;src,dst:TsrRegNode);
+  function  CastConst(dtype:TsrDataType;src:TsrRegNode):TsrRegNode;
   function  FetchRead(dtype:TsrDataType;src:TsrRegNode):TsrRegNode;
   function  FetchDstr(dtype:TsrDataType;src:TsrRegNode):TsrRegNode;
   function  FetchCast(dtype:TsrDataType;src:TsrRegNode):TsrRegNode;
@@ -92,12 +93,24 @@ begin
  FTree.Insert(node);
 end;
 
-function TsrBitcastList.FetchRead(dtype:TsrDataType;src:TsrRegNode):TsrRegNode;
+function TsrBitcastList.CastConst(dtype:TsrDataType;src:TsrRegNode):TsrRegNode;
 var
  pConstList:PsrConstList;
- dst:TsrRegNode;
  pConst:TsrConst;
+begin
+ pConst:=src.AsConst;
 
+ pConstList:=rSlot.Emit.GetConstList;
+ pConst:=pConstList^.Bitcast(dtype,pConst);
+
+ Result:=rSlot.New(dtype);
+ Result.pWriter:=pConst;
+ Result.CustomLine:=src.CustomLine;
+end;
+
+function TsrBitcastList.FetchRead(dtype:TsrDataType;src:TsrRegNode):TsrRegNode;
+var
+ dst:TsrRegNode;
 begin
  Result:=src;
  if (src=nil) then Exit;
@@ -110,20 +123,13 @@ begin
   //only from consts, first
   dst:=Find(dtype,src);
   if (dst<>nil) then Exit(dst);
-
-  pConst:=src.AsConst;
-
-  pConstList:=rSlot.Emit.GetConstList;
-  pConst:=pConstList^.Bitcast(dtype,pConst);
-
-  dst:=rSlot.New(src.pLine,dtype);
-  dst.pWriter:=pConst;
-
+  //
+  dst:=CastConst(dtype,src);
   //
   Save(dtype,src,dst);
  end else
  begin
-  dst:=rSlot.New(src.pLine,dtype);
+  dst:=rSlot.New(dtype);
   dst.pWriter:=src;
  end;
 
@@ -140,7 +146,7 @@ begin
 
  Assert(TryBitcastType(src.dtype,dtype));
 
- dst:=rSlot.New(src.pLine,dtype);
+ dst:=rSlot.New(dtype);
  dst.pWriter:=src.pWriter;
 
  src.pWriter:=dst;
@@ -148,14 +154,14 @@ begin
  Result:=dst;
 end;
 
+//post process
 function TsrBitcastList.FetchCast(dtype:TsrDataType;src:TsrRegNode):TsrRegNode;
 var
- pConstList:PsrConstList;
  dst:TsrRegNode;
- pConst:TsrConst;
- pLine:TsrNode;
+ prv:TsrRegNode;
 begin
  Result:=src;
+
  if (src=nil) then Exit;
  if (dtype=dtUnknow) or (dtype=src.dtype) then Exit;
 
@@ -167,22 +173,18 @@ begin
  dst:=Find(dtype,src);
  if (dst<>nil) then Exit(dst);
 
- if src.is_const then
+ prv:=RegDown(src);
+
+ if prv.is_const then
  begin
-  pConst:=src.AsConst;
-
-  pConstList:=rSlot.Emit.GetConstList;
-  pConst:=pConstList^.Bitcast(dtype,pConst);
-
-  dst:=rSlot.New(src.pLine,dtype);
-  dst.pWriter:=pConst;
+  dst:=CastConst(dtype,prv);
  end else
  begin
   if TryBitcastType(src.dtype,dtype) then
   begin
-   dst:=rSlot.New(src.pLine,dtype);
+   dst:=rSlot.New(dtype);
 
-   pLine:=rSlot.Emit.OpCast(src.pLine,dst,src);
+   rSlot.Emit.OpCast(prv.pLine,dst,src);
   end else
   begin
    Writeln('bitcast:',src.dtype,'<>',dtype);

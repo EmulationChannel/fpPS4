@@ -51,7 +51,7 @@ begin
  i:=SignExtend16(FSPI.SOPK.SIMM);
 
  src:=fetch_ssrc8(FSPI.SOPK.SDST,dtInt32);
- imm:=NewReg_i(dtInt32,i);
+ imm:=NewImm_i(dtInt32,i);
 
  //Force type
  src:=BitcastList.FetchRead(dtInt32,src);
@@ -88,7 +88,7 @@ begin
  i:=SignExtend16(FSPI.SOPK.SIMM);
 
  src:=fetch_ssrc8(FSPI.SOPK.SDST,dtInt32);
- imm:=NewReg_i(dtInt32,i);
+ imm:=NewImm_i(dtInt32,i);
 
  //Force type
  src:=BitcastList.FetchRead(dtInt32,src);
@@ -105,7 +105,7 @@ begin
  dst:=get_scc;
 
  src:=fetch_ssrc8(FSPI.SOPK.SDST,dtInt32);
- imm:=NewReg_i(dtInt32,SignExtend16(FSPI.SOPK.SIMM));
+ imm:=NewImm_i(dtInt32,SignExtend16(FSPI.SOPK.SIMM));
 
  OpCmpS(OpId,dst,src,imm);
 end;
@@ -119,7 +119,7 @@ begin
  dst:=get_scc;
 
  src:=fetch_ssrc8(FSPI.SOPK.SDST,dtUint32);
- imm:=NewReg_i(dtUint32,FSPI.SOPK.SIMM);
+ imm:=NewImm_i(dtUint32,FSPI.SOPK.SIMM);
 
  OpCmpS(OpId,dst,src,imm);
 end;

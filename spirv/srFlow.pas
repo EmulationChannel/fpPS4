@@ -26,7 +26,7 @@ type
   //
   Procedure InitFlow;
   procedure mark_end_of(mark:TsrVolMark);
-  Procedure PushBlockOp(pLine:TspirvOp;pChild:TsrOpBlock;pLBlock:TsrCFGBlock);
+  Procedure PushBlockOp(pLine:TspirvOp;pChild:TsrOpBlock;pLBlock:TsrCFGBlock=nil);
   function  PopBlockOp:Boolean;
   function  ConvertCond(cond:TsrCondition;pLine:TspirvOp):TsrRegNode;
   function  ConvertStatment(node:TsrStatement;pLine:TspirvOp):TsrNode;
@@ -60,7 +60,7 @@ begin
  //
  InitBlock:=AllocBlockOp;
  InitBlock.SetInfo(btOther,Cursor.Adr,Cursor.Adr);
- PushBlockOp(line,InitBlock,nil);
+ PushBlockOp(line,InitBlock);
  Main.PopBlock;
 end;
 
@@ -87,7 +87,7 @@ begin
  end;
 end;
 
-Procedure TEmitFlow.PushBlockOp(pLine:TspirvOp;pChild:TsrOpBlock;pLBlock:TsrCFGBlock);
+Procedure TEmitFlow.PushBlockOp(pLine:TspirvOp;pChild:TsrOpBlock;pLBlock:TsrCFGBlock=nil);
 begin
  pChild.FCursor:=Cursor; //prev
  pChild.FLBlock:=pLBlock;
@@ -228,7 +228,7 @@ var
 
      pOpChild:=AllocBlockOp;
      pOpChild.SetInfo(btOther,Cursor.Adr,Cursor.Adr);
-     PushBlockOp(line,pOpChild,nil);
+     PushBlockOp(line,pOpChild);
 
      if (pLBlock.pCond<>nil) then
      begin
@@ -262,7 +262,7 @@ var
 
      pOpChild:=AllocBlockOp;
      pOpChild.SetInfo(btOther,Cursor.Adr,Cursor.Adr);
-     PushBlockOp(line,pOpChild,nil);
+     PushBlockOp(line,pOpChild);
      OpBranch(line,pEndOp); //break
    Main.PopBlock;
 
@@ -418,8 +418,8 @@ end;
 function TEmitFlow.ConvertCond(cond:TsrCondition;pLine:TspirvOp):TsrRegNode;
 begin
  case cond of
-  cFalse :Result:=NewReg_b(False);
-  cTrue  :Result:=NewReg_b(True);
+  cFalse :Result:=NewImm_b(False,pLine);
+  cTrue  :Result:=NewImm_b(True ,pLine);
   cScc0  :Result:=fetch_scc;
   cScc1  :Result:=fetch_scc;
   cVccz  :Result:=fetch_vccz ; //It means that lane_id=0
@@ -439,7 +439,7 @@ begin
     if Result.is_const then
     begin
      //early optimization
-     Result:=NewReg_b(not Result.AsConst.AsBool,@pLine);
+     Result:=NewImm_b(not Result.AsConst.AsBool,pLine);
     end else
     begin
      Result:=OpLogicalNotTo(Result,@pLine);
@@ -873,7 +873,7 @@ begin
  pOpBody:=AllocBlockOp;
  pOpBody.SetInfo(Info);
  Result.pBody:=pOpBody; //save body link
- PushBlockOp(line,pOpBody,nil);
+ PushBlockOp(line,pOpBody);
 end;
 
 function TEmitFlow.NewElse(pOpMerge:TsrOpBlock;pLBlock:TsrCFGBlock):TsrOpBlock;
@@ -905,7 +905,7 @@ begin
  pOpBody:=AllocBlockOp;
  pOpBody.SetInfo(Info);
  Result.pBody:=pOpBody; //save body link
- PushBlockOp(line,pOpBody,nil);
+ PushBlockOp(line,pOpBody);
 end;
 
 function TEmitFlow.NewLoop(pLBlock:TsrCFGBlock):TsrOpBlock;
@@ -984,7 +984,7 @@ begin
  pOpBody.SetInfo(Info);
  Result.pBody:=pOpBody; //save body link
 
- PushBlockOp(line,pOpBody,nil);
+ PushBlockOp(line,pOpBody);
 end;
 
 function TEmitFlow.CheckBlockBeg:Boolean;

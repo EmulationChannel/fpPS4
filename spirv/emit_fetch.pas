@@ -280,7 +280,7 @@ begin
  if is_const_ssrc8(SOFFSET) then
  begin
   pConst:=ConstList.Fetch_ssrc8_const(SOFFSET,0,rtype);
-  Result:=NewReg(pConst);
+  Result:=NewImm(pConst);
  end else
  begin
   src:=RegsStory.get_ssrc8(SOFFSET);
@@ -297,7 +297,7 @@ begin
  if is_const_ssrc9(SSRC) then
  begin
   pConst:=ConstList.Fetch_ssrc9_const(SSRC,FSPI.INLINE32,rtype);
-  Result:=NewReg(pConst);
+  Result:=NewImm(pConst);
  end else
  begin
   src:=RegsStory.get_ssrc9(SSRC);
@@ -312,8 +312,8 @@ Var
 begin
  if is_const_ssrc9(SSRC) then
  begin
-  src[0]:=NewReg(ConstList.Fetch_ssrc9_const(SSRC,FSPI.INLINE32,rtype));
-  src[1]:=NewReg(ConstList.Fetch(rtype,0));
+  src[0]:=NewImm(ConstList.Fetch_ssrc9_const(SSRC,FSPI.INLINE32,rtype));
+  src[1]:=NewImm(ConstList.Fetch(rtype,0));
   Result:=True;
  end else
  begin
@@ -385,8 +385,8 @@ var
 begin
  dst:=BitcastList.FetchRead(dtVec2u,src);
 
- node[0]:=dst0^.New(line,dtUint32);
- node[1]:=dst1^.New(line,dtUint32);
+ node[0]:=dst0^.New(dtUint32,line);
+ node[1]:=dst1^.New(dtUint32,line);
 
  OpExtract(line,node[0],dst,0);
  OpExtract(line,node[1],dst,1);
@@ -419,7 +419,7 @@ begin
  rsl[0]:=OpFToF(src0,dtHalf16);
  rsl[1]:=OpFToF(src1,dtHalf16);
 
- dst^.New(line,dtVec2h);
+ dst^.New(dtVec2h);
 
  OpMakeCon(line,dst^.current,@rsl);
 end;
@@ -439,7 +439,7 @@ begin
 
  if (r=nil) then
  begin
-  r:=dst^.New(line,rtype);
+  r:=dst^.New(rtype);
   i.pReg :=r;
   OpLoad(init_line,r,v); //one in any scope
  end else
@@ -473,7 +473,7 @@ function TEmitFetch.AddAncillary(dst:PsrRegSlot):TsrRegNode;
 var
  src:array[0..2] of TsrRegNode;
 begin
- src[0]:=NewReg_q(dtUInt32,0); //vPrimType
+ src[0]:=NewImm_q(dtUInt32,0); //vPrimType
  src[1]:=AddInput(@RegsStory.FUnattach,dtUInt32,itSampleId);
  src[2]:=AddInput(@RegsStory.FUnattach,dtUInt32,itLayer);
 
@@ -582,10 +582,10 @@ begin
  pChain.AddLine(pLine);    //<-back link
 
  //scope
- pLine.AddParam(NewReg_i(dtInt32,iScope));
+ pLine.AddParam(NewImm_i(dtInt32,iScope));
 
  //MemorySemantics
- pLine.AddParam(NewReg_i(dtInt32,iMemorySemantics));
+ pLine.AddParam(NewImm_i(dtInt32,iMemorySemantics));
 
  //val
  pLine.AddParam(src);
@@ -632,7 +632,7 @@ var
  rsl:TsrRegNode;
 begin
  rsl:=AddInput(@RegsStory.FUnattach,vtype,itype,0);
- OpExtract(init_line,dst^.New(line,rtype),rsl,id);
+ OpExtract(init_line,dst^.New(rtype),rsl,id);
 end;
 
 function TEmitFetch.AddPositionsInput(count:Byte):TsrVariable;

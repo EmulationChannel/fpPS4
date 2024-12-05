@@ -148,13 +148,13 @@ type
   function  _get_line(ppLine:PPspirvOp):TspirvOp;
   //
   Function  NewRegPair:TsrRegPair;
-  Function  NewReg(rtype:TsrDataType;ppLine:PPspirvOp=nil):TsrRegNode;
-  Function  NewReg(pConst:TsrConst;ppLine:PPspirvOp=nil):TsrRegNode;
+  Function  NewReg(rtype:TsrDataType):TsrRegNode;
+  Function  NewImm(pConst:TsrConst;pLine:TspirvOp=nil):TsrRegNode;
   //
-  Function  NewReg_q(dtype:TsrDataType;value:QWORD;ppLine:PPspirvOp=nil):TsrRegNode;
-  Function  NewReg_b(value:Boolean;ppLine:PPspirvOp=nil):TsrRegNode;
-  Function  NewReg_i(dtype:TsrDataType;value:Integer;ppLine:PPspirvOp=nil):TsrRegNode;
-  Function  NewReg_s(dtype:TsrDataType;value:Single;ppLine:PPspirvOp=nil):TsrRegNode;
+  Function  NewImm_q(dtype:TsrDataType;value:QWORD;pLine:TspirvOp=nil):TsrRegNode;
+  Function  NewImm_b(value:Boolean;pLine:TspirvOp=nil):TsrRegNode;
+  Function  NewImm_i(dtype:TsrDataType;value:Integer;pLine:TspirvOp=nil):TsrRegNode;
+  Function  NewImm_s(dtype:TsrDataType;value:Single;pLine:TspirvOp=nil):TsrRegNode;
   //
   function  NewSpirvOp(OpId:DWORD):TSpirvOp;
   function  NewLabelOp(sdep:Boolean):TSpirvOp;
@@ -353,7 +353,10 @@ end;
 
 function TEmitInterface.init_line:TsrNode;
 begin
- Assert(InitBlock<>nil);
+ if (InitBlock=nil) then
+ begin
+  Exit(nil);
+ end;
  if (InitBlock.dummy.Parent=nil) then //is not init?
  begin
   InitBlock.Init();
@@ -410,40 +413,41 @@ begin
  Result:=specialize New<TsrRegPair>;
 end;
 
-Function TEmitInterface.NewReg(rtype:TsrDataType;ppLine:PPspirvOp=nil):TsrRegNode;
+Function TEmitInterface.NewReg(rtype:TsrDataType):TsrRegNode;
 begin
- Result:=RegsStory.FUnattach.New(line,rtype);
- Result.pLine:=_get_line(ppLine);
+ Result:=RegsStory.FUnattach.New(rtype);
 end;
 
-Function TEmitInterface.NewReg(pConst:TsrConst;ppLine:PPspirvOp=nil):TsrRegNode;
+Function TEmitInterface.NewImm(pConst:TsrConst;pLine:TspirvOp=nil):TsrRegNode;
 begin
  if (pConst=nil) then Exit(nil);
  Result:=NewReg(pConst.dtype);
  Result.pWriter:=pConst;
- Result.pLine:=_get_line(ppLine);
+ //
+ if (pLine=nil) then pLine:=line;
+ Result.CustomLine:=pLine;
 end;
 
 //
 
-Function TEmitInterface.NewReg_q(dtype:TsrDataType;value:QWORD;ppLine:PPspirvOp=nil):TsrRegNode;
+Function TEmitInterface.NewImm_q(dtype:TsrDataType;value:QWORD;pLine:TspirvOp=nil):TsrRegNode;
 begin
- Result:=NewReg(ConstList.Fetch(dtype,value),ppLine);
+ Result:=NewImm(ConstList.Fetch(dtype,value),pLine);
 end;
 
-Function TEmitInterface.NewReg_b(value:Boolean;ppLine:PPspirvOp=nil):TsrRegNode;
+Function TEmitInterface.NewImm_b(value:Boolean;pLine:TspirvOp=nil):TsrRegNode;
 begin
- Result:=NewReg(ConstList.Fetch_b(value),ppLine);
+ Result:=NewImm(ConstList.Fetch_b(value),pLine);
 end;
 
-Function TEmitInterface.NewReg_i(dtype:TsrDataType;value:Integer;ppLine:PPspirvOp=nil):TsrRegNode;
+Function TEmitInterface.NewImm_i(dtype:TsrDataType;value:Integer;pLine:TspirvOp=nil):TsrRegNode;
 begin
- Result:=NewReg(ConstList.Fetch_i(dtype,value),ppLine);
+ Result:=NewImm(ConstList.Fetch_i(dtype,value),pLine);
 end;
 
-Function TEmitInterface.NewReg_s(dtype:TsrDataType;value:Single;ppLine:PPspirvOp=nil):TsrRegNode;
+Function TEmitInterface.NewImm_s(dtype:TsrDataType;value:Single;pLine:TspirvOp=nil):TsrRegNode;
 begin
- Result:=NewReg(ConstList.Fetch_s(dtype,value),ppLine);
+ Result:=NewImm(ConstList.Fetch_s(dtype,value),pLine);
 end;
 
 function TEmitInterface.NewSpirvOp(OpId:DWORD):TSpirvOp;
@@ -512,7 +516,7 @@ procedure TEmitInterface.MakeCopy(dst:PsrRegSlot;src:TsrRegNode);
 var
  node:TsrRegNode;
 begin
- node:=dst^.New(line,src.dtype);
+ node:=dst^.New(src.dtype,line);
  node.pWriter:=src;
 
  PostLink(line,node); //post processing
@@ -522,7 +526,7 @@ Procedure TEmitInterface.SetConst(pSlot:PsrRegSlot;pConst:TsrConst);
 var
  dst:TsrRegNode;
 begin
- dst:=pSlot^.New(line,pConst.dtype);
+ dst:=pSlot^.New(pConst.dtype,line);
  dst.pWriter:=pConst;
 
  PostLink(line,dst); //post processing
@@ -603,7 +607,7 @@ begin
  if (pSlot=nil) then Exit;
  if (pSlot^.current=nil) then
  begin
-  pSlot^.New(line,rtype); //Unresolve
+  pSlot^.New(rtype,line); //Unresolve
   Exit;
  end;
 

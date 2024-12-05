@@ -81,11 +81,11 @@ begin
  src[0]:=fetch_ssrc9(FSPI.VOP1.SRC0,dtFloat32);
 
  src[0]:=OpFToF(src[0],dtHalf16);
- src[1]:=NewReg_s(dtHalf16,0);
+ src[1]:=NewImm_s(dtHalf16,0);
 
  dstv:=OpMakeVec(line,dtVec2h,@src);
 
- dst^.New(line,dtVec2h).pWriter:=dstv;
+ dst^.New(dtVec2h).pWriter:=dstv;
 end;
 
 procedure TEmit_VOP1.emit_V_CVT_F32_F16; //vdst.f = ConvertHalfFloatToFloat(vsrc[15:0].hf)
@@ -124,7 +124,7 @@ begin
 
  src:=OpSToF(src,dtFloat32);
 
- num_16:=NewReg_s(dtFloat32,16);
+ num_16:=NewImm_s(dtFloat32,16);
  Op2(Op.OpFDiv,dtFloat32,dst,src,num_16);
 end;
 
@@ -235,7 +235,7 @@ begin
  OpGlsl1(GlslOp.InverseSqrt,dtFloat32,dst,src);
 
  src:=MakeRead(dst,dtFloat32);
- flt:=NewReg_s(dtFloat32,FLT_MAX);
+ flt:=NewImm_s(dtFloat32,FLT_MAX);
 
  OpGlsl2(GlslOp.NMin,dtFloat32,dst,src,flt);
 end;
@@ -275,7 +275,7 @@ begin
  dst:=get_vdst8(FSPI.VOP1.VDST);
  src:=fetch_ssrc9(FSPI.VOP1.SRC0,dtFloat32);
 
- one:=NewReg_s(dtFloat32,1);
+ one:=NewImm_s(dtFloat32,1);
 
  Op2(Op.OpFDiv,dtFloat32,dst,one,src);
 end;

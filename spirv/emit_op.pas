@@ -88,7 +88,8 @@ type
   procedure OpBFE_32(dst:PsrRegSlot;base,src0,src1:TsrRegNode);
   procedure OpBFIB32(dst:PsrRegSlot;bitmsk,src0,src1:TsrRegNode);
   //
-  function  OpBFITo(src0,src1,src2,src3:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
+  function  OpBFITo (src0,src1,src2,src3:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
+  function  OpBFUETo(src0,src1,src2:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
   //
   procedure OpPackAnc(dst:PsrRegSlot;prim,smid,rtid:TsrRegNode);
   //
@@ -294,37 +295,37 @@ end;
 
 function TEmitOp.Op1(OpId:DWORD;rtype:TsrDataType;dst:PsrRegSlot;src:TsrRegNode):TspirvOp;
 begin
- Result:=_Op1(line,OpId,dst^.New(line,rtype),src);
+ Result:=_Op1(line,OpId,dst^.New(rtype),src);
 end;
 
 function TEmitOp.Op2(OpId:DWORD;rtype:TsrDataType;dst:PsrRegSlot;src0,src1:TsrRegNode):TspirvOp;
 begin
- Result:=_Op2(line,OpId,dst^.New(line,rtype),src0,src1);
+ Result:=_Op2(line,OpId,dst^.New(rtype),src0,src1);
 end;
 
 function TEmitOp.Op3(OpId:DWORD;rtype:TsrDataType;dst:PsrRegSlot;src0,src1,src2:TsrRegNode):TspirvOp;
 begin
- Result:=_Op3(line,OpId,dst^.New(line,rtype),src0,src1,src2);
+ Result:=_Op3(line,OpId,dst^.New(rtype),src0,src1,src2);
 end;
 
 function TEmitOp.Op4(OpId:DWORD;rtype:TsrDataType;dst:PsrRegSlot;src0,src1,src2,src3:TsrRegNode):TspirvOp;
 begin
- Result:=_Op4(line,OpId,dst^.New(line,rtype),src0,src1,src2,src3);
+ Result:=_Op4(line,OpId,dst^.New(rtype),src0,src1,src2,src3);
 end;
 
 function TEmitOp.OpGlsl1(OpId:DWORD;rtype:TsrDataType;dst:PsrRegSlot;src:TsrRegNode):TspirvOp;
 begin
- Result:=_OpGlsl1(line,OpId,dst^.New(line,rtype),src);
+ Result:=_OpGlsl1(line,OpId,dst^.New(rtype),src);
 end;
 
 function TEmitOp.OpGlsl2(OpId:DWORD;rtype:TsrDataType;dst:PsrRegSlot;src0,src1:TsrRegNode):TspirvOp;
 begin
- Result:=_OpGlsl2(line,OpId,dst^.New(line,rtype),src0,src1)
+ Result:=_OpGlsl2(line,OpId,dst^.New(rtype),src0,src1)
 end;
 
 function TEmitOp.OpGlsl3(OpId:DWORD;rtype:TsrDataType;dst:PsrRegSlot;src0,src1,src2:TsrRegNode):TspirvOp;
 begin
- Result:=_OpGlsl3(line,OpId,dst^.New(line,rtype),src0,src1,src2);
+ Result:=_OpGlsl3(line,OpId,dst^.New(rtype),src0,src1,src2);
 end;
 
 function TEmitOp.OpBitcast(pLine:TspirvOp;dst,src:TsrRegNode):TspirvOp;
@@ -347,8 +348,8 @@ function TEmitOp.OpBoolToInt(pLine:TspirvOp;dst,src:TsrRegNode):TspirvOp;
 Var
  src0,src1:TsrRegNode;
 begin
- src0:=NewReg_q(dst.dtype,0,@pLine);
- src1:=NewReg_q(dst.dtype,1,@pLine);
+ src0:=NewImm_q(dst.dtype,0,pLine);
+ src1:=NewImm_q(dst.dtype,1,pLine);
 
  Result:=_Op3(pLine,Op.OpSelect,dst,src,src1,src0);
 end;
@@ -357,7 +358,7 @@ function TEmitOp.OpIntToBool(pLine:TspirvOp;dst,src:TsrRegNode):TspirvOp;
 Var
  src0:TsrRegNode;
 begin
- src0:=NewReg_q(src.dtype,0,@pLine);
+ src0:=NewImm_q(src.dtype,0,pLine);
 
  Result:=_Op2(pLine,Op.OpINotEqual,dst,src,src0);
 end;
@@ -378,8 +379,8 @@ begin
  rsrc :=src.specialize AsType<ntReg>;
 
  Assert(pLine<>nil);
- Assert(dst<>nil);
- Assert(src<>nil);
+ Assert(rdst<>nil);
+ Assert(rsrc<>nil);
 
  if (rsrc.dtype=dtBool) then
  begin
@@ -613,7 +614,7 @@ var
 begin
  //vdst = vsrc0.i * vsrc1.i + vdst.i
  mul:=NewReg(dtInt32);
- sum:=dst^.New(line,dtInt32);
+ sum:=dst^.New(dtInt32);
 
  _Op2(line,Op.OpIMul,mul,src0,src1);
  _Op2(line,Op.OpIAdd,sum,mul,src2);
@@ -625,7 +626,7 @@ var
 begin
  //vdst = vsrc0.u * vsrc1.u + vdst.u
  mul:=NewReg(dtUInt32);
- sum:=dst^.New(line,dtUInt32);
+ sum:=dst^.New(dtUInt32);
 
  _Op2(line,Op.OpIMul,mul,src0,src1);
  _Op2(line,Op.OpIAdd,sum,mul,src2);
@@ -686,8 +687,8 @@ begin
  rsl.pWriter:=node;
  node.pDst:=rsl;
 
- rsl.pDst0:=dst^.New(line,rtype); //dtUint32,dtUint64
- rsl.pDst1:=car^.New(line,rtype); //dtUint32,dtUint64
+ rsl.pDst0:=dst^.New(rtype); //dtUint32,dtUint64
+ rsl.pDst1:=car^.New(rtype); //dtUint32,dtUint64
 end;
 
 procedure TEmitOp.OpIAddExt(dst,car,src0,src1:TsrRegNode);
@@ -750,8 +751,8 @@ begin
  rsl.pWriter:=node;
  node.pDst:=rsl;
 
- rsl.pDst0:=dst^.New(line,rtype); //dtUint32,dtUint64
- rsl.pDst1:=bor^.New(line,rtype); //dtUint32,dtUint64
+ rsl.pDst0:=dst^.New(rtype); //dtUint32,dtUint64
+ rsl.pDst1:=bor^.New(rtype); //dtUint32,dtUint64
 end;
 
 //
@@ -780,6 +781,12 @@ function TEmitOp.OpBFITo(src0,src1,src2,src3:TsrRegNode;ppLine:PPspirvOp=nil):Ts
 begin
  Result:=NewReg(src0.dtype);
  _set_line(ppLine,_Op4(_get_line(ppLine),Op.OpBitFieldInsert,Result,src0,src1,src2,src3));
+end;
+
+function TEmitOp.OpBFUETo(src0,src1,src2:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
+begin
+ Result:=NewReg(src0.dtype);
+ _set_line(ppLine,_Op3(_get_line(ppLine),Op.OpBitFieldUExtract,Result,src0,src1,src2));
 end;
 
 //
@@ -1132,7 +1139,7 @@ end;
 function TEmitOp.OpShlTo(src0:TsrRegNode;src1:QWORD;ppLine:PPspirvOp=nil):TsrRegNode;
 begin
  if (src0=nil) or (src1=0) then Exit(src0);
- Result:=OpShlTo(src0,NewReg_q(src0.dtype,src1,ppLine),ppLine);
+ Result:=OpShlTo(src0,NewImm_q(src0.dtype,src1,_get_line(ppLine)),ppLine);
 end;
 
 function TEmitOp.OpShrTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
@@ -1152,7 +1159,7 @@ end;
 function TEmitOp.OpShrTo(src0:TsrRegNode;src1:QWORD;ppLine:PPspirvOp=nil):TsrRegNode;
 begin
  if (src0=nil) or (src1=0) then Exit(src0);
- Result:=OpShrTo(src0,NewReg_q(src0.dtype,src1,ppLine),ppLine);
+ Result:=OpShrTo(src0,NewImm_q(src0.dtype,src1,_get_line(ppLine)),ppLine);
 end;
 
 //
@@ -1170,7 +1177,7 @@ end;
 function TEmitOp.OpIAddTo(src0:TsrRegNode;src1:QWORD;ppLine:PPspirvOp=nil):TsrRegNode;
 begin
  if (src0=nil) or (src1=0) then Exit(src0);
- Result:=OpIAddTo(src0,NewReg_q(src0.dtype,src1,ppLine),ppLine);
+ Result:=OpIAddTo(src0,NewImm_q(src0.dtype,src1,_get_line(ppLine)),ppLine);
 end;
 
 function TEmitOp.OpISubTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
@@ -1186,7 +1193,7 @@ end;
 function TEmitOp.OpISubTo(src0:TsrRegNode;src1:QWORD;ppLine:PPspirvOp=nil):TsrRegNode;
 begin
  if (src0=nil) or (src1=0) then Exit(src0);
- Result:=OpISubTo(src0,NewReg_q(src0.dtype,src1,ppLine),ppLine);
+ Result:=OpISubTo(src0,NewImm_q(src0.dtype,src1,_get_line(ppLine)),ppLine);
 end;
 
 function TEmitOp.OpIMulTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
@@ -1209,7 +1216,7 @@ begin
   Result:=OpShlTo (src0,src1,ppLine);
  end else
  begin
-  Result:=OpIMulTo(src0,NewReg_q(src0.dtype,src1,ppLine),ppLine);
+  Result:=OpIMulTo(src0,NewImm_q(src0.dtype,src1,_get_line(ppLine)),ppLine);
  end;
 end;
 
@@ -1237,7 +1244,7 @@ begin
   Result:=OpShrTo (src0,src1,ppLine);
  end else
  begin
-  Result:=OpIDivTo(src0,NewReg_q(src0.dtype,src1,ppLine),ppLine);
+  Result:=OpIDivTo(src0,NewImm_q(src0.dtype,src1,_get_line(ppLine)),ppLine);
  end;
 end;
 
@@ -1297,13 +1304,13 @@ end;
 function TEmitOp.OpFAddToS(src0:TsrRegNode;src1:Single;ppLine:PPspirvOp=nil):TsrRegNode;
 begin
  if (src0=nil) or (src1=0) then Exit(src0);
- Result:=OpFAddTo(src0,NewReg_s(src0.dtype,src1,ppLine),ppLine);
+ Result:=OpFAddTo(src0,NewImm_s(src0.dtype,src1,_get_line(ppLine)),ppLine);
 end;
 
 function TEmitOp.OpFMulToS(src0:TsrRegNode;src1:Single;ppLine:PPspirvOp=nil):TsrRegNode;
 begin
  if (src0=nil) or (src1=0) or (src1=1) then Exit(src0);
- Result:=OpFMulTo(src0,NewReg_s(src0.dtype,src1,ppLine),ppLine);
+ Result:=OpFMulTo(src0,NewImm_s(src0.dtype,src1,_get_line(ppLine)),ppLine);
 end;
 
 //
@@ -1440,7 +1447,7 @@ end;
 function TEmitOp.OpAndTo(src0:TsrRegNode;src1:QWORD;ppLine:PPspirvOp=nil):TsrRegNode;
 begin
  if (src0=nil) then Exit(src0);
- Result:=OpAndTo(src0,NewReg_q(src0.dtype,src1,ppLine),ppLine);
+ Result:=OpAndTo(src0,NewImm_q(src0.dtype,src1,_get_line(ppLine)),ppLine);
 end;
 
 //
@@ -1450,7 +1457,7 @@ var
  zero:TsrRegNode;
 begin
  Result:=NewReg(dtBool);
- zero  :=NewReg_i(src.dtype,0,ppLine);
+ zero  :=NewImm_i(src.dtype,0,_get_line(ppLine));
  _set_line(ppLine,_Op2(_get_line(ppLine),Op.OpSLessThan,Result,src,zero)); //(x<0)
 end;
 
@@ -1562,7 +1569,7 @@ begin
    Assert(False,'unknow id');
  end;
 
- comp:=NewReg_i(dtUint32,id);
+ comp:=NewImm_i(dtUint32,id);
 
  node:=AddSpirvOp(pLine,Op.OpImageGather); //need first
 

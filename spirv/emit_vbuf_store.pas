@@ -65,17 +65,17 @@ end;
 
 function TEmit_vbuf_store.fetch_zero(var lc:Tstore_cache):TsrRegNode;
 begin
- Result:=NewReg_q(lc.elem_resl,0);
+ Result:=NewImm_q(lc.elem_resl,0);
 end;
 
 function TEmit_vbuf_store.fetch_one(var lc:Tstore_cache):TsrRegNode;
 begin
  if (lc.elem_resl=dtFloat32) then
  begin
-  Result:=NewReg_s(lc.elem_resl,1);
+  Result:=NewImm_s(lc.elem_resl,1);
  end else
  begin
-  Result:=NewReg_i(lc.elem_resl,1);
+  Result:=NewImm_i(lc.elem_resl,1);
  end;
 end;
 

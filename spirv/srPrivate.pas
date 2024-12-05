@@ -185,6 +185,7 @@ var
  node:TDependenceNode;
 begin
  if (src=nil) then Exit;
+ Assert(src.pLine<>nil);
  node:=NewDependence;
  node.pNode:=src;
  if FZeroRead then
@@ -197,6 +198,7 @@ end;
 Procedure TsrVolatile.PushStore(node:TDependenceNode);
 begin
  if (node=nil) then Exit;
+ Assert(TsrRegNode(node.pNode).pLine<>nil);
  if FZeroRead then
  begin
   TsrRegNode(node.pNode).mark_read(Self);
@@ -741,7 +743,7 @@ begin
  pLine:=ctx.after;
 
  //replace next
- _next:=pSlot^.New(pLine,rtype);
+ _next:=pSlot^.New(rtype,pLine);
  _next.pWriter:=pVolatile;
 
  ctx.AddVolatile(pVolatile,_next);
@@ -838,7 +840,7 @@ begin
   pLine:=ctx.after;
 
   //replace next
-  _next:=pSlot^.New(pLine,rtype);
+  _next:=pSlot^.New(rtype,pLine);
   _next.pWriter:=pVolatile;
 
   ctx.AddVolatile(pVolatile,_next);
@@ -957,7 +959,7 @@ begin
   if (prev=nil) then
   begin
    //The input register is not defined, should it be initialized to make_copy_slot?
-   prev:=pSlot^.New(pLine,rtype);
+   prev:=pSlot^.New(rtype,pLine);
   end;
 
   //set backedge dependence
@@ -1065,11 +1067,11 @@ begin
  begin
   pLine:=FEmit.curr_line;
 
-  node:=pSlot^.New(pLine,cur.dtype);
+  node:=pSlot^.New(cur.dtype,pLine);
   node.pWriter:=cur;
   FEmit.PostLink(pLine,node); //post processing
 
-  node.pLine:=pLine;
+  node.CustomLine:=pLine;
  end;
 end;
 
@@ -1182,7 +1184,7 @@ begin
  //ntVolatile -> src -> next
  //Opload     -> new
 
- Result:=src.pSlot^.New(dst,src.dtype);
+ Result:=src.pSlot^.New(src.dtype,dst);
 
  pPrivate.FetchLoad(dst,Result); //before reg
 end;

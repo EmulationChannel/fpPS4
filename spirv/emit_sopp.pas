@@ -208,7 +208,7 @@ begin
  //down group
  pOpChild:=AllocBlockOp;
  pOpChild.SetInfo(Info);
- PushBlockOp(line,pOpChild,nil);
+ PushBlockOp(line,pOpChild);
 
  set_code_ptr(adr.get_code_ptr,btInline);
 end;

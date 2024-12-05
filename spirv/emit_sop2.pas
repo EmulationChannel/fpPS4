@@ -474,7 +474,7 @@ begin
  src[0].PrepType(ord(dtUInt32));
  src[1].PrepType(ord(dtUInt32));
 
- one:=NewReg_q(dtUInt32,1);
+ one:=NewImm_q(dtUInt32,1);
 
  src[0]:=OpShrTo(one,src[0]); //(1 << src0)
  src[0]:=OpISubTo(src[0],1);  //-1

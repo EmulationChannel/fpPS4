@@ -55,6 +55,8 @@ function  GetMaxPlace(pLine:TSpirvOp;count:Byte;src:PPsrRegNode):TSpirvOp;
 function  GetChainRegNode (node:TsrRegNode):TsrChain;
 function  GetSourceRegNode(node:TsrRegNode):TsrNode;
 
+function  RegDownTestError(node:TsrRegNode):TsrRegNode;
+
 function  flow_down_next_up(pLine:TSpirvOp):TSpirvOp;
 function  flow_down_prev_up(pLine:TSpirvOp):TSpirvOp;
 function  flow_prev_up(pLine:TSpirvOp):TSpirvOp;
@@ -632,6 +634,23 @@ begin
  pVar:=pOp.ParamNode(0).Value.specialize AsType<ntVariable>;
  if (pVar=nil) then Exit;
  Result:=pVar.pSource;
+end;
+
+function RegDownTestError(node:TsrRegNode):TsrRegNode;
+var
+ tmp:TsrRegNode;
+begin
+ //backtrace
+ Result:=nil;
+ tmp:=node;
+ while (tmp<>nil) do
+ begin
+  if GetGlobalIndex(tmp.pLine)>GetGlobalIndex(node.pLine) then
+  begin
+   Exit(tmp);
+  end;
+  tmp:=tmp.AsReg; //next
+ end;
 end;
 
 end.

@@ -177,7 +177,7 @@ begin
  begin
 
   case dst_sel[i] of
-   0:dst[i]:=NewReg_i(rtype.Child,0);
+   0:dst[i]:=NewImm_i(rtype.Child,0);
    //1?
 
    4:dst[i]:=src[0];
@@ -222,7 +222,7 @@ begin
   parent:=AllocBlockOp;
   parent.SetInfo(btOther,Cursor.Adr,Cursor.Adr);
 
-  PushBlockOp(line,parent,nil);
+  PushBlockOp(line,parent);
   Inc(push_count);
 
   exc:=MakeRead(get_exec0,dtBool); //It means that lane_id=0
@@ -248,7 +248,7 @@ begin
  pOpBlock:=AllocBlockOp; //down
  pOpBlock.SetInfo(btOther,Cursor.Adr,Cursor.Adr);
 
- PushBlockOp(line,pOpBlock,nil);
+ PushBlockOp(line,pOpBlock);
  Inc(push_count);
 
  if (parent<>nil) then

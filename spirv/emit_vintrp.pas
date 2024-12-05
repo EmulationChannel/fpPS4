@@ -50,7 +50,7 @@ var
 
   if InputCntl^.USE_DEFAULT then
   begin
-   elm:=NewReg_s(dtFloat32,DEFAULT_VAL[InputCntl^.DEFAULT_VAL][FSPI.VINTRP.ATTRCHAN]);
+   elm:=NewImm_s(dtFloat32,DEFAULT_VAL[InputCntl^.DEFAULT_VAL][FSPI.VINTRP.ATTRCHAN]);
 
    MakeCopy(dst,elm);
   end else
@@ -64,7 +64,7 @@ var
    //remap id
    rsl:=AddFragLayout(itype,dtVec4f,InputCntl^.OFFSET);
 
-   elm:=dst^.New(line,dtFloat32);
+   elm:=dst^.New(dtFloat32);
 
    OpExtract(line,elm,rsl,FSPI.VINTRP.ATTRCHAN);
   end;

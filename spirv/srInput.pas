@@ -209,6 +209,7 @@ var
 
   c:=PsrConstList(FEmit.GetConstList)^.Fetch(node.pReg.dtype,0);
   node.pReg.pWriter:=c;
+  node.pReg.CustomLine:=l;
  end;
 
 begin
@@ -314,6 +315,11 @@ begin
     itLinearCentroid:
       begin
        //
+      end;
+
+    itSubgroupLocalInvocationId:
+      begin
+       pDecorateList.OpDecorate(pVar,Decoration.BuiltIn,BuiltIn.SubgroupLocalInvocationId);
       end;
 
     itPositions:

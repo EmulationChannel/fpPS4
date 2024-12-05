@@ -22,7 +22,7 @@ uses
 type
  TEmit_DS=class(TEmitFetch)
   procedure emit_DS;
-  procedure _emit_DS_SWIZZLE_B32;
+  procedure emit_DS_SWIZZLE_B32;
   function  fetch_ds_chain   (vbindex:TsrRegNode;rtype,atomic:TsrDataType;offset:Word):TsrChain;
   procedure emit_DS_WRITE    (rtype:TsrDataType);
   procedure emit_DS_WRITE2   (rtype:TsrDataType);
@@ -38,14 +38,17 @@ const
  QdMode =1;
 
 type
+ tds_lanes=bitpacked record
+  lane0:bit2;
+  lane1:bit2;
+  lane2:bit2;
+  lane3:bit2;
+ end;
+
  tds_pattern=packed record
   Case Byte of
    0:(qd:bitpacked record
-       lanes:bit8;
-       //lane0:bit2;
-       //lane1:bit2;
-       //lane2:bit2;
-       //lane3:bit2;
+       lanes:tds_lanes;
        align:bit7;
        mode :bit1;
       end);
@@ -57,89 +60,66 @@ type
       end);
  end;
 
-procedure TEmit_DS._emit_DS_SWIZZLE_B32; //TODO: DS_SWIZZLE_B32
+procedure TEmit_DS.emit_DS_SWIZZLE_B32;
 Var
- dst:PsrRegSlot;
- src:TsrRegNode;
- inv:TsrRegNode;
-
- ofs:TsrRegNode;
- cm4:TsrRegNode;
- cm3:TsrRegNode;
- cm1:TsrRegNode;
- elm:TsrRegNode;
- tmp:TsrRegNode;
- lof:TsrRegNode;
- lob:TsrRegNode;
- lid:TsrRegNode;
+ dst        :PsrRegSlot;
+ src        :TsrRegNode;
+ lane_id    :TsrRegNode;
+ id_in_group:TsrRegNode;
+ lanes      :TsrRegNode;
+ base       :TsrRegNode;
+ index      :TsrRegNode;
 
  pat:tds_pattern;
 begin
- {
 
- Word(pat):=PWORD(@FSPI.DS.OFFSET0)^;
+ Word(pat):=PWORD(@FSPI.DS.OFFSET)^;
 
- AddCap(Capability.GroupNonUniformShuffle);
-
- dst:=FRegsStory.get_vdst8(FSPI.DS.VDST);
+ dst:=get_vdst8  (FSPI.DS.VDST);
  src:=fetch_vsrc8(FSPI.DS.ADDR,dtUnknow);
 
- inv:=AddInput(@FRegsStory.FUnattach,dtUint32,itSubgroupLocalInvocationId);
+ case src.dtype of
+  dtFloat32:; //allow
+  dtInt32  :; //allow
+  dtUint32 :; //allow
+  else
+   begin
+    //retype
+    src:=fetch_vsrc8(FSPI.DS.ADDR,dtUint32);
+   end;
+ end;
 
  Case pat.qd.mode of
   QdMode:
    begin
-    ofs:=FetchReg(FConsts.Fetch(dtUint32,pat.qd.lanes));
+    if (pat.qd.lanes.lane0=pat.qd.lanes.lane1) and
+       (pat.qd.lanes.lane0=pat.qd.lanes.lane2) and
+       (pat.qd.lanes.lane0=pat.qd.lanes.lane3) then
+    begin
+     index:=NewImm_i(dtUint32,pat.qd.lanes.lane0);
 
-    cm4:=FetchReg(FConsts.Fetch(dtUint32,4));
-    cm3:=FetchReg(FConsts.Fetch(dtUint32,3));
-    cm1:=FetchReg(FConsts.Fetch(dtUint32,1));
+     Op3(Op.OpGroupNonUniformQuadBroadcast,src.dtype,dst,NewImm_i(dtUint32,Scope.Subgroup),src,index);
+    end else
+    begin
+     lanes:=NewImm_i(dtUint32,Byte(pat.qd.lanes));
 
-    inv^.mark_read;
-    elm:=NewReg(dtUint32);
-    _emit_Op2(line,Op.OpUMod,elm,inv,cm4);
+     lane_id:=AddInput(@RegsStory.FUnattach,dtUint32,itSubgroupLocalInvocationId);
 
-    tmp:=NewReg(dtUint32);
-    elm^.mark_read;
-    _emit_OpShr(line,tmp,elm,cm1);
-    elm:=tmp;
+     id_in_group:=OpAndTo(lane_id,3);
+     id_in_group.PrepType(ord(dtUint32));
 
-    tmp:=NewReg(dtUint32);
-    elm^.mark_read;
-    _emit_OpShr(line,tmp,ofs,elm);
-    elm:=tmp;
+     base :=OpShlTo (id_in_group,1);
+     index:=OpBFUETo(lanes,base,NewImm_i(dtUint32,2));
 
-    tmp:=NewReg(dtUint32);
-    elm^.mark_read;
-    _emit_Op2(line,Op.OpBitwiseAnd,tmp,elm,cm3);
-    lof:=tmp; //laneOffset
-
-    lob:=NewReg(dtUint32);
-    cm4^.mark_read;
-    _emit_Op2(line,Op.OpUDiv,lob,inv,cm4); //laneBase
-
-    lid:=NewReg(dtUint32);
-    lob^.mark_read;
-    lof^.mark_read;
-    _emit_OpIAdd(line,lid,lob,lof); //laneIndex
-
-
+     Op3(Op.OpGroupNonUniformQuadBroadcast,src.dtype,dst,NewImm_i(dtUint32,Scope.Subgroup),src,index);
+    end;
    end;
   BitMode:
    begin
-    Assert(false,'TODO');
+    Assert(false,'TODO: DS_SWIZZLE_B32: BitMode');
    end;
  end;
 
-
-
-
-
-
- dst:=FRegsStory.get_vdst8(FSPI.DS.VDST);
- SetConst(dst,dtFloat32,0);
-
- }
 end;
 
 {
@@ -501,12 +481,7 @@ begin
   DS_OR_RTN_B32 :emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicOr ,True);
   DS_XOR_RTN_B32:emit_DS_ATOMIC_OP(dtUint32,Op.OpAtomicXor,True);
 
-  //DS_SWIZZLE_B32 v4 v3 v0 v0 OFFSET:0x80AA GDS:0
-
-  //DS_SWIZZLE_B32: //TODO
-  // begin;
-  //   _emit_DS_SWIZZLE_B32;
-  // end;
+  DS_SWIZZLE_B32:emit_DS_SWIZZLE_B32;
 
   else
    Assert(false,'DS?'+IntToStr(FSPI.DS.OP)+' '+get_str_spi(FSPI));

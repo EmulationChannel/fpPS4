@@ -159,7 +159,7 @@ begin
 
  if (adr.idx=nil) then
  begin
-  sum_d:=NewReg_q(dtUint32,foffset);
+  sum_d:=NewImm_q(dtUint32,foffset);
  end else
  begin
   idx_m:=OpIMulTo(adr.idx,adr.stride div adr.align); //idx*(stride/Align)
@@ -183,7 +183,7 @@ begin
 
  if (adr.idx=nil) then
  begin
-  sum_d:=NewReg_q(dtUint32,foffset);
+  sum_d:=NewImm_q(dtUint32,foffset);
  end else
  begin
   idx_m:=OpIMulTo(adr.idx,adr.stride div adr.fsize); //idx*(stride/size)

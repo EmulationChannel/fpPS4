@@ -231,7 +231,7 @@ begin
  src[0]:=fetch_ssrc9(FSPI.VOP2.SRC0 ,dtFloat32);
  src[1]:=fetch_vsrc8(FSPI.VOP2.VSRC1,dtFloat32);
 
- zero:=NewReg_s(dtFloat32,0);
+ zero:=NewImm_s(dtFloat32,0);
  cmp:=get_legacy_cmp(src[0],src[1],zero);
 
  //
@@ -278,7 +278,7 @@ begin
  src[0]:=fetch_ssrc9(FSPI.VOP2.SRC0 ,dtInt32);
  src[1]:=fetch_vsrc8(FSPI.VOP2.VSRC1,dtInt32);
 
- bit24:=NewReg_q(dtUInt32,$FFFFFF);
+ bit24:=NewImm_q(dtUInt32,$FFFFFF);
 
  src[0]:=OpAndTo(src[0],bit24);
  src[0].PrepType(ord(dtInt32));
@@ -300,7 +300,7 @@ begin
  src[0]:=fetch_ssrc9(FSPI.VOP2.SRC0 ,dtUInt32);
  src[1]:=fetch_vsrc8(FSPI.VOP2.VSRC1,dtUInt32);
 
- bit24:=NewReg_q(dtUInt32,$FFFFFF);
+ bit24:=NewImm_q(dtUInt32,$FFFFFF);
 
  src[0]:=OpAndTo(src[0],bit24);
  src[0].PrepType(ord(dtUInt32));
@@ -339,7 +339,7 @@ begin
  src[1]:=fetch_vsrc8(FSPI.VOP2.VSRC1,dtFloat32);
  src[2]:=MakeRead(dst,dtFloat32);
 
- zero:=NewReg_s(dtFloat32,0);
+ zero:=NewImm_s(dtFloat32,0);
  cmp:=get_legacy_cmp(src[0],src[1],zero);
 
  //
@@ -360,7 +360,7 @@ begin
 
  src[0]:=fetch_ssrc9(FSPI.VOP2.SRC0 ,dtFloat32);
  src[1]:=fetch_vsrc8(FSPI.VOP2.VSRC1,dtFloat32);
- src[2]:=NewReg_q(dtFloat32,FSPI.INLINE32);
+ src[2]:=NewImm_q(dtFloat32,FSPI.INLINE32);
 
  OpFmaF32(dst,src[0],src[1],src[2]);
 end;
@@ -373,7 +373,7 @@ begin
  dst:=get_vdst8(FSPI.VOP2.VDST);
 
  src[0]:=fetch_ssrc9(FSPI.VOP2.SRC0 ,dtFloat32);
- src[1]:=NewReg_q(dtFloat32,FSPI.INLINE32);
+ src[1]:=NewImm_q(dtFloat32,FSPI.INLINE32);
  src[2]:=fetch_vsrc8(FSPI.VOP2.VSRC1,dtFloat32);
 
  OpFmaF32(dst,src[0],src[1],src[2]);
@@ -418,7 +418,7 @@ begin
  src[0]:=fetch_ssrc9(FSPI.VOP2.SRC0 ,dtFloat32);
  src[1]:=fetch_vsrc8(FSPI.VOP2.VSRC1,dtInt32);
 
- two:=NewReg_s(dtFloat32,2);
+ two:=NewImm_s(dtFloat32,2);
  src[1]:=OpSToF(src[1],dtFloat32);
 
  src[1]:=OpPowTo(two,src[1]);

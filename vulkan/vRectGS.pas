@@ -125,7 +125,7 @@ begin
  //gen const id
  For i:=0 to 3 do
  begin
-  UintId[i]:=SprvEmit.NewReg_i(dtUint32,i);
+  UintId[i]:=SprvEmit.NewImm_i(dtUint32,i);
  end;
 
  //load positions
@@ -156,8 +156,8 @@ begin
   SprvEmit._Op2(SprvEmit.line,Op.OpFOrdEqual,CoordEqualY[i],positionsY[i],positionsY[(i + 1) mod 3]);
  end;
 
- pOneId   :=SprvEmit.NewReg_s(dtFloat32, 1);
- pMinusOne:=SprvEmit.NewReg_s(dtFloat32,-1);
+ pOneId   :=SprvEmit.NewImm_s(dtFloat32, 1);
+ pMinusOne:=SprvEmit.NewImm_s(dtFloat32,-1);
 
  //calc barycentric
  For i:=0 to 2 do

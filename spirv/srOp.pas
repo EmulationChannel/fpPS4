@@ -74,6 +74,7 @@ type
    //
    Procedure _zero_read;                    override;
    Procedure _PrepType(node:PPrepTypeNode); override;
+   Function  _GetPline:TsrNode;             override;
    Function  _GetPtype:TsrNode;             override;
    function  _GetIndexCount:DWORD;          override;
    //
@@ -270,6 +271,11 @@ end;
 Procedure TspirvOp._zero_read;
 begin
  UnClear;
+end;
+
+Function TspirvOp._GetPline:TsrNode;
+begin
+ Result:=Self;
 end;
 
 Function TspirvOp._GetPtype:TsrNode;

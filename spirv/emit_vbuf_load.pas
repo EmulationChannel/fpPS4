@@ -211,7 +211,7 @@ begin
 
  if (lc.elm[i]=nil) then
  begin
-  lc.dst^.New(line,lc.elem_resl);
+  lc.dst^.New(lc.elem_resl);
   OpExtract(line,lc.dst^.current,rsl,i);
 
   lc.elm[i]:=lc.dst^.current;
@@ -238,7 +238,7 @@ begin
    sum_d:=OpIAddTo(idx,i);
   end;
 
-  rsl:=lc.dst^.New(line,lc.elem_resl);
+  rsl:=lc.dst^.New(lc.elem_resl);
 
   OpImageRead(line,TsrNode(lc.v.data[0]),rsl,sum_d);
 

@@ -184,7 +184,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -334,7 +334,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -470,7 +470,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -571,7 +571,7 @@ begin
   data[1]:=src[1].AsConst.GetData;
 
   dtype:=LazyType3(dst.dtype,src[0].dtype,src[1].dtype);
-  src[1]:=NewReg_q(dtype,data[0] or data[1],@Node);
+  src[1]:=NewImm_q(dtype,data[0] or data[1],node);
 
   src[0]:=_Fetch_BitwiseOr_Value(src[0]);
   Assert(src[0]<>nil);
@@ -589,7 +589,7 @@ begin
   data[1]:=        pConst.GetData;
 
   dtype:=LazyType3(dst.dtype,src[0].dtype,src[1].dtype);
-  src[0]:=NewReg_q(dtype,data[0] or data[1],@Node);
+  src[0]:=NewImm_q(dtype,data[0] or data[1],node);
 
   src[1]:=_Fetch_BitwiseOr_Value(src[1]);
   Assert(src[1]<>nil);
@@ -634,7 +634,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -698,7 +698,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -980,7 +980,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1027,7 +1027,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1064,7 +1064,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1073,7 +1073,7 @@ var
  procedure _SetConst_s(dtype:TsrDataType;value:Single);
  begin
   Assert(dtype=dtFloat32);
-  dst.pWriter:=NewReg_s(dtype,value,@node);
+  dst.pWriter:=NewImm_s(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1283,7 +1283,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1370,7 +1370,7 @@ var
  procedure _SetConst_s(dtype:TsrDataType;value:Single);
  begin
   Assert(dtype=dtFloat32);
-  dst.pWriter:=NewReg_s(dtype,value,@node);
+  dst.pWriter:=NewImm_s(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1411,7 +1411,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1465,7 +1465,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1497,7 +1497,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1573,7 +1573,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1773,7 +1773,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -1862,7 +1862,7 @@ var
 
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
-  dst.pWriter:=NewReg_q(dtype,value,@node);
+  dst.pWriter:=NewImm_q(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -2018,7 +2018,7 @@ begin
 
  if (count=0) then
  begin
-  Result:=NewReg_q(node.dtype,0);
+  Result:=NewImm_q(node.dtype,0,node);
  end else
  if (count=1) then
  begin
@@ -2040,6 +2040,7 @@ end;
 
 function TEmitPostOp.OnBFE_32_1(node:TSpirvOp):Integer;
 var
+ pLine:TSpirvOp;
  dst:TsrRegNode;
  rBase,rIndex,rCount:TsrRegNode;
  rsl:TsrRegNode;
@@ -2061,8 +2062,8 @@ begin
  dtype:=rBase.dtype;
 
  //else
- node.mark_not_used;
- node.pDst:=nil;
+
+ pLine:=node;
 
  if (rIndex.is_const) and (rCount.is_const) then
  begin
@@ -2077,6 +2078,8 @@ begin
   if (rsl<>nil) then
   begin
 
+   pLine:=rsl.pLine;
+
    rBase:=RegDown(rsl);
    if (rBase.is_const) then
    begin
@@ -2086,22 +2089,24 @@ begin
     //
     if (data[0]<>rBase.AsConst.GetData) then
     begin
-     rsl:=NewReg_q(dtUInt32,data[0],@Node);
+     rsl:=NewImm_q(dtUInt32,data[0],pLine);
     end;
    end else
    begin
     data[1]:=(1 shl count)-1;
-    num_31:=NewReg_q(dtUInt32,data[1],@Node);
+    num_31:=NewImm_q(dtUInt32,data[1],pLine);
     //
 
     PrepTypeNode(rsl,dtype);
 
-    rsl:=OpAndTo(rsl,num_31,@node);
+    rsl:=OpAndTo(rsl,num_31,@pLine);
     rsl.PrepType(ord(dtype));
    end;
 
    dst.pWriter:=rsl;
-   dst.pLine  :=rsl.pLine;
+
+   node.mark_not_used;
+   node.pDst:=nil;
 
    Exit;
   end;
@@ -2118,20 +2123,20 @@ begin
   //
   if (data[0]<>rIndex.AsConst.GetData) then
   begin
-   rIndex:=NewReg_q(dtUInt32,data[0],@Node);
+   rIndex:=NewImm_q(dtUInt32,data[0],pLine);
   end else
   begin
    rIndex:=node.ParamNode(1).AsReg; //orig
   end;
  end else
  begin
-  num_31:=NewReg_q(dtUInt32,31,@Node);
+  num_31:=NewImm_q(dtUInt32,31,pLine);
   //
   rIndex:=node.ParamNode(1).AsReg; //orig
 
   PrepTypeNode(rIndex,dtUInt32);
 
-  rIndex:=OpAndTo(rIndex,num_31,@node);
+  rIndex:=OpAndTo(rIndex,num_31,@pLine);
  end;
 
  //
@@ -2142,7 +2147,7 @@ begin
   //
   if (data[1]<>rCount.AsConst.GetData) then
   begin
-   rCount:=NewReg_q(dtUInt32,data[1],@Node);
+   rCount:=NewImm_q(dtUInt32,data[1],pLine);
   end else
   begin
    rCount:=node.ParamNode(2).AsReg; //orig
@@ -2151,30 +2156,33 @@ begin
  begin
   if (num_31<>nil) then
   begin
-   num_31:=NewReg_q(dtUInt32,31,@Node);
+   num_31:=NewImm_q(dtUInt32,31,pLine);
   end;
   //
   rCount:=node.ParamNode(2).AsReg; //orig
 
   PrepTypeNode(rCount,dtUInt32);
 
-  rCount:=OpAndTo(rCount,num_31,@node);
+  rCount:=OpAndTo(rCount,num_31,@pLine);
  end;
 
  PrepTypeNode(rIndex,dtUInt32);
  PrepTypeNode(rCount,dtUInt32);
 
  case dtype of
-  dtUint32:_Op3(node,Op.OpBitFieldUExtract,dst,rBase,rIndex,rCount);
-  dtInt32 :_Op3(node,Op.OpBitFieldSExtract,dst,rBase,rIndex,rCount);
+  dtUint32:_Op3(pLine,Op.OpBitFieldUExtract,dst,rBase,rIndex,rCount);
+  dtInt32 :_Op3(pLine,Op.OpBitFieldSExtract,dst,rBase,rIndex,rCount);
   else
    Assert(False);
  end;
 
+ node.mark_not_used;
+ node.pDst:=nil;
 end;
 
 function TEmitPostOp.OnBFIB32_1(node:TSpirvOp):Integer;
 var
+ pLine:TSpirvOp;
  dst:TsrRegNode;
  bitmsk:TsrRegNode;
  src:array[0..1] of TsrRegNode;
@@ -2186,9 +2194,12 @@ begin
  dst:=node.pDst.specialize AsType<ntReg>;
  if (dst=nil) then Exit;
 
+ pLine:=node;
+
  bitmsk:=RegDown(node.ParamNode(0).AsReg);
- src[0]:=RegDown(node.ParamNode(1).AsReg);
- src[1]:=RegDown(node.ParamNode(2).AsReg);
+
+ src[0]:=node.ParamNode(1).AsReg;
+ src[1]:=node.ParamNode(2).AsReg;
 
  if (bitmsk=nil) or (src[0]=nil) or (src[1]=nil) then Exit;
 
@@ -2203,16 +2214,13 @@ begin
 
   if (data[0]=data[1]) then
   begin
+   rIndex:=NewImm_q(dtUint32,index,pLine);
+   rCount:=NewImm_q(dtUint32,count,pLine);
+
+   _Op4(pLine,Op.OpBitFieldInsert,dst,src[1],src[0],rIndex,rCount);
+
    node.mark_not_used;
    node.pDst:=nil;
-
-   rIndex:=NewReg_q(dtUint32,index,@Node);
-   rCount:=NewReg_q(dtUint32,count,@Node);
-
-   src[0]:=node.ParamNode(1).AsReg;
-   src[1]:=node.ParamNode(2).AsReg;
-
-   _Op4(node,Op.OpBitFieldInsert,dst,src[1],src[0],rIndex,rCount);
 
    Exit;
   end;
@@ -2220,22 +2228,20 @@ begin
  end;
 
  //else
- node.mark_not_used;
- node.pDst:=nil;
 
- src[0]:=node.ParamNode(1).AsReg;
- src[1]:=node.ParamNode(2).AsReg;
-
- src[0]:=OpAndTo(src[0],bitmsk,@node);
+ src[0]:=OpAndTo(src[0],bitmsk,@pLine);
  src[0].PrepType(ord(dtUInt32));
 
- bitmsk:=OpNotTo(bitmsk,@node);
+ bitmsk:=OpNotTo(bitmsk,@pLine);
  bitmsk.PrepType(ord(dtUInt32));
 
- src[1]:=OpAndTo(src[1],bitmsk,@node);
+ src[1]:=OpAndTo(src[1],bitmsk,@pLine);
  src[1].PrepType(ord(dtUInt32));
 
- _Op2(node,Op.OpBitwiseOr,dst,src[0],src[1]);
+ _Op2(pLine,Op.OpBitwiseOr,dst,src[0],src[1]);
+
+ node.mark_not_used;
+ node.pDst:=nil;
 end;
 
 function _IsFma(node:TSpirvOp):Boolean;
@@ -2580,7 +2586,7 @@ var
  procedure _SetConst_s(dtype:TsrDataType;value:Single);
  begin
   Assert(dtype=dtFloat32);
-  dst.pWriter:=NewReg_s(dtype,value,@node);
+  dst.pWriter:=NewImm_s(dtype,value,node);
   node.mark_not_used;
   node.pDst:=nil;
   Inc(Result);
@@ -2918,26 +2924,25 @@ begin
  dst:=node.pDst.specialize AsType<ntReg>;
  if (dst=nil) then Exit;
 
- src[0]:=node.ParamNode(0).AsReg;
- src[1]:=node.ParamNode(1).AsReg;
- src[2]:=node.ParamNode(2).AsReg;
+ src[0]:=node.ParamNode(0).AsReg; //prim
+ src[1]:=node.ParamNode(1).AsReg; //smid
+ src[2]:=node.ParamNode(2).AsReg; //rtid
 
  if (src[0]=nil) or (src[0]=nil) or (src[1]=nil) then Exit;
 
  node.mark_not_used;
  node.pDst:=nil;
 
- num4 :=NewReg_q(dtUint32, 4);
- num8 :=NewReg_q(dtUint32, 8);
- num11:=NewReg_q(dtUint32,11);
- num16:=NewReg_q(dtUint32,16);
+ num4 :=NewImm_q(dtUint32, 4,node);
+ num8 :=NewImm_q(dtUint32, 8,node);
+ num11:=NewImm_q(dtUint32,11,node);
+ num16:=NewImm_q(dtUint32,16,node);
 
  //Base,Insert,Offset,Count
  src[0]:=OpBFITo(src[0],src[1],num8 ,num4 ,@node);
  src[0]:=OpBFITo(src[0],src[2],num16,num11,@node);
 
  dst.pWriter:=src[0];
- dst.pLine  :=src[0].pLine;
 end;
 
 //

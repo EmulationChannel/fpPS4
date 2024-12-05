@@ -32,6 +32,7 @@ type
    end;
    FSlot:PsrRegSlot;
    FWriter:TsrNode;        //ntReg,ntConst,ntOp,ntVolatile
+   FCustomLine:TsrNode;    //PspirvOp;
    function  GetDtype:TsrDataType;
    Procedure SetDtype(t:TsrDataType);
    function  GetWeak:Boolean;
@@ -39,8 +40,10 @@ type
    Procedure SetWriter(t:TsrNode);
    Function  GetWriter:TsrNode;
   public
-   pLine:TsrNode;   //PspirvOp;
+   function  pLine:TsrNode;
+   property  CustomLine:TsrNode read FCustomLine write FCustomLine;
    //
+   Function  _GetPline    :TsrNode;              override;
    Procedure _SetWriter   (w,line:TsrNode);      override;
    Procedure _ResetWriter (w:TsrNode);           override;
    function  _Down        :TsrNode;              override;
@@ -79,6 +82,7 @@ type
    function  _Down:TsrNode;                override;
    Procedure _SetWriter  (w,line:TsrNode); override;
    Procedure _ResetWriter(w:TsrNode);      override;
+   Function  _GetPline:TsrNode;            override;
    //
    property  pLine:TsrNode   read FWriter;
    property  pWriter:TsrNode read FWriter write SetWriter;
@@ -105,9 +109,7 @@ type
    function  first:TsrRegNode;
    function  last :TsrRegNode;
    function  isBoolOnly:Boolean;
-   function  New(pLine:TsrNode;rtype:TsrDataType):TsrRegNode;
-   function  NewAfter(rtype:TsrDataType;r:TsrRegNode):TsrRegNode;
-   function  NewBefore(rtype:TsrDataType;r:TsrRegNode):TsrRegNode;
+   function  New(rtype:TsrDataType;pLine:TsrRegNode=nil):TsrRegNode;
    procedure Insert(r:TsrRegNode);
    procedure Remove(r:TsrRegNode);
  end;
@@ -221,10 +223,43 @@ end;
 
 //
 
+Function TsrRegNode._GetPline:TsrNode;
+var
+ tmp:TsrRegNode;
+begin
+ Result:=nil;
+ //
+ if (FCustomLine<>nil) then
+ begin
+  Exit(FCustomLine);
+ end;
+ //
+ tmp:=FWriter;
+ while (tmp<>nil) do
+ begin
+  if tmp.IsType(ntReg) then
+  begin
+   if (tmp.FCustomLine<>nil) then
+   begin
+    Exit(tmp.FCustomLine);
+   end;
+  end else
+  begin
+   Exit(tmp._GetPline);
+  end;
+  tmp:=tmp._Down;
+ end;
+end;
+
+function TsrRegNode.pLine:TsrNode;
+begin
+ if (Self=nil) then Exit(nil);
+ Result:=_GetPline;
+end;
+
 Procedure TsrRegNode._SetWriter(w,line:TsrNode);
 begin
  SetWriter(w);
- pLine:=line;
 end;
 
 Procedure TsrRegNode._ResetWriter(w:TsrNode);
@@ -232,7 +267,6 @@ begin
  if (FWriter=w) then
  begin
   SetWriter(nil);
-  pLine:=nil;
  end;
 end;
 
@@ -327,6 +361,11 @@ begin
  begin
   SetWriter(nil);
  end;
+end;
+
+Function TsrRegPair._GetPline:TsrNode;
+begin
+ Result:=FWriter;
 end;
 
 //
@@ -601,14 +640,6 @@ begin
  if (Self=nil) then Exit;
  if (FWriter=t) then Exit;
 
- {
- if t.IsType(ntConst) then
- if (dtype<>TsrConst(t).dtype) then
- begin
-  Assert(false);
- end;
- }
-
  Assert(RegDown(t.specialize AsType<ntReg>)<>Self,'Circular reference');
 
  if isUsed then
@@ -617,6 +648,16 @@ begin
   FWriter.mark_unread(Self);
  end;
  FWriter:=t;
+
+ //update
+ if (FWriter=nil) then
+ begin
+  FCustomLine:=nil;
+ end else
+ if (FWriter._GetPline<>nil) then
+ begin
+  FCustomLine:=nil;
+ end;
 end;
 
 Function TsrRegNode.GetWriter:TsrNode;
@@ -728,7 +769,7 @@ begin
  Result:=(rid='SCC');
 end;
 
-function TsrRegSlot.New(pLine:TsrNode;rtype:TsrDataType):TsrRegNode;
+function TsrRegSlot.New(rtype:TsrDataType;pLine:TsrRegNode=nil):TsrRegNode;
 var
  node:TsrRegNode;
 begin
@@ -739,53 +780,12 @@ begin
  node:=FEmit.specialize New<TsrRegNode>;
  node.FSlot:=@Self;
  node.dtype:=rtype;
- node.pLine:=pLine;
+ node.CustomLine:=pLine;
+ //
  pStory.Push_tail(node);
  Result:=node;
  //update
  current:=pStory.pTail;
-end;
-
-function TsrRegSlot.NewAfter(rtype:TsrDataType;r:TsrRegNode):TsrRegNode;
-var
- node:TsrRegNode;
-begin
- if isBoolOnly then
- begin
-  rtype:=dtBool;
- end;
- node:=FEmit.specialize New<TsrRegNode>;
- node.FSlot:=@Self;
- node.dtype:=rtype;
- node.pLine:=r.pLine;
- pStory.InsertAfter(r,node);
- Result:=node;
- //update
- if (r=pStory.pTail) then
- begin
-  current:=pStory.pTail;
- end;
-end;
-
-function TsrRegSlot.NewBefore(rtype:TsrDataType;r:TsrRegNode):TsrRegNode;
-var
- node:TsrRegNode;
-begin
- if isBoolOnly then
- begin
-  rtype:=dtBool;
- end;
- node:=FEmit.specialize New<TsrRegNode>;
- node.FSlot:=@Self;
- node.dtype:=rtype;
- node.pLine:=r.pLine;
- pStory.InsertBefore(r,node);
- Result:=node;
- //update
- if (r=pStory.pTail) then
- begin
-  current:=pStory.pTail;
- end;
 end;
 
 procedure TsrRegSlot.Insert(r:TsrRegNode);

@@ -594,7 +594,7 @@ begin
    begin
     if (i<max) then
     begin
-     OpExtract(line,pSlot^.New(line,dtype),dst,i);
+     OpExtract(line,pSlot^.New(dtype),dst,i);
     end else
     begin
      SetConst_i(pSlot,dtype,0);
@@ -621,7 +621,7 @@ begin
    Inc(d);
   end else
   begin
-   src[i]:=NewReg_i(info^.dtype,0);
+   src[i]:=NewImm_i(info^.dtype,0);
   end;
  end;
 
@@ -663,7 +663,7 @@ begin
    if (info^.tinfo.Arrayed<>0) then //is array
    begin
     Inc(count);
-    src[3]:=NewReg_s(dtFloat32,0);
+    src[3]:=NewImm_s(dtFloat32,0);
    end;
   end;
 
@@ -683,7 +683,7 @@ begin
    i:=count;
    Inc(count);
 
-   src[i]:=NewReg_s(dtFloat32,0);
+   src[i]:=NewImm_s(dtFloat32,0);
   end;
 
   if (count=1) then
@@ -728,7 +728,7 @@ begin
    if (info^.tinfo.Arrayed<>0) then //is array
    begin
     Inc(count);
-    src[3]:=NewReg_i(dtInt32,0);
+    src[3]:=NewImm_i(dtInt32,0);
    end;
   end;
 
@@ -748,7 +748,7 @@ begin
    i:=count;
    Inc(count);
 
-   src[i]:=NewReg_i(dtInt32,0);
+   src[i]:=NewImm_i(dtInt32,0);
   end;
 
   if (count=1) then
@@ -828,7 +828,7 @@ begin
  end else
  if (imZeroLod in p.mods) then
  begin
-  p.lod:=NewReg_s(dtFloat32,0);
+  p.lod:=NewImm_s(dtFloat32,0);
   p.img_op:=p.img_op or ImageOperands.Lod;
  end;
 
