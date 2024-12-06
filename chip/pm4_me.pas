@@ -1265,7 +1265,11 @@ begin
 
    resource^.rimage:=ri;
 
-   pm4_load_from(ctx.Cmd,ri,i^.curr.mem_usage);
+   //now preload only sampled image
+   if (resource^.uall.img_usage=[iu_sampled]) then
+   begin
+    pm4_load_from(ctx.Cmd,ri,i^.curr.mem_usage);
+   end;
   end else
   if (resource^.rtype=R_HTILE) then
   begin

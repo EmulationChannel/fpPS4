@@ -171,6 +171,8 @@ type
   rsize :DWORD;
   rkey  :TvImageKey;
   //
+  uall:t_pm4_usage;
+  //
   rimage:TObject;
   //
   rcombined :Boolean;
@@ -680,6 +682,8 @@ begin
  end;
 
  Result^.curr:=Result^.curr + curr;
+
+ r^.uall:=r^.uall + curr;
 end;
 
 function t_pm4_resource_stream_scope.insert_image_resource(scope:p_pm4_resource_curr_scope;const rkey:TvImageKey;mem_usage:Integer;img_usage:s_image_usage;hint:PChar):p_pm4_resource_instance;
@@ -1367,6 +1371,21 @@ begin
 
   end;
  end;
+end;
+
+procedure DumpShaderGroup(ShaderGroup:TvShaderGroup);
+var
+ i:TvShaderStage;
+ str:RawByteString;
+begin
+ str:='[DumpShaderGroup]'#13#10;
+ For i:=Low(TvShaderStage) to High(TvShaderStage) do
+ if (ShaderGroup.FKey.FShaders[i]<>nil) then
+ begin
+  str:=str+' ('+HexStr(ShaderGroup.FKey.FShaders[i].FHash_gcn,16)+') '+GetDumpSpvName(i,ShaderGroup.FKey.FShaders[i].FHash_spv)+#13#10;
+ end;
+
+ Writeln(stderr,str);
 end;
 
 procedure t_pm4_stream.Build_rt_info(node:p_pm4_node;

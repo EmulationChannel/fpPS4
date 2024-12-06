@@ -1107,26 +1107,44 @@ begin
   begin
    With FBindVBufs[i] do
    begin
+    //If the element's stride is the same,
+    // add the attribute to the binding
     if (stride=pv_stride) then
     begin
+     //Let's calculate the difference in addresses
+     // between the binding and the new buffer
      offset:=_ptr_diff(min_addr,pv_base);
+     //If the difference is greater than the stride,
+     // then we skip
      if (offset<=stride-1) then
      begin
+      //If the offset is negative relative
+      // to the base, then
       if (min_addr>pv_base) then
       begin
+       //We patch the previous attributes,
+       // adjust the offset
        PatchAttr(binding,offset);
+       //This is now the new base address,
+       // so reset the offset.
        min_addr:=pv_base;
+       offset  :=0;
       end;
+
+      //update count
       if (count<pv_count) then
       begin
        count:=pv_count;
       end;
+
       NewAttrDesc(location,binding,offset,_get_vsharp_cformat(PV));
       Exit;
      end;
     end;
    end;
   end;
+
+ //Binding not found, adding new binding and attribute
 
  i:=FBindDescsCount;
 
