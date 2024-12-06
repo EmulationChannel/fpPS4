@@ -44,11 +44,10 @@ type
 
  p_jinstr_len=^t_jinstr_len;
  t_jinstr_len=packed record
-  original:0..31; //5
+  original:0..31;  //5
   LF_JMP  :0..1;
   bit6    :0..1;
-  bit7    :0..1;
-  recompil:Byte;
+  recompil:0..511; //9
  end;
 
  p_jcode_chunk=^t_jcode_chunk;
@@ -801,7 +800,7 @@ begin
   original:=QWORD(next)-QWORD(curr);
   recompil:=link_next.offset-link_curr.offset;
 
-  if (original>16) or (recompil>255) then
+  if (original>16) or (recompil>512) then
   begin
    Writeln('0x',HexStr(curr));
    Writeln(original,':',recompil);

@@ -1032,6 +1032,8 @@ begin
 end;
 
 procedure op_jit2native(var ctx:t_jit_context2;pcb,switch_stack:Boolean);
+var
+ i:Integer;
 begin
  with ctx.builder do
  begin
@@ -1061,9 +1063,28 @@ begin
    movq(rbp,[r13+Integer(@p_jit_frame(nil)^.tf_rbp)]);
   end else
   begin
+   //load rsp
+   movq(r14,[r13+Integer(@p_jit_frame(nil)^.tf_rsp)]);
+
    //save rsp,rbp
-   push([r13+Integer(@p_jit_frame(nil)^.tf_rsp),os64]);
+   push(r14);
    push([r13+Integer(@p_jit_frame(nil)^.tf_rbp),os64]);
+
+   //alloc stack
+   leaq(rsp,[rsp-$50]);
+
+   //shift guest rsp
+   leaq(r14,[r14+8]);
+
+   //preload stack argc
+
+   //$50 = 10*8
+   For i:=0 to 7 do
+   begin
+    movq(r15,[r14+i*8]);
+    movq([rsp+i*8],r15);
+   end;
+
   end;
 
   //load r14,r15,r13
@@ -1112,6 +1133,9 @@ begin
    movq(rbp,[r13-jit_frame_offset+Integer(@p_kthread(nil)^.td_jctx.rbp)]);
   end else
   begin
+   //free stack
+   leaq(rsp,[rsp+$50]);
+
    //restore rbp,rsp
    pop([r13+Integer(@p_jit_frame(nil)^.tf_rbp),os64]);
    pop([r13+Integer(@p_jit_frame(nil)^.tf_rsp),os64]);
