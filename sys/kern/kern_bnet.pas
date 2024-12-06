@@ -20,6 +20,14 @@ begin
  arc4rand(@Result,SizeOf(Integer),0);
 end;
 
+type
+ p_bnet_stat_info=^t_bnet_stat_info;
+ t_bnet_stat_info=packed record
+  kernel_mem_free_min :Integer;
+  kernel_mem_free_size:Integer;
+  reserved:QWORD;
+ end;
+
 function sys_netcontrol(fd,op:Integer;buf:Pointer;nbuf:DWORD):Integer;
 var
  _kbuf:array[0..159] of Byte;
@@ -48,8 +56,23 @@ begin
  end;
 
  case op of
+    1: //sceNetGetStatisticsInfo
+      begin
+       if (kaddr=nil) or (nbuf<16) then
+       begin
+        Exit(EINVAL);
+       end;
+       //
+       p_bnet_stat_info(kaddr)^:=Default(t_bnet_stat_info);
+      end;
+
   $14: //bnet_get_secure_seed
       begin
+       if (kaddr=nil) or (nbuf<4) then
+       begin
+        Exit(EINVAL);
+       end;
+       //
        PInteger(kaddr)^:=bnet_get_secure_seed();
       end
 
