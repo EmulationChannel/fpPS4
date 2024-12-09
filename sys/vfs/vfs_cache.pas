@@ -188,7 +188,7 @@ begin
  //no cache
 
  vfslocked:=VFS_LOCK_GIANT((vp^)^.v_mount);
- vn_lock(vp^, LK_SHARED or LK_RETRY);
+ vn_lock(vp^, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  error:=VOP_VPTOCNP(vp^, @dvp, buf, PInteger(buflen));
  vput(vp^);
  VFS_UNLOCK_GIANT(vfslocked);

@@ -160,7 +160,7 @@ begin
   vhold(vp);
   VM_OBJECT_UNLOCK(obj);
 
-  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   vdrop(vp);
 
   VM_OBJECT_LOCK(obj);
@@ -564,7 +564,7 @@ begin
   VM_OBJECT_UNLOCK(obj);
   vn_start_write(vp, @mp, V_WAIT);
   vfslocked:=VFS_LOCK_GIANT(vp^.v_mount);
-  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
   if (syncio) and
      (not invalidate) and

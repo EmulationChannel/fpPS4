@@ -48,6 +48,7 @@ function vop_stdadvlock(ap:p_vop_advlock_args):Integer;
 function vop_stdadvlockasync(ap:p_vop_advlockasync_args):Integer;
 function vop_stdadvlockpurge(ap:p_vop_advlockpurge_args):Integer;
 function vop_stdpathconf(ap:p_vop_pathconf_args):Integer;
+function lockmgr(lk:p_mtx;flags:Integer;ilk:p_mtx):Integer;
 function vop_stdlock(ap:p_vop_lock1_args):Integer;
 function vop_stdunlock(ap:p_vop_unlock_args):Integer;
 function vop_stdislocked(ap:p_vop_islocked_args):Integer;
@@ -403,7 +404,7 @@ begin
    * the NFSv4 server always uses SEEK_SET and this code is
    * only required for the SEEK_END case.
    }
-  vn_lock(vp, LK_SHARED or LK_RETRY);
+  vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   error:=VOP_GETATTR(vp, @vattr);
   VOP_UNLOCK(vp, 0);
   if (error<>0) then
@@ -425,13 +426,17 @@ begin
  if (ap^.a_fl^.l_whence=SEEK_END) then
  begin
   { The size argument is only needed for SEEK_END. }
-  vn_lock(vp, LK_SHARED or LK_RETRY);
+  vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   error:=VOP_GETATTR(vp, @vattr);
   VOP_UNLOCK(vp, 0);
   if (error<>0) then
+  begin
    Exit(error);
+  end;
  end else
+ begin
   vattr.va_size:=0;
+ end;
 
  Exit(EOPNOTSUPP);
  //Exit(lf_advlockasync(ap, @(vp^.v_lockf), vattr.va_size));
@@ -509,36 +514,39 @@ function lockmgr(lk:p_mtx;flags:Integer;ilk:p_mtx):Integer;
 var
  op:Integer;
 begin
-
- op:=(flags and LK_TYPE_MASK);
- case op of
-  LK_SHARED,
-  LK_EXCLUSIVE:
-   begin
-    mtx_lock(lk^);
-   end;
-  LK_RELEASE:
-   begin
-    mtx_unlock(lk^);
-   end;
-  LK_UPGRADE:
-   begin
-    if not mtx_owned(lk^) then
-    begin
-     mtx_lock(lk^);
-    end;
-   end;
-   LK_DOWNGRADE:;//
-  else
-   Assert(false);
- end;
+ Result:=0;
 
  if ((flags and LK_INTERLOCK)<>0) then
  begin
   mtx_unlock(ilk^);
  end;
 
- Result:=0;
+ op:=(flags and LK_TYPE_MASK);
+ case op of
+  LK_SHARED,    //read  lock
+  LK_EXCLUSIVE: //write lock
+   begin
+    if ((flags and LK_NOWAIT)<>0) then //trylock
+    begin
+     if not mtx_trylock(lk^) then
+     begin
+      Result:=1;
+     end;
+    end else
+    begin
+     mtx_lock(lk^);
+    end;
+   end;
+  LK_RELEASE:   //unlock
+   begin
+    mtx_unlock(lk^);
+   end;
+  LK_UPGRADE  :;//read ->write
+  LK_DOWNGRADE:;//write->read
+  else
+   Assert(false,'TODO');
+ end;
+
 end;
 
 {
@@ -813,7 +821,7 @@ begin
  error:=vn_open_cred(@nd, @flags, 0, VN_OPEN_NOAUDIT, nil);
  if (error<>0) then
  begin
-  vn_lock(vp, locked or LK_RETRY);
+  vn_lock(vp, locked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   Exit(error);
  end;
  NDFREE(@nd, NDF_ONLY_PNBUF);
@@ -830,7 +838,7 @@ begin
   VOP_UNLOCK(mvp, 0);
   vn_close(mvp, FREAD);
   VREF(dvp^);
-  vn_lock(dvp^, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(dvp^, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   covered:=1;
  end;
 
@@ -862,16 +870,16 @@ begin
    if (covered<>0) then
    begin
     VOP_UNLOCK(dvp^, 0);
-    vn_lock(mvp, LK_EXCLUSIVE or LK_RETRY);
+    vn_lock(mvp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
     if (dirent_exists(mvp, dp^.d_name)=0) then
     begin
      error:=ENOENT;
      VOP_UNLOCK(mvp, 0);
-     vn_lock(dvp^, LK_EXCLUSIVE or LK_RETRY);
+     vn_lock(dvp^, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
      goto _out;
     end;
     VOP_UNLOCK(mvp, 0);
-    vn_lock(dvp^, LK_EXCLUSIVE or LK_RETRY);
+    vn_lock(dvp^, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
    end;
    Dec(i,dp^.d_namlen);
 
@@ -909,7 +917,7 @@ _out:
   VOP_UNLOCK(mvp, 0);
   vn_close(mvp, FREAD);
  end;
- vn_lock(vp, locked or LK_RETRY);
+ vn_lock(vp, locked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  Exit(error);
 end;
 
@@ -1077,7 +1085,9 @@ begin
 
  lockreq:=LK_EXCLUSIVE or LK_INTERLOCK;
  if (waitfor<>MNT_WAIT) then
+ begin
   lockreq:=lockreq or LK_NOWAIT;
+ end;
  {
   * Force stale buffer cache information to be flushed.
   }

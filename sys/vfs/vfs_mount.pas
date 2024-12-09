@@ -987,7 +987,7 @@ begin
 
  MNT_IUNLOCK(mp);
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  //cache_purge(vp);
  VI_LOCK(vp);
  vp^.v_iflag:=vp^.v_iflag and (not VI_MOUNT);
@@ -1501,7 +1501,7 @@ begin
   mnt_gen_r:=mp^.mnt_gen;
   VI_LOCK(coveredvp);
   vholdl(coveredvp);
-  vn_lock(coveredvp, LK_EXCLUSIVE or LK_INTERLOCK or LK_RETRY);
+  vn_lock(coveredvp, LK_EXCLUSIVE or LK_INTERLOCK or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   vdrop(coveredvp);
   {
    * Check for mp being unmounted while waiting for the

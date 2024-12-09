@@ -510,7 +510,7 @@ begin
 
  dp:=ndp^.ni_startdir;
  ndp^.ni_startdir:=nil;
- vn_lock(dp,compute_cn_lkflags(dp^.v_mount,cnp^.cn_lkflags or LK_RETRY,cnp^.cn_flags));
+ vn_lock(dp,compute_cn_lkflags(dp^.v_mount,cnp^.cn_lkflags or LK_RETRY,cnp^.cn_flags),{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
 dirloop:
  {
@@ -681,7 +681,7 @@ dirloop:
    VREF(dp);
    vput(tdp);
    VFS_UNLOCK_GIANT(tvfslocked);
-   vn_lock(dp,compute_cn_lkflags(dp^.v_mount,cnp^.cn_lkflags or LK_RETRY,ISDOTDOT));
+   vn_lock(dp,compute_cn_lkflags(dp^.v_mount,cnp^.cn_lkflags or LK_RETRY,ISDOTDOT),{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   end;
  end;
 
@@ -708,7 +708,7 @@ unionlookup:
     (VOP_ISLOCKED(dp)=LK_SHARED) and
     ((cnp^.cn_flags and ISLASTCN)<>0) and ((cnp^.cn_flags and LOCKPARENT)<>0) then
  begin
-  vn_lock(dp, LK_UPGRADE or LK_RETRY);
+  vn_lock(dp, LK_UPGRADE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  end;
 
  if ((dp^.v_iflag and VI_DOOMED)<>0) then
@@ -746,7 +746,7 @@ unionlookup:
    VREF(dp);
    vput(tdp);
    VFS_UNLOCK_GIANT(tvfslocked);
-   vn_lock(dp,compute_cn_lkflags(dp^.v_mount, cnp^.cn_lkflags or LK_RETRY, cnp^.cn_flags));
+   vn_lock(dp,compute_cn_lkflags(dp^.v_mount, cnp^.cn_lkflags or LK_RETRY, cnp^.cn_flags),{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
    goto unionlookup;
   end;
 
@@ -777,7 +777,7 @@ unionlookup:
    VOP_UNLOCK(dp, 0);
   end;
   {
-   * We Exitwith ni_vp nil to indicate that the entry
+   * We Exit with ni_vp nil to indicate that the entry
    * doesn't currently exist, leaving a pointer to the
    * (possibly locked) directory vnode in ndp^.ni_dvp.
    }
@@ -843,7 +843,7 @@ unionlookup:
 
   vfs_unbusy(mp);
 
-  if (vn_lock(vp_crossmp, LK_SHARED or LK_NOWAIT)<>0) then
+  if (vn_lock(vp_crossmp, LK_SHARED or LK_NOWAIT,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%})<>0) then
   begin
    Assert(False,'vp_crossmp exclusively locked or reclaimed');
   end;
@@ -972,7 +972,7 @@ success:
  if (needs_exclusive_leaf(dp^.v_mount, cnp^.cn_flags)<>0) and
     (VOP_ISLOCKED(dp)<>LK_EXCLUSIVE) then
  begin
-  vn_lock(dp, LK_UPGRADE or LK_RETRY);
+  vn_lock(dp, LK_UPGRADE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   if ((dp^.v_iflag and VI_DOOMED)<>0) then
   begin
    error:=ENOENT;

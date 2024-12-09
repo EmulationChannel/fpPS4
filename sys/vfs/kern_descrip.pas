@@ -679,7 +679,7 @@ begin
     begin
      vp:=fp^.f_vnode;
      vfslocked:=VFS_LOCK_GIANT(vp^.v_mount);
-     error:=vn_lock(vp, LK_SHARED);
+     error:=vn_lock(vp, LK_SHARED,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
      if (error<>0) then
       goto readahead_vnlock_fail;
      bsize:=p_mount(fp^.f_vnode^.v_mount)^.mnt_stat.f_iosize;
@@ -1011,7 +1011,7 @@ begin
  if (vp<>nil) then
  begin
   vfslocked:=VFS_LOCK_GIANT(vp^.v_mount);
-  vn_lock(vp, LK_SHARED or LK_RETRY);
+  vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   error:=VOP_PATHCONF(vp, name, td^.td_retval);
   VOP_UNLOCK(vp, 0);
   VFS_UNLOCK_GIANT(vfslocked);

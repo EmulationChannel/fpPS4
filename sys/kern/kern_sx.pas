@@ -37,7 +37,7 @@ end;
 
 function sx_xlocked(p:p_sx):Boolean;
 begin
- Result:=(PDWORD(@p^.m)[0]=System.GetCurrentThreadId) and
+ Result:=(PDWORD(@p^.m)[0]=ThreadID) and
          (PDWORD(@p^.m)[1]=2);
 end;
 
@@ -60,7 +60,7 @@ begin
  //Writeln('    sx_xlock:',HexStr(p),':',p^.n);
 
  rw_wlock(p^.c);
- PDWORD(@p^.m)[0]:=System.GetCurrentThreadId;
+ PDWORD(@p^.m)[0]:=ThreadID;
  PDWORD(@p^.m)[1]:=2;
 end;
 
@@ -75,7 +75,7 @@ procedure sx_xunlock(p:p_sx);
 begin
  //Writeln('  sx_xunlock:',HexStr(p),':',p^.n);
 
- Assert(PDWORD(@p^.m)[0]=System.GetCurrentThreadId,'sx_unlock');
+ Assert(PDWORD(@p^.m)[0]=ThreadID,'sx_unlock');
 
  PDWORD(@p^.m)[0]:=0;
  PDWORD(@p^.m)[1]:=0;
@@ -91,7 +91,7 @@ begin
   1:rw_runlock(p^.c);
   2:
     begin
-     Assert(PDWORD(@p^.m)[0]=System.GetCurrentThreadId,'sx_unlock');
+     Assert(PDWORD(@p^.m)[0]=ThreadID,'sx_unlock');
 
      PDWORD(@p^.m)[0]:=0;
      PDWORD(@p^.m)[1]:=0;

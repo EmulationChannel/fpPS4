@@ -151,7 +151,9 @@ begin
   * XXXKIB This is deadlock-prone as well.
   }
  if (isvnunlocked<>0) then
-  vn_lock(mp^.mnt_vnodecovered, LK_EXCLUSIVE or LK_RETRY);
+ begin
+  vn_lock(mp^.mnt_vnodecovered, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
+ end;
 
  if (error<>0) then
   Exit(error);
@@ -318,7 +320,7 @@ begin
  VREF(vp);
 
  //ASSERT_VOP_UNLOCKED(vp, 'root vnode is locked');
- vn_lock(vp, flags or LK_RETRY);
+ vn_lock(vp, flags or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  vpp^:=vp;
  Exit(0);
 end;

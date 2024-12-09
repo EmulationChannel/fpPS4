@@ -1111,7 +1111,14 @@ begin
 
  vm_object_reference(imgp^.obj);
 
- Result:=vm_map_insert(map,imgp^.obj,offset,vaddr_lo,vaddr_hi,VM_PROT_RW,prot or VM_PROT_RW,MAP_COW_NO_BUDGET,false);
+ Result:=vm_map_insert(map,
+                       imgp^.obj,
+                       offset,
+                       vaddr_lo,vaddr_hi,
+                       VM_PROT_RW,prot or VM_PROT_RW,
+                       MAP_COW_NO_BUDGET,
+                       nil,
+                       false);
  if (Result<>0) then
  begin
   vm_map_unlock(map);

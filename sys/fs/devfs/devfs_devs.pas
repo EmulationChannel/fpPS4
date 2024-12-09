@@ -324,7 +324,9 @@ begin
  begin
   dd:=devfs_parent_dirent(de);
   if (dd<>nil) then
+  begin
    DEVFS_DE_HOLD(dd);
+  end;
   if (de^.de_flags and DE_USER)<>0 then
   begin
    Assert(dd<>nil,'devfs_delete: nil dd');
@@ -345,7 +347,7 @@ begin
   sx_unlock(@dm^.dm_lock);
 
   if ((flags and DEVFS_DEL_VNLOCKED)=0) then
-   vn_lock(vp, LK_EXCLUSIVE or LK_INTERLOCK or LK_RETRY)
+   vn_lock(vp, LK_EXCLUSIVE or LK_INTERLOCK or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%})
   else
    VI_UNLOCK(vp);
 

@@ -321,7 +321,8 @@ begin
          VM_PROT_RW,
          VM_PROT_ALL,
          MAP_INHERIT_SHARE or MAP_ACC_NO_CHARGE or MAP_COW_NO_BUDGET,
-         0);
+         0,
+         nil);
 
  if (error<>0) then
  begin
@@ -375,7 +376,11 @@ begin
 
  Writeln('vm_map_stack:0x',HexStr(stack_addr,10),'..0x',HexStr(stack_addr+ssiz,10));
 
- error:=vm_map_stack(map,stack_addr,ssiz,VM_PROT_RW,VM_PROT_ALL,MAP_STACK_GROWS_DOWN);
+ error:=vm_map_stack(map,
+                     stack_addr,ssiz,
+                     VM_PROT_RW,VM_PROT_ALL,
+                     MAP_STACK_GROWS_DOWN,
+                     nil);
 
  if (error<>0) then
  begin
@@ -1314,7 +1319,7 @@ begin
 
  Result:=exec_new_vmspace(imgp);
 
- vn_lock(imgp^.vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(imgp^.vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  if (Result<>0) then Exit;
 
@@ -1520,7 +1525,7 @@ begin
   if (error<>0) then goto exec_fail;
 
   vfslocked:=VFS_LOCK_GIANT(binvp^.v_mount);
-  vn_lock(binvp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(binvp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
   imgp^.vp:=binvp;
  end;
@@ -1554,7 +1559,7 @@ begin
    imgp^.execpath:=args^.fname;
   end;
 
-  vn_lock(imgp^.vp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(imgp^.vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  end else
  if (args^.fname^<>'/') then
  begin
@@ -1612,7 +1617,7 @@ begin
  { close files on exec }
  fdcloseexec();
 
- vn_lock(imgp^.vp, LK_SHARED or LK_RETRY);
+ vn_lock(imgp^.vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  { Get a reference to the vnode prior to locking the proc }
  VREF(binvp);
@@ -1718,7 +1723,7 @@ begin
   vrele(binvp);
  end;
 
- vn_lock(imgp^.vp, LK_SHARED or LK_RETRY);
+ vn_lock(imgp^.vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  pargs_drop(oldargs);
  pargs_drop(newargs);

@@ -132,7 +132,7 @@ begin
   if (err<>0) then Exit;
 
   vm_map_lock(map);
-  vm_map_set_name_locked(map,start,start+size,'#patch',VM_INHERIT_PATCH);
+  vm_map_set_info_locked(map,start,start+size,'#patch',VM_INHERIT_PATCH);
   vm_map_unlock(map);
  end else
  begin

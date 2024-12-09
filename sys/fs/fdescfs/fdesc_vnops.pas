@@ -210,7 +210,7 @@ loop:
   Exit(error);
  end;
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  vp^.v_data  :=fd;
  fd^.fd_vnode:=vp;
@@ -367,7 +367,7 @@ begin
   fdrop(fp);
 
   { Re-aquire the lock afterwards. }
-  vn_lock(dvp, LK_RETRY or LK_EXCLUSIVE);
+  vn_lock(dvp, LK_RETRY or LK_EXCLUSIVE,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   vdrop(dvp);
   fvp:=dvp;
  end else
@@ -387,7 +387,7 @@ begin
   {
    * The root vnode must be locked last to prevent deadlock condition.
    }
-  vn_lock(dvp, LK_RETRY or LK_EXCLUSIVE);
+  vn_lock(dvp, LK_RETRY or LK_EXCLUSIVE,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   vdrop(dvp);
  end;
 
@@ -519,7 +519,7 @@ begin
  error:=vn_start_write(vp, @mp, V_WAIT or PCATCH);
  if (error=0) then
  begin
-  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   error:=VOP_SETATTR(vp, ap^.a_vap);
   VOP_UNLOCK(vp, 0);
   vn_finished_write(mp);

@@ -254,6 +254,7 @@ var
 begin
  Result:=nil;
  if (vp=nil) then Exit;
+ VI_LOCK(vp);
  de:=System.InterlockedExchange(vp^.v_data,nil);
  if (de<>nil) then
  begin
@@ -264,6 +265,7 @@ begin
    Result:=de;
   end;
  end;
+ VI_UNLOCK(vp);
 end;
 
 function ufs_allocv(de:p_ufs_dirent;mp:p_mount;lockmode:Integer;vpp:pp_vnode):Integer;
@@ -326,6 +328,7 @@ loop:
   vpp^:=vp;
   Exit(0);
  end;
+
  mtx_unlock(ufs_interlock);
 
  error:=getnewvnode('ufs', mp, dmp^.ufs_vnops, @vp);
@@ -337,8 +340,9 @@ loop:
 
  vp^.v_type:=iftovt_tab[de^.ufs_dirent^.d_type];
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY or LK_NOWITNESS);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY or LK_NOWITNESS,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  //VN_LOCK_ASHARE(vp);
+
  mtx_lock(ufs_interlock);
 
  System.InterlockedIncrement(de^.ufs_vref);
@@ -379,7 +383,7 @@ begin
  dmp:=VFSTOUFS(mp);
  sx_xlock(@dmp^.ufs_lock);
 
- error:=ufs_allocv(dmp^.ufs_rootdir, mp, LK_EXCLUSIVE, @vp);
+ error:=ufs_allocv(dmp^.ufs_rootdir, mp, LK_EXCLUSIVE, @vp); //sx_xunlock
  if (error<>0) then
  begin
   Exit(error);

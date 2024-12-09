@@ -313,7 +313,7 @@ var
 begin
  node:=AllocMem(SizeOf(TNodeIpcSync));
  node^.event:=RTLEventCreate;
- node^.tid  :=GetThreadID;
+ node^.tid  :=ThreadID;
 
  RTLEventResetEvent(node^.event);
 

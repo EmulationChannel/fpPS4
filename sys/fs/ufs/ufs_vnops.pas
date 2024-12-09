@@ -188,19 +188,23 @@ begin
   sx_unlock(@dm^.ufs_lock);
 
   if ((flags and UFS_DEL_VNLOCKED)=0) then
-   vn_lock(vp, LK_EXCLUSIVE or LK_INTERLOCK or LK_RETRY)
+   vn_lock(vp, LK_EXCLUSIVE or LK_INTERLOCK or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%})
   else
    VI_UNLOCK(vp);
 
   vgone(vp);
 
   if ((flags and UFS_DEL_VNLOCKED)=0) then
+  begin
    VOP_UNLOCK(vp, 0);
+  end;
 
   vdrop(vp);
   sx_xlock(@dm^.ufs_lock);
  end else
+ begin
   mtx_unlock(ufs_interlock);
+ end;
 
  if (de^.ufs_symlink<>nil) then
  begin
@@ -495,10 +499,10 @@ begin
   dvplocked:=VOP_ISLOCKED(dvp);
   VOP_UNLOCK(dvp, 0);
 
-  error:=ufs_allocv(de, dvp^.v_mount, cnp^.cn_lkflags and LK_TYPE_MASK, vpp);
+  error:=ufs_allocv(de, dvp^.v_mount, cnp^.cn_lkflags and LK_TYPE_MASK, vpp); //sx_xunlock
   dm_unlock^:=false;
 
-  vn_lock(dvp, dvplocked or LK_RETRY);
+  vn_lock(dvp, dvplocked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
   Exit(error);
  end;
@@ -539,7 +543,7 @@ begin
   end;
  end;
 
- error:=ufs_allocv(de, dvp^.v_mount, cnp^.cn_lkflags and LK_TYPE_MASK, vpp);
+ error:=ufs_allocv(de, dvp^.v_mount, cnp^.cn_lkflags and LK_TYPE_MASK, vpp); //sx_xunlock
  dm_unlock^:=false;
 
  Exit(error);
@@ -925,10 +929,10 @@ begin
 
  if (dvp<>vp) then
  begin
-  vn_lock(dvp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(dvp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  end;
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  Exit(0);
 end;
@@ -970,10 +974,10 @@ begin
 
  if (dvp<>vp) then
  begin
-  vn_lock(dvp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(dvp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  end;
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  Exit(0);
 end;

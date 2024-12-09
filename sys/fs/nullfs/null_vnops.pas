@@ -790,8 +790,7 @@ begin
   * Use the interlock to protect the clearing of v_data to
   * prevent faults in null_lock().
   }
- mtx_lock(vp^.v_lock);
- //lockmgr(@vp^.v_lock, LK_EXCLUSIVE, nil);
+ lockmgr(@vp^.v_lock, LK_EXCLUSIVE, nil);
 
  VI_LOCK(vp);
  vp^.v_data:=nil;
@@ -897,7 +896,7 @@ begin
  vdrop(lvp);
  if (error<>0) then
  begin
-  vn_lock(vp, locked or LK_RETRY);
+  vn_lock(vp, locked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   Exit(ENOENT);
  end;
 
@@ -905,11 +904,11 @@ begin
   * Exclusive lock is required by insmntque1 call in
   * null_nodeget()
   }
- error:=vn_lock(ldvp, LK_EXCLUSIVE);
+ error:=vn_lock(ldvp, LK_EXCLUSIVE,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  if (error<>0) then
  begin
   vrele(ldvp);
-  vn_lock(vp, locked or LK_RETRY);
+  vn_lock(vp, locked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   Exit(ENOENT);
  end;
  vref(ldvp);
@@ -918,7 +917,7 @@ begin
  begin
   VOP_UNLOCK(dvp^, 0); { keep reference on *dvp }
  end;
- vn_lock(vp, locked or LK_RETRY);
+ vn_lock(vp, locked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  Exit(error);
 end;
 

@@ -8,6 +8,7 @@ interface
 uses
  vmount,
  vnode,
+ vfs_default,
  nullfs;
 
 {
@@ -216,8 +217,7 @@ end;
 
 procedure null_destroy_proto(vp:p_vnode;xp:Pointer);
 begin
- mtx_lock(vp^.v_lock);
- //lockmgr(@vp^.v_lock, LK_EXCLUSIVE, nil);
+ lockmgr(@vp^.v_lock, LK_EXCLUSIVE, nil);
  VI_LOCK(vp);
  vp^.v_data  :=nil;
  vp^.v_vnlock:=@vp^.v_lock;
@@ -273,7 +273,7 @@ begin
  if (VOP_ISLOCKED(lowervp)<>LK_EXCLUSIVE) then
  begin
   Assert((MOUNTTONULLMOUNT(mp)^.nullm_flags and NULLM_CACHE)<>0,'lowervp %p is not excl locked and cache is disabled');
-  vn_lock(lowervp, LK_UPGRADE or LK_RETRY);
+  vn_lock(lowervp, LK_UPGRADE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   if ((lowervp^.v_iflag and VI_DOOMED)<>0) then
   begin
    vput(lowervp);

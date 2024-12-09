@@ -345,7 +345,7 @@ begin
  devfs_populate(dmp);
 
  sx_xunlock(@dmp^.dm_lock);
- vn_lock(vp, locked or LK_RETRY);
+ vn_lock(vp, locked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  sx_xlock(@dmp^.dm_lock);
 
  if DEVFS_DMP_DROP(dmp) then
@@ -655,7 +655,7 @@ loop:
   vp^.v_type:=VBAD;
  end;
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY or LK_NOWITNESS);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY or LK_NOWITNESS,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  //VN_LOCK_ASHARE(vp);
 
  mtx_lock(devfs_de_interlock);
@@ -802,7 +802,7 @@ begin
  Assert(dev^.si_refcount > 0,'devfs_close() on un-referenced struct cdev');
  error:=dsw^.d_close(dev, ap^.a_fflag, S_IFCHR);
  dev_relthread(dev, ref);
- vn_lock(vp, vp_locked or LK_RETRY);
+ vn_lock(vp, vp_locked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  vdrop(vp);
  Exit(error);
 end;
@@ -1146,7 +1146,7 @@ begin
   error:=devfs_allocv(de, dvp^.v_mount, cnp^.cn_lkflags and LK_TYPE_MASK, vpp);
   dm_unlock^:=False;
 
-  vn_lock(dvp, dvplocked or LK_RETRY);
+  vn_lock(dvp, dvplocked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   Exit(error);
  end;
 
@@ -1397,7 +1397,7 @@ begin
 
  td^.td_fpop:=fpop;
 
- vn_lock(vp, vlocked or LK_RETRY);
+ vn_lock(vp, vlocked or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  dev_relthread(dev, ref);
  if (error<>0) then
  begin
@@ -1708,10 +1708,10 @@ begin
   sx_xunlock(@dmp^.dm_lock);
   if (dvp<>vp) then
   begin
-   vn_lock(dvp, LK_EXCLUSIVE or LK_RETRY);
+   vn_lock(dvp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   end;
 
-  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  end else
  begin
   de^.de_flags:=de^.de_flags or DE_WHITEOUT;
@@ -1802,7 +1802,7 @@ begin
   dev_unlock();
  end;
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  Exit(0);
 end;
 
@@ -1813,7 +1813,7 @@ var
  error:Integer;
 begin
  vp:=ap^.a_vp;
- vn_lock(vp, LK_SHARED or LK_RETRY);
+ vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  if ((vp^.v_iflag and VI_DOOMED)<>0) then
  begin
   VOP_UNLOCK(vp, 0);

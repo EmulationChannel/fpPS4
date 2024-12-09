@@ -433,6 +433,7 @@ begin
  vn_start_write(nil, @mp, V_WAIT);
  MNT_ILOCK(mp);
  count:=mp^.mnt_nvnodelistsize div 10 + 1;
+
  while (count<>0) do
  begin
   vp:=TAILQ_FIRST(@mp^.mnt_nvnodelist);
@@ -442,15 +443,16 @@ begin
    vp:=TAILQ_NEXT(vp,@vp^.v_nmntvnodes);
   end;
 
-  if (vp=nil) then
-   break;
+  if (vp=nil) then break;
 
   TAILQ_REMOVE     (@mp^.mnt_nvnodelist,vp,@vp^.v_nmntvnodes);
   TAILQ_INSERT_TAIL(@mp^.mnt_nvnodelist,vp,@vp^.v_nmntvnodes);
   Dec(count);
 
   if (not VI_TRYLOCK(vp)) then
+  begin
    goto next_iter;
+  end;
 
   {
    * If it's been deconstructed already, it's still
@@ -881,7 +883,7 @@ begin
     unlocked }
  if (VOP_ISLOCKED(vp)=0) then
  begin
-  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  end;
  vgone(vp);
  vput(vp);
@@ -1958,7 +1960,7 @@ begin
 
  vholdl(vp);
 
- error:=vn_lock(vp,flags or LK_INTERLOCK);
+ error:=vn_lock(vp,flags or LK_INTERLOCK,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  if (error<>0) then
  begin
   vdrop(vp);
@@ -2074,7 +2076,7 @@ begin
  case (func) of
   VPUTX_VRELE:
   begin
-   error:=vn_lock(vp, LK_EXCLUSIVE or LK_INTERLOCK);
+   error:=vn_lock(vp, LK_EXCLUSIVE or LK_INTERLOCK,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
    VI_LOCK(vp);
   end;
   VPUTX_VPUT:
@@ -2381,7 +2383,7 @@ loop:
  while (vp<>nil) do
  begin
   vholdl(vp);
-  error:=vn_lock(vp, LK_INTERLOCK or LK_EXCLUSIVE);
+  error:=vn_lock(vp, LK_INTERLOCK or LK_EXCLUSIVE,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   if (error<>0) then
   begin
    vdrop(vp);
@@ -3440,7 +3442,7 @@ const
 
 procedure vfs_knllock(arg:Pointer);
 begin
- vn_lock(p_vnode(arg), LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(p_vnode(arg), LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 end;
 
 procedure vfs_knlunlock(arg:Pointer);

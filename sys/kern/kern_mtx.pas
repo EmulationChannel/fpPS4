@@ -14,7 +14,7 @@ type
   n:PChar;
   c:TRTLCriticalSection;
   {$IFDEF DEBUG_MTX}
-  debug_own:array[0..1] of Pointer;
+  debug_own:array[0..2] of Pointer;
   {$ENDIF}
  end;
 
@@ -62,6 +62,7 @@ implementation
 
 {$IFDEF DEBUG_MTX}
 uses
+ md_systm,
  kern_thr;
 {$ENDIF}
 
@@ -82,6 +83,7 @@ var
  rbp:Pointer;
 {$ENDIF}
 begin
+ //Writeln('lock:',m.n,':',HexStr(@m));
  {$IFDEF DEBUG_MTX}
  if curkthread<>nil then
   curkthread^.td_debug_mtx:=@m;
@@ -94,8 +96,9 @@ begin
  asm
   movq %rbp,rbp
  end;
- m.debug_own[0]:=PPointer(rbp)[1]; rbp:=PPointer(rbp)[0];
- m.debug_own[1]:=PPointer(rbp)[1]; rbp:=PPointer(rbp)[0];
+ m.debug_own[0]:=md_fuword(PPointer(rbp)[1]); rbp:=md_fuword(PPointer(rbp)[0]);
+ m.debug_own[1]:=md_fuword(PPointer(rbp)[1]); rbp:=md_fuword(PPointer(rbp)[0]);
+ m.debug_own[2]:=md_fuword(PPointer(rbp)[1]);
  {$ENDIF}
 end;
 
@@ -113,18 +116,21 @@ begin
   asm
    movq %rbp,rbp
   end;
- m.debug_own[0]:=PPointer(rbp)[1]; rbp:=PPointer(rbp)[0];
- m.debug_own[1]:=PPointer(rbp)[1]; rbp:=PPointer(rbp)[0];
+ m.debug_own[0]:=md_fuword(PPointer(rbp)[1]); rbp:=md_fuword(PPointer(rbp)[0]);
+ m.debug_own[1]:=md_fuword(PPointer(rbp)[1]); rbp:=md_fuword(PPointer(rbp)[0]);
+ m.debug_own[2]:=md_fuword(PPointer(rbp)[1]);
  end;
  {$ENDIF}
 end;
 
 procedure mtx_unlock(var m:mtx); {$IFNDEF DEBUG_MTX} inline; {$ENDIF}
 begin
+ //Writeln('ulck:',m.n,HexStr(@m));
  mtx_assert(m);
  {$IFDEF DEBUG_MTX}
  m.debug_own[0]:=nil;
  m.debug_own[1]:=nil;
+ m.debug_own[2]:=nil;
  {$ENDIF}
  LeaveCriticalSection(m.c);
 end;
@@ -138,7 +144,7 @@ procedure mtx_assert(var m:mtx); //inline;
 begin
  if not mtx_owned(m) then
  begin
-  Assert(false,'mtx_assert:'+IntToStr(m.c.OwningThread)+'<>'+IntToStr(GetCurrentThreadId));
+  Assert(false,'mtx_assert:'+IntToStr(m.c.OwningThread)+'<>'+IntToStr(ThreadID));
  end;
 end;
 

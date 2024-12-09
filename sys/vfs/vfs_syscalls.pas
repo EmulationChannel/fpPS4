@@ -286,7 +286,7 @@ begin
 
  vp:=fp^.f_vnode;
  vfslocked:=VFS_LOCK_GIANT(vp^.v_mount);
- vn_lock(vp, LK_SHARED or LK_RETRY);
+ vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  mp:=vp^.v_mount;
  if (mp<>nil) then
  begin
@@ -536,7 +536,7 @@ begin
  VREF(vp);
  fdrop(fp);
  vfslocked:=VFS_LOCK_GIANT(vp^.v_mount);
- vn_lock(vp, LK_SHARED or LK_RETRY);
+ vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  error:=change_dir(vp);
  mp:=vp^.v_mountedhere;
@@ -1374,7 +1374,7 @@ begin
    error:=EEXIST;
   end else
   begin
-   error:=vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+   error:=vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
    if (error=0) then
    begin
     error:=can_hardlink(vp);
@@ -1715,7 +1715,7 @@ begin
    end;
   L_XTND: //end
    begin
-    vn_lock(vp, LK_SHARED or LK_RETRY);
+    vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
     error:=VOP_GETATTR(vp, @vattr);
     VOP_UNLOCK(vp, 0);
     if (error<>0) then
@@ -2137,7 +2137,7 @@ begin
  error:=vn_start_write(vp, @mp, V_WAIT or PCATCH);
  if (error<>0) then Exit(error);
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  VATTR_NULL(@vattr);
  vattr.va_flags:=flags;
@@ -2238,7 +2238,7 @@ begin
  begin
   Exit(error);
  end;
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  VATTR_NULL(@vattr);
  vattr.va_mode:=mode and ALLPERMS;
 
@@ -2357,7 +2357,7 @@ begin
  begin
   Exit(error);
  end;
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  VATTR_NULL(@vattr);
  vattr.va_uid:=uid;
  vattr.va_gid:=gid;
@@ -2518,7 +2518,7 @@ begin
  error:=vn_start_write(vp, @mp, V_WAIT or PCATCH);
  if (error<>0) then Exit(error);
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  setbirthtime:=0;
  if (numtimes < 3) and
@@ -2703,7 +2703,7 @@ begin
   Exit(error);
  end;
  NDFREE(@nd, NDF_ONLY_PNBUF);
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  if (vp^.v_type=VDIR) then
   error:=EISDIR
 
@@ -2770,7 +2770,7 @@ begin
  begin
   lock_flags:=LK_EXCLUSIVE;
  end;
- vn_lock(vp, lock_flags or LK_RETRY);
+ vn_lock(vp, lock_flags or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  if (vp^.v_object<>nil) then
  begin
@@ -3218,7 +3218,7 @@ unionread:
  auio.uio_rw    :=UIO_READ;
  auio.uio_segflg:=UIO_USERSPACE;
  auio.uio_td    :=td;
- vn_lock(vp, LK_SHARED or LK_RETRY);
+ vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  loff:=foffset;
  auio.uio_offset:=foffset;

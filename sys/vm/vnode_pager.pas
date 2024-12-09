@@ -161,7 +161,7 @@ begin
   VOP_UNLOCK(vp, 0);
   vm_object_set_flag(obj, OBJ_DISCONNECTWNT);
   msleep(obj, VM_OBJECT_MTX(obj), PDROP or PVM, 'vodead', 0);
-  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+  vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
   //
   obj:=vp^.v_object;
  end;

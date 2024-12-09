@@ -18,7 +18,7 @@ uses
  vfilio,
  vnode;
 
-function  vn_lock(vp:p_vnode;flags:Integer):Integer;
+function  vn_lock(vp:p_vnode;flags:Integer;_file:PChar;line:Integer):Integer;
 
 function  vn_open(ndp:p_nameidata;
                   flagp:PInteger;
@@ -77,6 +77,7 @@ procedure vref(vp:p_vnode); external;
 implementation
 
 uses
+ sysutils,
  errno,
  vnode_if,
  vfcntl,
@@ -88,15 +89,18 @@ uses
  kern_mtxpool,
  kern_descrip;
 
-function vn_lock(vp:p_vnode;flags:Integer):Integer;
+function vn_lock(vp:p_vnode;flags:Integer;_file:PChar;line:Integer):Integer;
 begin
  Assert((flags and LK_TYPE_MASK)<>0,'vn_lock called with no locktype.');
 
  repeat
-  Result:=VOP_LOCK(vp,flags,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
-  flags:=flags and (not LK_INTERLOCK);
+  Result:=VOP_LOCK(vp,flags,_file,line);
+  flags:=flags and (not LK_INTERLOCK); //Interlock is always dropped.
 
-  Assert(((flags and LK_RETRY)=0) or (Result=0),'LK_RETRY set with incompatible flags (0x%x) or an Result occured (%d)');
+  if ((flags and LK_RETRY)<>0) and (Result<>0) then
+  begin
+   Assert(false,'LK_RETRY set with incompatible flags (0x'+HexStr(flags,4)+') or an error occured ('+IntToStr(Result)+')');
+  end;
 
   if (Result=0) and
      ((vp^.v_iflag and VI_DOOMED)<>0) and
@@ -106,7 +110,7 @@ begin
    Result:=ENOENT;
    break;
   end;
- until ((flags and LK_RETRY)=0) or (Result=0);
+ until ((flags and LK_RETRY)<>0) or (Result=0);
 end;
 
 function vn_open(ndp:p_nameidata;
@@ -338,7 +342,7 @@ restart:
 
  if (vp^.v_type=VFIFO) and (VOP_ISLOCKED(vp)<>LK_EXCLUSIVE) then
  begin
-  vn_lock(vp, LK_UPGRADE or LK_RETRY);
+  vn_lock(vp, LK_UPGRADE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  end;
 
  error:=VOP_OPEN(vp, ofmode, fp);
@@ -507,7 +511,7 @@ begin
  VFS_ASSERT_GIANT(vp^.v_mount);
 
  vn_start_write(vp, @mp, V_WAIT);
- vn_lock(vp, lock_flags or LK_RETRY);
+ vn_lock(vp, lock_flags or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  if ((flags and FWRITE)<>0) then
  begin
   Assert(vp^.v_writecount > 0,'vn_close: negative writecount');
@@ -804,7 +808,7 @@ begin
 
  advice:=get_advice(fp, uio);
  vfslocked:=VFS_LOCK_GIANT(vp^.v_mount);
- vn_lock(vp, LK_SHARED or LK_RETRY);
+ vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
 
  case advice of
   POSIX_FADV_NORMAL,
@@ -925,7 +929,7 @@ begin
   lock_flags:=LK_EXCLUSIVE;
  end;
 
- vn_lock(vp, lock_flags or LK_RETRY);
+ vn_lock(vp, lock_flags or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  case advice of
   POSIX_FADV_NORMAL,
   POSIX_FADV_SEQUENTIAL,
@@ -1157,6 +1161,12 @@ _out:
 }
 
 out_last:
+
+ if (error<>0) then
+ begin
+  Assert(false,'vn_io_fault');
+ end;
+
  if (rl_cookie<>nil) then
  begin
   vn_rangelock_unlock(vp, rl_cookie);
@@ -1194,7 +1204,7 @@ begin
   goto out1;
  end;
 
- vn_lock(vp, LK_EXCLUSIVE or LK_RETRY);
+ vn_lock(vp, LK_EXCLUSIVE or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  if (vp^.v_type=VDIR) then
  begin
   error:=EISDIR;
@@ -1241,7 +1251,7 @@ begin
    begin
     if (com=FIONREAD) then
     begin
-     vn_lock(vp, LK_SHARED or LK_RETRY);
+     vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
      error:=VOP_GETATTR(vp, @vattr);
      VOP_UNLOCK(vp, 0);
      if (error=0) then
@@ -1293,7 +1303,7 @@ var
 begin
  vp:=fp^.f_vnode;
  vfslocked:=VFS_LOCK_GIANT(vp^.v_mount);
- vn_lock(vp, LK_SHARED or LK_RETRY);
+ vn_lock(vp, LK_SHARED or LK_RETRY,{$INCLUDE %FILE%},{$INCLUDE %LINENUM%});
  error:=vn_stat(vp, sb);
  VOP_UNLOCK(vp, 0);
  VFS_UNLOCK_GIANT(vfslocked);
