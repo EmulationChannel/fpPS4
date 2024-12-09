@@ -24,6 +24,8 @@ type
 
  vm_map_object=vm_object_t;
 
+ t_entry_name=array[0..31] of AnsiChar;
+
  p_vm_map_entry_t=^vm_map_entry_t;
  vm_map_entry_t=^vm_map_entry;
  vm_map_entry=packed record
@@ -43,7 +45,7 @@ type
   max_protection:vm_prot_t;            // maximum protection
   inheritance   :vm_inherit_t;         // inheritance
   budget_id     :shortint;             // budget/ptype id
-  name          :array[0..31] of Char; // entry name
+  name          :t_entry_name;         // entry name
   anon_addr     :Pointer;              // source code address
   entry_id      :QWORD;                // order id
  end;
@@ -189,6 +191,7 @@ function  vm_map_insert(
            prot  :vm_prot_t;
            max   :vm_prot_t;
            cow   :Integer;
+           anon  :Pointer;
            alias :Boolean):Integer;
 
 function  vm_map_findspace(map   :vm_map_t;
@@ -242,7 +245,8 @@ function  vm_map_find(map       :vm_map_t;
                       find_space:Integer;
                       prot      :vm_prot_t;
                       max       :vm_prot_t;
-                      cow       :Integer):Integer;
+                      cow       :Integer;
+                      anon      :Pointer):Integer;
 
 procedure vm_map_simplify_entry(map:vm_map_t;entry:vm_map_entry_t);
 
@@ -254,14 +258,16 @@ function  vm_map_fixed(map    :vm_map_t;
                        prot   :vm_prot_t;
                        max    :vm_prot_t;
                        cow    :Integer;
-                       overwr :Integer):Integer;
+                       overwr :Integer;
+                       anon   :Pointer):Integer;
 
 function  vm_map_stack(map      :vm_map_t;
                        addrbos  :vm_offset_t;
                        max_ssize:vm_size_t;
                        prot     :vm_prot_t;
                        max      :vm_prot_t;
-                       cow      :Integer):Integer;
+                       cow      :Integer;
+                       anon     :Pointer):Integer;
 
 function  vm_map_growstack(map:vm_map_t;addr:vm_offset_t):Integer;
 function  vmspace_exec(minuser,maxuser:vm_offset_t):Integer;
@@ -275,7 +281,7 @@ function  vm_map_remove(map:vm_map_t;start:vm_offset_t;__end:vm_offset_t):Intege
 
 procedure vm_map_set_name(map:vm_map_t;start,__end:vm_offset_t;name:PChar);
 procedure vm_map_set_name_locked(map:vm_map_t;start,__end:vm_offset_t;name:PChar);
-procedure vm_map_set_name_locked(map:vm_map_t;start,__end:vm_offset_t;name:PChar;i:vm_inherit_t);
+procedure vm_map_set_info_locked(map:vm_map_t;start,__end:vm_offset_t;name:PChar;i:vm_inherit_t);
 
 procedure vm_map_track_insert(map:vm_map_t;tobj:Pointer);
 procedure vm_map_track_remove(map:vm_map_t;tobj:Pointer);
@@ -406,8 +412,8 @@ begin
   vm_map_lock(map);
    For i:=0 to High(pmap_mem)-1 do
    begin
-    vm_map_insert         (map, nil, 0, pmap_mem[i].__end, pmap_mem[i+1].start, 0, 0, -1, false);
-    vm_map_set_name_locked(map,         pmap_mem[i].__end, pmap_mem[i+1].start, '#hole', VM_INHERIT_HOLE);
+    vm_map_insert         (map, nil, 0, pmap_mem[i].__end, pmap_mem[i+1].start, 0, 0, -1, nil, false);
+    vm_map_set_info_locked(map,         pmap_mem[i].__end, pmap_mem[i+1].start, '#hole', VM_INHERIT_HOLE);
    end;
   vm_map_unlock(map);
  end;
@@ -1004,6 +1010,7 @@ function vm_map_insert(
            prot  :vm_prot_t;
            max   :vm_prot_t;
            cow   :Integer;
+           anon  :Pointer;
            alias :Boolean):Integer;
 label
  _budget,
@@ -1229,6 +1236,8 @@ charged:
  new_entry^.entry_id:=map^.entry_id;
  Inc(map^.entry_id);
 
+ new_entry^.anon_addr:=anon;
+
  {
   * Insert the new entry into the list
   }
@@ -1390,7 +1399,8 @@ function vm_map_fixed(map    :vm_map_t;
                       prot   :vm_prot_t;
                       max    :vm_prot_t;
                       cow    :Integer;
-                      overwr :Integer):Integer;
+                      overwr :Integer;
+                      anon   :Pointer):Integer;
 var
  __end:vm_offset_t;
 begin
@@ -1401,7 +1411,7 @@ begin
   begin
    vm_map_delete(map, start, __end, True);
   end;
-  Result:=vm_map_insert(map, vm_obj, offset, start, __end, prot, max, cow, false);
+  Result:=vm_map_insert(map, vm_obj, offset, start, __end, prot, max, cow, anon, false);
  vm_map_unlock(map);
 end;
 
@@ -1422,7 +1432,8 @@ function vm_map_find(map       :vm_map_t;
                      find_space:Integer;
                      prot      :vm_prot_t;
                      max       :vm_prot_t;
-                     cow       :Integer):Integer;
+                     cow       :Integer;
+                     anon      :Pointer):Integer;
 label
  again;
 var
@@ -1479,7 +1490,7 @@ again:
 
    start:=addr^;
   end;
-  Result:=vm_map_insert(map, vm_obj, offset, start, start + length, prot, max, cow, false);
+  Result:=vm_map_insert(map, vm_obj, offset, start, start + length, prot, max, cow, anon, false);
  until not ((Result=KERN_NO_SPACE) and
             (find_space<>VMFS_NO_SPACE) and
             (find_space<>VMFS_ANY_SPACE));
@@ -2584,7 +2595,8 @@ function vm_map_stack(map      :vm_map_t;
                       max_ssize:vm_size_t;
                       prot     :vm_prot_t;
                       max      :vm_prot_t;
-                      cow      :Integer):Integer;
+                      cow      :Integer;
+                      anon     :Pointer):Integer;
 var
  new_entry, prev_entry:vm_map_entry_t;
  bot, top:vm_offset_t;
@@ -2677,7 +2689,7 @@ begin
  end;
 
  top:=bot + init_ssize;
- rv:=vm_map_insert(map, nil, 0, bot, top, prot, max, cow, false);
+ rv:=vm_map_insert(map, nil, 0, bot, top, prot, max, cow, anon, false);
 
  { Now set the avail_ssize amount. }
  if (rv=KERN_SUCCESS) then
@@ -2902,7 +2914,7 @@ begin
   end;
 
   rv:=vm_map_insert(map, nil, 0, addr, stack_entry^.start,
-      next_entry^.protection, next_entry^.max_protection, 0, false);
+      next_entry^.protection, next_entry^.max_protection, 0, next_entry^.anon_addr, false);
 
   { Adjust the available stack space by the amount we grew. }
   if (rv=KERN_SUCCESS) then
@@ -3239,6 +3251,7 @@ procedure vm_map_set_name_locked(map:vm_map_t;start,__end:vm_offset_t;name:PChar
 var
  current:vm_map_entry_t;
  entry:vm_map_entry_t;
+ simpl:vm_map_entry_t;
 begin
  if (start=__end) then
  begin
@@ -3258,17 +3271,36 @@ begin
  current:=entry;
  while ((current<>@map^.header) and (current^.start<__end)) do
  begin
+
+  if ((current^.eflags and MAP_ENTRY_IS_SUB_MAP)=0) then
+  if (current^.vm_obj<>nil) then
+  if (current^.vm_obj^.otype=OBJT_BLOCKPOOL) then
+  begin
+   Assert(false,'TODO');
+   current:=current^.next;
+   Continue;
+  end;
+
   vm_map_clip_end(map,current,__end);
 
+  current^.name:=Default(t_entry_name);
   MoveChar0(name^,current^.name,32);
 
-  vm_map_simplify_entry(map, current);
+  if (p_proc.p_sdk_version > $6ffffff) then
+  begin
+   simpl:=current;
+  end else
+  begin
+   simpl:=entry;
+  end;
+
+  vm_map_simplify_entry(map, simpl);
 
   current:=current^.next;
  end;
 end;
 
-procedure vm_map_set_name_locked(map:vm_map_t;start,__end:vm_offset_t;name:PChar;i:vm_inherit_t);
+procedure vm_map_set_info_locked(map:vm_map_t;start,__end:vm_offset_t;name:PChar;i:vm_inherit_t);
 var
  current:vm_map_entry_t;
  entry:vm_map_entry_t;
@@ -3293,6 +3325,7 @@ begin
  begin
   vm_map_clip_end(map,current,__end);
 
+  current^.name:=Default(t_entry_name);
   MoveChar0(name^,current^.name,32);
   current^.inheritance:=i;
 

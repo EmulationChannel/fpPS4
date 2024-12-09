@@ -48,7 +48,7 @@ function vm_mmap2(map        :vm_map_t;
                   handle_type:objtype_t;
                   handle     :Pointer;
                   foff       :vm_ooffset_t;
-                  stack_addr :Pointer):Integer;
+                  anon       :Pointer):Integer;
 
 function  mirror_map  (paddr,psize:QWORD):Pointer;
 procedure mirror_unmap(base:Pointer;size:QWORD);
@@ -408,7 +408,7 @@ function vm_mmap2(map        :vm_map_t;
                   handle_type:objtype_t;
                   handle     :Pointer;
                   foff       :vm_ooffset_t;
-                  stack_addr :Pointer):Integer;
+                  anon       :Pointer):Integer;
 var
  obj:vm_object_t;
  docow,error,findspace,rv:Integer;
@@ -533,7 +533,10 @@ begin
 
  if ((flags and MAP_STACK)<>0) then
  begin
-  rv:=vm_map_stack(map, addr^, size, prot, maxprot, docow or MAP_STACK_GROWS_DOWN);
+  rv:=vm_map_stack(map, addr^, size,
+                   prot, maxprot,
+                   docow or MAP_STACK_GROWS_DOWN,
+                   anon);
  end else
  if (fitit) then
  begin
@@ -548,11 +551,17 @@ begin
   begin
    findspace:=VMFS_OPTIMAL_SPACE;
   end;
-  rv:=vm_map_find(map, obj, foff, addr, size, findspace, prot, maxprot, docow);
+  rv:=vm_map_find(map, obj, foff, addr, size, findspace,
+                  prot, maxprot,
+                  docow,
+                  anon);
  end else
  begin
-  rv:=vm_map_fixed(map, obj, foff, addr^, size, prot, maxprot, docow,
-       ord((flags and MAP_NO_OVERWRITE)=0));
+  rv:=vm_map_fixed(map, obj, foff, addr^, size,
+       prot, maxprot,
+       docow,
+       ord((flags and MAP_NO_OVERWRITE)=0),
+       anon);
  end;
 
  if (rv=KERN_SUCCESS) then
@@ -905,7 +914,8 @@ _map:
   vm_map_set_name_str(map,addr,size + addr,'anon:'+HexStr(QWORD(stack_addr),10));
  end;
 
- Writeln('sys_mmap(','0x',HexStr(QWORD(vaddr),10),
+ Writeln('0x',HexStr(QWORD(stack_addr),10),'->',
+         'sys_mmap(','0x',HexStr(QWORD(vaddr),10),
                     ',0x',HexStr(vlen,10),
                     ',0x',HexStr(prot,1),
                     ',0x',HexStr(flags,6),
@@ -953,7 +963,12 @@ begin
   Exit(EINVAL);
  end;
 
- vm_map_remove(map, qword(addr), qword(addr) + size);
+ Result:=vm_map_remove(map, qword(addr), qword(addr) + size);
+
+ Writeln('sys_munmap(','0x',HexStr(QWORD(addr),10),
+                      ',0x',HexStr(len,10),
+                       '):',Integer(Result)
+                     );
 
  // vm_map_remove returns nothing but KERN_SUCCESS anyway
  Exit(0);
@@ -1111,6 +1126,13 @@ begin
  __end:=round_page(vm_offset_t(addr) + len);
 
  vm_map_set_name(map,start,__end,@_name);
+
+ Writeln('sys_mname(','0x',HexStr(QWORD(addr),10),
+                     ',0x',HexStr(len,10),
+                       ',',name,
+                       ')'
+                     );
+
 end;
 
 function sys_query_memory_protection(addr:Pointer;info:Pointer):Integer;

@@ -208,16 +208,16 @@ begin
  rmem_map_unlock(@rmap);
 end;
 
-function kern_mmap_dmem(map       :vm_map_t;
-                        addr      :p_vm_offset_t;
-                        phaddr    :QWORD;
-                        vaddr     :QWORD;
-                        length    :QWORD;
-                        mtype     :DWORD;
-                        prot      :DWORD;
-                        align     :QWORD;
-                        flags     :DWORD;
-                        stack_addr:Pointer):Integer;
+function kern_mmap_dmem(map   :vm_map_t;
+                        addr  :p_vm_offset_t;
+                        phaddr:QWORD;
+                        vaddr :QWORD;
+                        length:QWORD;
+                        mtype :DWORD;
+                        prot  :DWORD;
+                        align :QWORD;
+                        flags :DWORD;
+                        anon  :Pointer):Integer;
 label
  _fixed,
  _rmap_insert;
@@ -292,7 +292,15 @@ begin
 
      vm_object_reference(dmap.vobj);
 
-     err:=vm_map_insert(map, dmap.vobj, phaddr, vaddr, v_end, prot, VM_PROT_ALL, cow, ((p_proc.p_dmem_aliasing and 3)<>0));
+     err:=vm_map_insert(map,
+                        dmap.vobj,
+                        phaddr,
+                        vaddr, v_end,
+                        prot, VM_PROT_ALL,
+                        cow,
+                        anon,
+                        ((p_proc.p_dmem_aliasing and 3)<>0)
+                       );
 
      if (err=0) then
      begin
@@ -511,7 +519,8 @@ begin
 
  td^.td_retval[0]:=addr;
 
- Writeln('sys_mmap_dmem(','0x',HexStr(QWORD(vaddr),10),
+ Writeln('0x',HexStr(QWORD(stack_addr),10),'->',
+         'sys_mmap_dmem(','0x',HexStr(QWORD(vaddr),10),
                          ',0x',HexStr(length,10),
                          ',0x',HexStr(mtype,1),
                          ',0x',HexStr(prot,1),
@@ -738,7 +747,7 @@ begin
 
  Writeln('sys_virtual_query:',HexStr(addr),' ',flags);
 
- QWORD(addr):=QWORD(addr) and $ffffffffffffc000;
+ QWORD(addr):=QWORD(addr) and QWORD($ffffffffffffc000);
 
  map:=p_proc.p_vmspace;
 
@@ -789,7 +798,10 @@ begin
 
  vm_map_lock(map);
 
- if not vm_map_lookup_entry(map,QWORD(addr),@entry) then
+ if vm_map_lookup_entry(map,QWORD(addr),@entry) then
+ begin
+  //Writeln('found:',HexStr(addr),'->',HexStr(entry^.start,16));
+ end else
  begin
   if ((flags and SCE_KERNEL_VQ_FIND_NEXT)<>0) then
   begin
@@ -897,6 +909,17 @@ begin
   end;
 
  end;
+
+ {
+ Writeln('[qinfo]:',#13#10' pstart:',HexStr(qinfo.pstart)
+                   ,#13#10' p__end:',HexStr(qinfo.p__end)
+                   ,#13#10' offset:',HexStr(qinfo.offset,16)
+                   ,#13#10' protec:',HexStr(qinfo.protection,2)
+                   ,#13#10' mtypes:',qinfo.memoryType
+                   ,#13#10' name  :',qinfo.name
+                   );
+ }
+
 
  Result:=copyout(@qinfo,info,size);
 end;
