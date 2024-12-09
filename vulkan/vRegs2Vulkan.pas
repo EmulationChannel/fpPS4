@@ -254,8 +254,8 @@ begin
   //VK_EXT_depth_clamp_control
   //VkPipelineViewportDepthClampControlCreateInfoEXT
   Writeln(stderr,'TODO:VK_EXT_depth_clamp_control');
-  Writeln(stderr,' minDepth:',Result.minDepth,' ZMIN:',CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMIN);
-  Writeln(stderr,' maxDepth:',Result.maxDepth,' ZMAX:',CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMAX);
+  Writeln(stderr,' minDepth:',Result.minDepth:0:5,' ZMIN:',CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMIN:0:5);
+  Writeln(stderr,' maxDepth:',Result.maxDepth:0:5,' ZMAX:',CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMAX:0:5);
   //Assert(false,'TODO:VK_EXT_depth_clamp_control');
  end;
 end;

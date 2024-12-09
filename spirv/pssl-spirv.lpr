@@ -372,7 +372,10 @@ begin
             ' SGPRS:',ConvertCountSGPRS(GPU_REGS.PS.RSRC1.SGPRS));
    end;
 
-   SprvEmit.InitPs(GPU_REGS.PS.RSRC1,GPU_REGS.PS.RSRC2,GPU_REGS.PS.INPUT_ENA);
+   SprvEmit.InitPs(GPU_REGS.PS.RSRC1,
+                   GPU_REGS.PS.RSRC2,
+                   GPU_REGS.PS.INPUT_ENA,
+                   GPU_REGS.PS.INPUT_ADDR);
    SprvEmit.SetUserData(@GPU_REGS.PS.USER_DATA);
 
    SprvEmit.SET_SHADER_CONTROL(GPU_REGS.PS.SHADER_CONTROL);

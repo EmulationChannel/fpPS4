@@ -49,7 +49,8 @@ type
 
   Procedure   InitPs(RSRC1:TSPI_SHADER_PGM_RSRC1_PS;
                      RSRC2:TSPI_SHADER_PGM_RSRC2_PS;
-                     ENA:TSPI_PS_INPUT_ENA);
+                     ENA  :TSPI_PS_INPUT_ENA;
+                     ADDR :TSPI_PS_INPUT_ADDR);
 
   Procedure   SET_SHADER_CONTROL(const SHADER_CONTROL:TDB_SHADER_CONTROL);
   Procedure   SET_INPUT_CNTL    (INPUT_CNTL:PSPI_PS_INPUT_CNTL_0;NUM_INTERP:Byte);
@@ -314,7 +315,8 @@ end;
 
 Procedure TSprvEmit.InitPs(RSRC1:TSPI_SHADER_PGM_RSRC1_PS;
                            RSRC2:TSPI_SHADER_PGM_RSRC2_PS;
-                           ENA:TSPI_PS_INPUT_ENA);
+                           ENA  :TSPI_PS_INPUT_ENA;
+                           ADDR :TSPI_PS_INPUT_ADDR);
 var
  p:Byte;
 begin
@@ -356,109 +358,199 @@ begin
 
  //vgrp
  p:=0;
- if (ENA.PERSP_SAMPLE_ENA<>0) then
+ if (ADDR.PERSP_SAMPLE_ENA<>0) then
  begin
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itPerspSample,0);
-  p:=p+1;
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itPerspSample,1);
+  if (ENA.PERSP_SAMPLE_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p+0],dtFloat32,itPerspSample,0);
+   AddInput(@RegsStory.VGRP[p+1],dtFloat32,itPerspSample,1);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p+0],dtUnknow,0);
+   SetConst_i(@RegsStory.VGRP[p+1],dtUnknow,0);
+  end;
+  p:=p+2;
+ end;
+
+ if (ADDR.PERSP_CENTER_ENA<>0) then
+ begin
+  if (ENA.PERSP_CENTER_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p+0],dtFloat32,itPerspCenter,0);
+   AddInput(@RegsStory.VGRP[p+1],dtFloat32,itPerspCenter,1);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p+0],dtUnknow,0);
+   SetConst_i(@RegsStory.VGRP[p+1],dtUnknow,0);
+  end;
+  p:=p+2;
+ end;
+
+ if (ADDR.PERSP_CENTROID_ENA<>0) then
+ begin
+  if (ENA.PERSP_CENTROID_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p+0],dtFloat32,itPerspCentroid,0);
+   AddInput(@RegsStory.VGRP[p+1],dtFloat32,itPerspCentroid,1);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p+0],dtUnknow,0);
+   SetConst_i(@RegsStory.VGRP[p+1],dtUnknow,0);
+  end;
+  p:=p+2;
+ end;
+
+ if (ADDR.PERSP_PULL_MODEL_ENA<>0) then
+ begin
+  if (ENA.PERSP_PULL_MODEL_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p+0],dtFloat32,itPerspW,0);
+   AddInput(@RegsStory.VGRP[p+1],dtFloat32,itPerspW,1);
+   AddInput(@RegsStory.VGRP[p+2],dtFloat32,itPerspW,2);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p+0],dtUnknow,0);
+   SetConst_i(@RegsStory.VGRP[p+1],dtUnknow,0);
+   SetConst_i(@RegsStory.VGRP[p+2],dtUnknow,0);
+  end;
+  p:=p+3;
+ end;
+
+ if (ADDR.LINEAR_SAMPLE_ENA<>0) then
+ begin
+  if (ENA.LINEAR_SAMPLE_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p+0],dtFloat32,itLinearSample,0);
+   AddInput(@RegsStory.VGRP[p+1],dtFloat32,itLinearSample,1);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p+0],dtUnknow,0);
+   SetConst_i(@RegsStory.VGRP[p+1],dtUnknow,0);
+  end;
+  p:=p+2;
+ end;
+
+ if (ADDR.LINEAR_CENTER_ENA<>0) then
+ begin
+  if (ENA.LINEAR_CENTER_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p+0],dtFloat32,itLinearCenter,0);
+   AddInput(@RegsStory.VGRP[p+1],dtFloat32,itLinearCenter,1);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p+0],dtUnknow,0);
+   SetConst_i(@RegsStory.VGRP[p+1],dtUnknow,0);
+  end;
+  p:=p+2;
+ end;
+
+ if (ADDR.LINEAR_CENTROID_ENA<>0) then
+ begin
+  if (ENA.LINEAR_CENTROID_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p+0],dtFloat32,itLinearCentroid,0);
+   AddInput(@RegsStory.VGRP[p+1],dtFloat32,itLinearCentroid,1);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p+0],dtUnknow,0);
+   SetConst_i(@RegsStory.VGRP[p+1],dtUnknow,0);
+  end;
+  p:=p+2;
+ end;
+
+ if (ADDR.POS_X_FLOAT_ENA<>0) then
+ begin
+  if (ENA.POS_X_FLOAT_ENA<>0) then
+  begin
+   AddVecInput(@RegsStory.VGRP[p],dtVec4f,dtFloat32,itFloatPos,0);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p],dtUnknow,0);
+  end;
   p:=p+1;
  end;
 
- if (ENA.PERSP_CENTER_ENA<>0) then
+ if (ADDR.POS_Y_FLOAT_ENA<>0) then
  begin
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itPerspCenter,0);
-  p:=p+1;
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itPerspCenter,1);
+  if (ENA.POS_Y_FLOAT_ENA<>0) then
+  begin
+   AddVecInput(@RegsStory.VGRP[p],dtVec4f,dtFloat32,itFloatPos,1);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p],dtUnknow,0);
+  end;
   p:=p+1;
  end;
 
- if (ENA.PERSP_CENTROID_ENA<>0) then
+ if (ADDR.POS_Z_FLOAT_ENA<>0) then
  begin
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itPerspCentroid,0);
-  p:=p+1;
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itPerspCentroid,1);
+  if (ENA.POS_Z_FLOAT_ENA<>0) then
+  begin
+   AddVecInput(@RegsStory.VGRP[p],dtVec4f,dtFloat32,itFloatPos,2);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p],dtUnknow,0);
+  end;
   p:=p+1;
  end;
 
- if (ENA.PERSP_PULL_MODEL_ENA<>0) then
+ if (ADDR.POS_W_FLOAT_ENA<>0) then
  begin
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itPerspW,0);
-  p:=p+1;
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itPerspW,1);
-  p:=p+1;
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itPerspW,2);
+  if (ENA.POS_W_FLOAT_ENA<>0) then
+  begin
+   AddVecInput(@RegsStory.VGRP[p],dtVec4f,dtFloat32,itFloatPos,3);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p],dtUnknow,0);
+  end;
   p:=p+1;
  end;
 
- if (ENA.LINEAR_SAMPLE_ENA<>0) then
+ if (ADDR.FRONT_FACE_ENA<>0) then
  begin
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itLinearSample,0);
-  p:=p+1;
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itLinearSample,1);
+  if (ENA.FRONT_FACE_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p],dtBool,itFrontFace);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p],dtUnknow,0);
+  end;
   p:=p+1;
  end;
 
- if (ENA.LINEAR_CENTER_ENA<>0) then
+ if (ADDR.ANCILLARY_ENA<>0) then
  begin
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itLinearCenter,0);
-  p:=p+1;
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itLinearCenter,1);
+  if (ENA.ANCILLARY_ENA<>0) then
+  begin
+   AddAncillary(@RegsStory.VGRP[p]);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p],dtUnknow,0);
+  end;
   p:=p+1;
  end;
 
- if (ENA.LINEAR_CENTROID_ENA<>0) then
+ if (ADDR.SAMPLE_COVERAGE_ENA<>0) then
  begin
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itLinearCentroid,0);
-  p:=p+1;
-  AddInput(@RegsStory.VGRP[p],dtFloat32,itLinearCentroid,1);
-  p:=p+1;
- end;
-
- if (ENA.POS_X_FLOAT_ENA<>0) then
- begin
-  AddVecInput(@RegsStory.VGRP[p],dtVec4f,dtFloat32,itFloatPos,0);
+  if (ENA.SAMPLE_COVERAGE_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p],dtUint32,itSampleCoverage);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p],dtUnknow,0);
+  end;
   p:=p+1;
  end;
 
- if (ENA.POS_Y_FLOAT_ENA<>0) then
+ if (ADDR.POS_FIXED_PT_ENA<>0) then
  begin
-  AddVecInput(@RegsStory.VGRP[p],dtVec4f,dtFloat32,itFloatPos,1);
-  p:=p+1;
- end;
-
- if (ENA.POS_Z_FLOAT_ENA<>0) then
- begin
-  AddVecInput(@RegsStory.VGRP[p],dtVec4f,dtFloat32,itFloatPos,2);
-  p:=p+1;
- end;
-
- if (ENA.POS_W_FLOAT_ENA<>0) then
- begin
-  AddVecInput(@RegsStory.VGRP[p],dtVec4f,dtFloat32,itFloatPos,3);
-  p:=p+1;
- end;
-
- if (ENA.FRONT_FACE_ENA<>0) then
- begin
-  AddInput(@RegsStory.VGRP[p],dtBool,itFrontFace);
-  p:=p+1;
- end;
-
- if (ENA.ANCILLARY_ENA<>0) then
- begin
-  AddAncillary(@RegsStory.VGRP[p]);
-  p:=p+1;
- end;
-
- if (ENA.SAMPLE_COVERAGE_ENA<>0) then
- begin
-  AddInput(@RegsStory.VGRP[p],dtUint32,itSampleCoverage);
-  p:=p+1;
- end;
-
- if (ENA.POS_FIXED_PT_ENA<>0) then
- begin
-  AddInput(@RegsStory.VGRP[p],dtUint32,itPosFixed);
+  if (ENA.POS_FIXED_PT_ENA<>0) then
+  begin
+   AddInput(@RegsStory.VGRP[p],dtUint32,itPosFixed);
+  end else
+  begin
+   SetConst_i(@RegsStory.VGRP[p],dtUnknow,0);
+  end;
   p:=p+1;
   //Per-pixel fixed point position Y[31:16], X[15:0]
  end;

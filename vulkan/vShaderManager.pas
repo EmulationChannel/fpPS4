@@ -316,7 +316,8 @@ begin
   begin
    SprvEmit.InitPs(GPU_REGS.SG_REG^.SPI_SHADER_PGM_RSRC1_PS,
                    GPU_REGS.SG_REG^.SPI_SHADER_PGM_RSRC2_PS,
-                   GPU_REGS.CX_REG^.SPI_PS_INPUT_ENA);
+                   GPU_REGS.CX_REG^.SPI_PS_INPUT_ENA,
+                   GPU_REGS.CX_REG^.SPI_PS_INPUT_ADDR);
 
    SprvEmit.SetUserData(GPU_REGS.get_user_data(FStage));
 
