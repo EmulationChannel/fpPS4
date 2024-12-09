@@ -1943,6 +1943,10 @@ begin
    begin
     ctx.Cmd.DrawIndex2(Pointer(node^.indexBase),node^.indexCount);
    end;
+  ntDrawIndexOffset2:
+   begin
+    ctx.Cmd.DrawIndexOffset2(Pointer(node^.indexBase),node^.indexOffset,node^.indexCount);
+   end;
   ntDrawIndexAuto:
    begin
     ctx.Cmd.DrawIndexAuto(node^.indexCount);
@@ -1981,9 +1985,12 @@ begin
 
  ctx.Cmd.EndRenderPass;
 
+ resource_instance:=ctx.node^.scope.find_image_resource_instance(node^.RT.FImageInfo);
+ Assert(resource_instance<>nil);
+
  ri:=FetchImage(ctx.Cmd,
                 node^.RT.FImageInfo,
-                [iu_attachment]
+                resource_instance^.curr.img_usage
                 );
 
  ri.PushBarrier(ctx.Cmd,
@@ -2000,9 +2007,6 @@ begin
 
  //writeback
  ri.mark_init;
-
- resource_instance:=ctx.node^.scope.find_image_resource_instance(node^.RT.FImageInfo);
- Assert(resource_instance<>nil);
 
  if (resource_instance^.next_overlap.mem_usage<>0) then
  begin
@@ -2860,22 +2864,23 @@ begin
     //if ctx.WaitConfirm then
     begin
      case ctx.node^.ntype of
-      ntHint          :pm4_Hint          (ctx,Pointer(ctx.node));
-      ntDrawIndex2    :pm4_Draw          (ctx,Pointer(ctx.node));
-      ntDrawIndexAuto :pm4_Draw          (ctx,Pointer(ctx.node));
-      ntClearDepth    :pm4_Draw          (ctx,Pointer(ctx.node));
-      ntFastClear     :pm4_FastClear     (ctx,Pointer(ctx.node));
-      ntDispatchDirect:pm4_DispatchDirect(ctx,Pointer(ctx.node));
-      ntEventWrite    :pm4_EventWrite    (ctx,Pointer(ctx.node));
-      ntEventWriteEop :pm4_EventWriteEop (ctx,Pointer(ctx.node));
-      ntSubmitFlipEop :pm4_SubmitFlipEop (ctx,Pointer(ctx.node));
-      ntReleaseMem    :pm4_ReleaseMem    (ctx,Pointer(ctx.node));
-      ntEventWriteEos :pm4_EventWriteEos (ctx,Pointer(ctx.node));
-      ntWriteData     :pm4_WriteData     (ctx,Pointer(ctx.node));
-      ntDmaData       :pm4_DmaData       (ctx,Pointer(ctx.node));
-      ntWaitRegMem    :pm4_WaitRegMem    (ctx,Pointer(ctx.node));
+      ntHint            :pm4_Hint          (ctx,Pointer(ctx.node));
+      ntDrawIndex2      :pm4_Draw          (ctx,Pointer(ctx.node));
+      ntDrawIndexOffset2:pm4_Draw          (ctx,Pointer(ctx.node));
+      ntDrawIndexAuto   :pm4_Draw          (ctx,Pointer(ctx.node));
+      ntClearDepth      :pm4_Draw          (ctx,Pointer(ctx.node));
+      ntFastClear       :pm4_FastClear     (ctx,Pointer(ctx.node));
+      ntDispatchDirect  :pm4_DispatchDirect(ctx,Pointer(ctx.node));
+      ntEventWrite      :pm4_EventWrite    (ctx,Pointer(ctx.node));
+      ntEventWriteEop   :pm4_EventWriteEop (ctx,Pointer(ctx.node));
+      ntSubmitFlipEop   :pm4_SubmitFlipEop (ctx,Pointer(ctx.node));
+      ntReleaseMem      :pm4_ReleaseMem    (ctx,Pointer(ctx.node));
+      ntEventWriteEos   :pm4_EventWriteEos (ctx,Pointer(ctx.node));
+      ntWriteData       :pm4_WriteData     (ctx,Pointer(ctx.node));
+      ntDmaData         :pm4_DmaData       (ctx,Pointer(ctx.node));
+      ntWaitRegMem      :pm4_WaitRegMem    (ctx,Pointer(ctx.node));
 
-      ntLoadConstRam  :pm4_LoadConstRam  (ctx,Pointer(ctx.node));
+      ntLoadConstRam    :pm4_LoadConstRam  (ctx,Pointer(ctx.node));
 
       else
        begin

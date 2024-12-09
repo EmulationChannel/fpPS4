@@ -123,6 +123,7 @@ type
   ntResolve,
   ntClearDepth,
   ntDrawIndex2,
+  ntDrawIndexOffset2,
   ntDrawIndexAuto,
   ntDispatchDirect
  );
@@ -419,6 +420,9 @@ type
   procedure DrawIndex2   (var SG_REG:TSH_REG_GFX_GROUP;
                           var CX_REG:TCONTEXT_REG_GROUP;
                           var UC_REG:TUSERCONFIG_REG_SHORT);
+  procedure DrawIndexOffset2(var SG_REG:TSH_REG_GFX_GROUP;
+                             var CX_REG:TCONTEXT_REG_GROUP;
+                             var UC_REG:TUSERCONFIG_REG_SHORT);
   procedure DrawIndexAuto(var SG_REG:TSH_REG_GFX_GROUP;
                           var CX_REG:TCONTEXT_REG_GROUP;
                           var UC_REG:TUSERCONFIG_REG_SHORT);
@@ -1612,6 +1616,15 @@ begin
  if ColorControl(CX_REG) then Exit;
 
  BuildDraw(ntDrawIndexAuto,SG_REG,CX_REG,UC_REG);
+end;
+
+procedure t_pm4_stream.DrawIndexOffset2(var SG_REG:TSH_REG_GFX_GROUP;
+                                        var CX_REG:TCONTEXT_REG_GROUP;
+                                        var UC_REG:TUSERCONFIG_REG_SHORT);
+begin
+ if ColorControl(CX_REG) then Exit;
+
+ BuildDraw(ntDrawIndexOffset2,SG_REG,CX_REG,UC_REG);
 end;
 
 procedure t_pm4_stream.Build_cs_info(node:p_pm4_node_DispatchDirect;var GPU_REGS:TGPU_REGS);

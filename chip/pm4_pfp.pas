@@ -1623,6 +1623,26 @@ begin
                                    pctx^.UC_REG);
 end;
 
+procedure onDrawIndexOffset2(pctx:p_pfp_ctx;Body:PPM4CMDDRAWINDEXOFFSET2);
+begin
+ Assert(pctx^.stream_type=stGfxDcb);
+
+ if (DWORD(Body^.drawInitiator)<>0) then
+ if p_print_gpu_ops then
+ begin
+  Writeln(stderr,' drawInitiator=b',revbinstr(DWORD(Body^.drawInitiator),32));
+ end;
+
+ pctx^.CX_REG.VGT_DMA_MAX_SIZE         :=Body^.maxSize;
+ pctx^.CX_REG.VGT_DMA_SIZE             :=Body^.indexCount;
+ pctx^.UC_REG.VGT_NUM_INDICES          :=Body^.indexCount;
+ pctx^.CX_REG.VGT_DRAW_INITIATOR       :=Body^.drawInitiator;
+
+ pctx^.stream[stGfxDcb].DrawIndexOffset2(pctx^.SG_REG,
+                                         pctx^.CX_REG,
+                                         pctx^.UC_REG);
+end;
+
 procedure onDrawIndexAuto(pctx:p_pfp_ctx;Body:PPM4CMDDRAWINDEXAUTO);
 begin
  Assert(pctx^.stream_type=stGfxDcb);
@@ -1890,7 +1910,7 @@ begin
       IT_INDEX_BASE                     :onIndexBase                  (pctx,buff);
       IT_NUM_INSTANCES                  :onNumInstances               (pctx,buff);
       IT_DRAW_INDEX_2                   :onDrawIndex2                 (pctx,buff);
-      IT_DRAW_INDEX_OFFSET_2            :Assert(false,'IT_DRAW_INDEX_OFFSET_2');
+      IT_DRAW_INDEX_OFFSET_2            :onDrawIndexOffset2           (pctx,buff);
       IT_DRAW_INDEX_AUTO                :onDrawIndexAuto              (pctx,buff);
       IT_DRAW_INDEX_INDIRECT_COUNT_MULTI:onDrawIndexIndirectCountMulti(pctx,buff);
       IT_DISPATCH_DIRECT                :onDispatchDirect             (pctx,buff);
