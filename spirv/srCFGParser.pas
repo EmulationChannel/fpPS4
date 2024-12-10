@@ -190,7 +190,7 @@ var
 begin
  node:=Self;
  Result:=Default(TSrcAdr);
- Result.Offdw:=High(DWORD);
+ Result.Offdw:=High(PtrUInt) div 4;
  //
  while (node<>nil) do
  begin

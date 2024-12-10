@@ -81,7 +81,6 @@ Var
  dst:PsrRegSlot;
  src:TsrRegNode;
  imm:TsrRegNode;
- a,b:TsrRegNode;
  i:Integer;
 begin
  dst:=get_sdst7(FSPI.SOPK.SDST);

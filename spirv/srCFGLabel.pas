@@ -15,7 +15,7 @@ type
  PSrcAdr=^TSrcAdr;
  TSrcAdr=object
   pCode:TsrLabelBlock;
-  Offdw:ptrint;
+  Offdw:PtrUInt;
   function get_code_ptr:PDWORD;
   function get_dmem_ptr:PDWORD;
  end;

@@ -778,7 +778,6 @@ end;
 
 function TEmitPostOp.OnLogicalNot1(node:TSpirvOp):Integer;
 var
- dtype:TsrDataType;
  dst:TsrRegNode;
  src:TsrRegNode;
 

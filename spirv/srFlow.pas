@@ -1122,11 +1122,8 @@ end;
 //
 
 function TEmitFlow.NextParse:Byte;
-label
- _open_d;
 var
  FLevel:DWORD;
- pBase:TsrOpBlock;
 begin
  if (Cursor.pCode=nil)  then Exit(2);
  if (Cursor.pBlock=nil) then Exit(3);
