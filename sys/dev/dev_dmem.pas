@@ -110,6 +110,14 @@ begin
              end;
             end;
 
+  $80108015: //sceKernelCheckedReleaseDirectMemory
+            begin
+             with PReleaseDirectMemory(data)^ do
+             begin
+              Result:=dmem_map_release(dmap^.dmem,start,len,True);
+             end;
+            end;
+
   $80288012: //sceKernelDirectMemoryQuery
             begin
              with PDirectMemoryQuery(data)^ do
