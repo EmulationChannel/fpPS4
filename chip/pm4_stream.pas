@@ -338,7 +338,8 @@ type
 
  p_pm4_node_Resolve=^t_pm4_node_Resolve;
  t_pm4_node_Resolve=object(t_pm4_node)
-  CX_REG:TCONTEXT_REG_GROUP; // 0xA000
+  RT:array[0..1] of TRT_INFO;
+  SCREEN:TVkRect2D;
  end;
 
  p_pm4_node_draw=^t_pm4_node_draw;
@@ -1235,13 +1236,45 @@ end;
 
 procedure t_pm4_stream.Resolve(var CX_REG:TCONTEXT_REG_GROUP);
 var
+ GPU_REGS:TGPU_REGS;
+ RT:array[0..1] of TRT_INFO;
+ SCREEN:TVkRect2D;
+
  node:p_pm4_node_Resolve;
 begin
+ GPU_REGS:=Default(TGPU_REGS);
+ GPU_REGS.CX_REG:=@CX_REG;
+
+ Assert(DWORD(CX_REG.CB_TARGET_MASK)=$F);
+
  node:=allocator.Alloc(SizeOf(t_pm4_node_Resolve));
 
  node^.ntype :=ntResolve;
  node^.scope :=Default(t_pm4_resource_curr_scope);
- node^.CX_REG:=CX_REG;
+
+ //
+ RT[0]:=GPU_REGS.GET_RT_INFO(0);
+ RT[1]:=GPU_REGS.GET_RT_INFO(1);
+
+ RT[0].IMAGE_USAGE:=TM_READ;
+ RT[1].IMAGE_USAGE:=TM_WRITE;
+
+ insert_image_resource(@node^.scope,
+                       RT[0].FImageInfo,
+                       RT[0].IMAGE_USAGE,
+                       [iu_transfer],
+                       'Resolve');
+
+ insert_image_resource(@node^.scope,
+                       RT[1].FImageInfo,
+                       RT[1].IMAGE_USAGE,
+                       [iu_transfer],
+                       'Resolve');
+
+ SCREEN:=GPU_REGS.GET_SCREEN;
+
+ node^.RT:=RT;
+ node^.SCREEN:=SCREEN;
 
  add_node(node);
 end;

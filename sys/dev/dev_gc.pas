@@ -766,7 +766,7 @@ var
 begin
  Result:=0;
 
- Writeln('gc_ioctl(0x',HexStr(cmd,8),')');
+ //Writeln('gc_ioctl(0x',HexStr(cmd,8),')');
 
  case cmd of
   $C0088111:; //sceGnmDebugHardwareStatus

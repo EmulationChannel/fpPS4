@@ -508,6 +508,8 @@ var
  pc_offset,pc_size,pc_diff:DWORD;
 
  FHash_spv:QWORD;
+
+ str:RawByteString;
 begin
  pData:=GPU_REGS.get_code_addr(FStage);
 
@@ -562,12 +564,17 @@ begin
   //dump gcn (before parse)
   if (Length(t.FShaderAliases)=0) then
   begin
+   str:='';
    case FStage of
-    vShaderStagePs:DumpPS(GPU_REGS,t.key.FHash);
-    vShaderStageVs:DumpVS(GPU_REGS,t.key.FHash);
-    vShaderStageCs:DumpCS(GPU_REGS,t.key.FHash);
-    else;
+    vShaderStagePs:str:=DumpPS(GPU_REGS,t.key.FHash);
+    vShaderStageVs:str:=DumpVS(GPU_REGS,t.key.FHash);
+    vShaderStageCs:str:=DumpCS(GPU_REGS,t.key.FHash);
+    else
+     begin
+      Writeln(stderr,'Unhandle stage:',FStage);
+     end;
    end;
+   //Writeln(str);
   end;
   //
 

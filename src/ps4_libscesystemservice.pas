@@ -480,14 +480,14 @@ begin
  status^.isOutOfVrPlayArea       :=false;
  Result:=0;
 
- Writeln('sceSystemServiceGetStatus');
+ //Writeln('sceSystemServiceGetStatus');
 end;
 
 function ps4_sceSystemServiceReceiveEvent(event:pSceSystemServiceEvent):Integer;
 begin
  if (event=nil) then Exit(SCE_SYSTEM_SERVICE_ERROR_PARAMETER);
 
- Writeln('sceSystemServiceReceiveEvent');
+ //Writeln('sceSystemServiceReceiveEvent');
 
  if CAS(display_safe_area_update,1,0) then
  begin

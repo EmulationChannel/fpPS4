@@ -211,6 +211,7 @@ Function TGPU_REGS.GET_VPORT(i:Byte):TVkViewport; //0..15
 var
  V:TVPORT_SCALE_OFFSET;
  VTE_CNTL:TPA_CL_VTE_CNTL;
+ depthClampDisable:Byte;
 begin
  Result:=Default(TVkViewport);
  V:=CX_REG^.PA_CL_VPORT_SCALE_OFFSET[i];
@@ -248,6 +249,11 @@ begin
  end;
  Result.maxDepth:=V.ZOFFSET+V.ZSCALE;
 
+ {
+ with CX_REG^.PA_CL_CLIP_CNTL do
+  depthClampDisable:=ZCLIP_NEAR_DISABLE or ZCLIP_FAR_DISABLE;
+
+ if (not Boolean(depthClampDisable)) then
  if (not SameValue(Result.minDepth,CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMIN)) or
     (not SameValue(Result.maxDepth,CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMAX)) then
  begin
@@ -258,6 +264,7 @@ begin
   Writeln(stderr,' maxDepth:',Result.maxDepth:0:5,' ZMAX:',CX_REG^.PA_SC_VPORT_ZMIN_MAX[i].ZMAX:0:5);
   //Assert(false,'TODO:VK_EXT_depth_clamp_control');
  end;
+ }
 end;
 
 Function _fix_scissor_range(i:Word):Word;

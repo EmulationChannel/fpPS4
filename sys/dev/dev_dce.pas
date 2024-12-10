@@ -111,6 +111,7 @@ begin
    begin
     trigger:=dce_handle.Vblank();
    end;
+   //trigger:=True;
 
    if trigger then
    begin
@@ -414,7 +415,7 @@ var
 begin
  Result:=0;
 
- Writeln('dce_flip_control(',data^.id,')');
+ //Writeln('dce_flip_control(',data^.id,')');
 
  //id -> 0..0x24
 
@@ -726,6 +727,8 @@ begin
       //arg2 -> canary
       //arg3 = &result;
       //arg4 = 40
+
+      //Writeln('sceVideoOutGetVblankStatus');
 
       if (data^.arg2<>$a5a5) then Exit(EINVAL);
 

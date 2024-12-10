@@ -848,6 +848,21 @@ begin
      Result:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     end;
    end;
+  iu_transfer:
+   begin
+    //mem_usage ???
+    if ((curr.mem_usage and (TM_WRITE or TM_READ))=(TM_WRITE or TM_READ)) then
+    begin
+     Result:=VK_IMAGE_LAYOUT_GENERAL;
+    end else
+    if ((curr.mem_usage and TM_WRITE)<>0) then
+    begin
+     Result:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    end else
+    begin
+     Result:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    end;
+   end;
   else
    Result:=VK_IMAGE_LAYOUT_UNDEFINED;
  end;
@@ -1965,16 +1980,68 @@ begin
 
 end;
 
+procedure pm4_Resolve(var ctx:t_me_render_context;node:p_pm4_node_Resolve);
+var
+ ri_src,ri_dst:TvImage2;
+ range:TVkImageResolve;
+
+begin
+ //
+ pm4_InitStream(ctx);
+ //
+
+ StartFrameCapture;
+
+ ctx.BeginCmdBuffer;
+
+ ctx.Cmd.EndRenderPass;
+
+ ri_src:=FetchImage(ctx.Cmd,
+                    node^.RT[0].FImageInfo,
+                    [iu_transfer]
+                    );
+
+ ri_dst:=FetchImage(ctx.Cmd,
+                    node^.RT[1].FImageInfo,
+                    [iu_transfer]
+                    );
+
+ ri_src.PushBarrier(ctx.Cmd,
+                    ord(VK_ACCESS_TRANSFER_READ_BIT),
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    ord(VK_PIPELINE_STAGE_TRANSFER_BIT));
+
+ ri_dst.PushBarrier(ctx.Cmd,
+                    ord(VK_ACCESS_TRANSFER_WRITE_BIT),
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    ord(VK_PIPELINE_STAGE_TRANSFER_BIT));
+
+ range:=Default(TVkImageResolve);
+
+ range.srcSubresource:=ri_src.GetSubresLayer;
+ range.dstSubresource:=ri_dst.GetSubresLayer;
+
+ range.srcOffset.Create(node^.SCREEN.offset.x,node^.SCREEN.offset.y,0);
+ range.dstOffset:=range.srcOffset;
+
+ range.extent.Create(node^.SCREEN.extent.width,node^.SCREEN.extent.height,1);
+
+ ctx.Cmd.ResolveImage(ri_src.FHandle,
+                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                      ri_dst.FHandle,
+                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                      1,@range);
+
+end;
+
 procedure pm4_FastClear(var ctx:t_me_render_context;node:p_pm4_node_FastClear);
-{
 var
  ri:TvImage2;
  range:TVkImageSubresourceRange;
 
  resource_instance:p_pm4_resource_instance;
-}
 begin
-{
+ {
  //
  pm4_InitStream(ctx);
  //
@@ -2019,7 +2086,8 @@ begin
   resource_instance^.resource^.rwriteback:=True;
  end;
  //writeback
-}
+ }
+
 end;
 
 procedure Prepare_buf_clear(var ctx:t_me_render_context;
@@ -2588,6 +2656,7 @@ begin
 
     end;
  else
+    //Writeln('DmaData: srcSel=0x'+HexStr(srcSel,1)+' dstSel=0x'+HexStr(dstSel,1));
     Assert(false,'DmaData: srcSel=0x'+HexStr(srcSel,1)+' dstSel=0x'+HexStr(dstSel,1));
  end;
 
@@ -2869,6 +2938,7 @@ begin
       ntDrawIndexOffset2:pm4_Draw          (ctx,Pointer(ctx.node));
       ntDrawIndexAuto   :pm4_Draw          (ctx,Pointer(ctx.node));
       ntClearDepth      :pm4_Draw          (ctx,Pointer(ctx.node));
+      ntResolve         :pm4_Resolve       (ctx,Pointer(ctx.node));
       ntFastClear       :pm4_FastClear     (ctx,Pointer(ctx.node));
       ntDispatchDirect  :pm4_DispatchDirect(ctx,Pointer(ctx.node));
       ntEventWrite      :pm4_EventWrite    (ctx,Pointer(ctx.node));
