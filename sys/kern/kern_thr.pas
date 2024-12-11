@@ -232,6 +232,7 @@ type
   td_cpuset       :Ptruint;
   td_sleepqueue   :Pointer;
   td_slpq         :TAILQ_ENTRY;
+  td_zombie       :TAILQ_ENTRY;
   td_wchan        :Pointer;
   td_wmesg        :PChar;
   td_sqqueue      :Integer;

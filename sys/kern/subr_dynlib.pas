@@ -2417,7 +2417,7 @@ begin
  elm:=TAILQ_FIRST(@root^.dagmembers);
  while (elm<>nil) do
  begin
-  Inc(elm^.obj^.ref_count);
+  Dec(elm^.obj^.ref_count);
   //
   elm:=TAILQ_NEXT(elm,@elm^.link);
  end;
@@ -3381,9 +3381,12 @@ end;
 
 function unload_prx(obj:p_lib_info):Integer;
 var
+ ref_count:Integer;
  modname:pchar;
 begin
- if (obj^.ref_count=0) then
+ ref_count:=obj^.ref_count;
+
+ if (ref_count=0) then
  begin
   Assert(False,'Invalid shared object handle');
   Exit(EINVAL);
@@ -3391,7 +3394,7 @@ begin
 
  unref_dag(obj);
 
- if (obj^.ref_count<>1) then
+ if (ref_count<>1) then
  begin
   Exit(0);
  end;

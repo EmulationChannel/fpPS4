@@ -2463,7 +2463,7 @@ begin
    continue;
   end;
 
-  next:=entry^.next;
+  next:=next^.next;
  end;
 
  {

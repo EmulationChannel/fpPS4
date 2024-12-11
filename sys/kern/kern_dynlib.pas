@@ -269,6 +269,8 @@ begin
   Exit(EPERM);
  end;
 
+ //Writeln('sys_dynlib_unload_prx:',handle);
+
  dynlibs_lock;
 
  obj:=find_obj_id(handle);

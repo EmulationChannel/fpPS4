@@ -142,7 +142,7 @@ end;
 procedure thread_zombie(td:p_kthread);
 begin
  rw_wlock(zombie_lock);
- TAILQ_INSERT_HEAD(@zombie_threads,td,@td^.td_slpq);
+ TAILQ_INSERT_HEAD(@zombie_threads,td,@td^.td_zombie);
  rw_wunlock(zombie_lock);
 end;
 
@@ -165,7 +165,7 @@ begin
 
     if cpu_thread_finished(td_first) then
     begin
-     TAILQ_REMOVE(@zombie_threads,@td_first,@td_first^.td_slpq);
+     TAILQ_REMOVE(@zombie_threads,@td_first,@td_first^.td_zombie);
      thread_free(td_first);
     end else
     begin
