@@ -1021,11 +1021,13 @@ label
  _start,
  _exit;
 var
- dd:p_ufs_dirent;
+ dd,exclude:p_ufs_dirent;
  //notlocked:Boolean;
  fparent:Boolean;
 begin
  if (de=nil) then Exit;
+
+ exclude:=nil;
 
  _start:
 
@@ -1051,6 +1053,11 @@ begin
  begin
   ufs_de_hold(dd);
 
+  if (exclude=nil) then
+  begin
+   exclude:=dd;
+  end;
+
   //notlocked:=not sx_xlocked(@dd^.ufs_md_lock);
 
   Assert(sx_xlocked(@dd^.ufs_md_lock)=parent_locked);
@@ -1065,7 +1072,7 @@ begin
   TAILQ_REMOVE(@dd^.ufs_dlist,de,@de^.ufs_list);
   fparent:=TAILQ_EMPTY(@dd^.ufs_dlist) and (dd^.ufs_dir<>nil);
 
-  if not parent_locked then
+  if (not parent_locked) then
   begin
    sx_unlock(@dd^.ufs_md_lock);
   end;
@@ -1083,7 +1090,10 @@ begin
  end;
 
  _exit:
+ if (exclude<>de) then
+ begin
   sx_unlock(@de^.ufs_md_lock);
+ end;
 end;
 
 procedure md_delete_cache(de:p_ufs_dirent);
@@ -1705,9 +1715,10 @@ begin
 
  Result:=md_open_dirent_file(de,True,@FD);
 
+ sx_xunlock(@de^.ufs_md_lock);
+
  if (Result<>0) then
  begin
-  sx_xunlock(@de^.ufs_md_lock);
   sx_xunlock(@dd^.ufs_md_lock);
   Exit;
  end;
@@ -1726,7 +1737,7 @@ begin
  end;
 
  //clear cache
- md_unlink_cache(de,True,True);
+ md_unlink_cache(de,False,True);
 
  NtClose(FD); //<-deleted
 
@@ -1757,9 +1768,10 @@ begin
 
  Result:=md_open_dirent_file(de,True,@FD);
 
+ sx_xunlock(@de^.ufs_md_lock);
+
  if (Result<>0) then
  begin
-  sx_xunlock(@de^.ufs_md_lock);
   sx_xunlock(@dd^.ufs_md_lock);
   Exit;
  end;
@@ -1778,7 +1790,7 @@ begin
  end;
 
  //clear cache
- md_unlink_cache(de,True,True);
+ md_unlink_cache(de,False,True);
 
  NtClose(FD); //<-deleted
 
