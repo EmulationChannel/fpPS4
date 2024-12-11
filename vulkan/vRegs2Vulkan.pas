@@ -557,7 +557,7 @@ begin
  begin
   Result.blendEnable:=VK_FALSE;
  end else
- if (CX_REG^.CB_BLEND_CONTROL[i].ENABLE=0) then
+ if (BLEND_CONTROL.ENABLE=0) then
  begin
   Result.blendEnable:=VK_FALSE;
  end else

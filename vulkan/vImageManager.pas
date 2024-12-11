@@ -1135,7 +1135,10 @@ begin
 
   end;
 
-  t.Acquire(nil); //result ref
+  if (t<>nil) then
+  begin
+   t.Acquire(nil); //result ref
+  end;
 
   mem.Release; //release [FetchMemory]
  end;

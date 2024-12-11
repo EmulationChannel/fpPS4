@@ -1196,8 +1196,6 @@ var
  RT:TRT_INFO;
 
  node:p_pm4_node_FastClear;
-
- resource_instance:p_pm4_resource_instance;
 begin
  GPU_REGS:=Default(TGPU_REGS);
  GPU_REGS.CX_REG:=@CX_REG;
@@ -1217,15 +1215,19 @@ begin
 
  //
 
- resource_instance:=insert_buffer_resource(@node^.scope,
-                                           R_CMASK,
-                                           RT.CMASK_INFO.KEY.Addr,
-                                           RT.CMASK_INFO.SIZE,
-                                           RT.IMAGE_USAGE,
-                                           'FastClear'
-                                          );
+ insert_image_resource(@node^.scope,
+                       RT.FImageInfo,
+                       RT.IMAGE_USAGE,
+                       [iu_transfer],
+                       'FastClear');
 
- resource_instance^.resource^.rcmask:=True;
+ insert_buffer_resource(@node^.scope,
+                        R_CMASK,
+                        RT.CMASK_INFO.KEY.Addr,
+                        RT.CMASK_INFO.SIZE,
+                        RT.IMAGE_USAGE,
+                        'FastClear'
+                       );
 
  //
  node^.RT:=RT;

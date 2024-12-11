@@ -1199,6 +1199,7 @@ begin
   Result.height:=(Result.height+3) shr 2;
  end;
 
+ Result.pitch     :=0;
  Result.pad_width :=0;
  Result.pad_height:=0;
 end;
