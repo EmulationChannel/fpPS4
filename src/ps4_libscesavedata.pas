@@ -56,76 +56,76 @@ Const
 type
  PSceSaveDataParam=^SceSaveDataParam;
  SceSaveDataParam=packed record
-  title:array[0..SCE_SAVE_DATA_TITLE_MAXSIZE-1] of AnsiChar;
-  subTitle:array[0..SCE_SAVE_DATA_SUBTITLE_MAXSIZE-1] of AnsiChar;
-  detail:array[0..SCE_SAVE_DATA_DETAIL_MAXSIZE-1] of AnsiChar;
+  title    :array[0..SCE_SAVE_DATA_TITLE_MAXSIZE-1] of AnsiChar;
+  subTitle :array[0..SCE_SAVE_DATA_SUBTITLE_MAXSIZE-1] of AnsiChar;
+  detail   :array[0..SCE_SAVE_DATA_DETAIL_MAXSIZE-1] of AnsiChar;
   userParam:DWORD;
-  align:DWORD;
-  mtime:QWORD;
-  reserved:array[0..31] of Byte;
+  align    :DWORD;
+  mtime    :QWORD;
+  reserved :array[0..31] of Byte;
  end;
 
  PSceSaveDataIcon=^SceSaveDataIcon;
  SceSaveDataIcon=packed record
-  buf:Pointer;
-  bufSize:QWORD;
+  buf     :Pointer;
+  bufSize :QWORD;
   dataSize:QWORD;
   reserved:array[0..31] of Byte;
  end;
 
  PSceSaveDataMemorySetup2=^SceSaveDataMemorySetup2;
  SceSaveDataMemorySetup2=packed record
-  option:DWORD;
-  userId:SceUserServiceUserId;
-  memorySize:QWORD;
+  option        :DWORD;
+  userId        :SceUserServiceUserId;
+  memorySize    :QWORD;
   iconMemorySize:QWORD;
-  initParam:PSceSaveDataParam;
-  initIcon:PSceSaveDataIcon;
-  reserved:array[0..23] of Byte;
+  initParam     :PSceSaveDataParam;
+  initIcon      :PSceSaveDataIcon;
+  reserved      :array[0..23] of Byte;
  end;
 
  PSceSaveDataMemorySetupResult=^SceSaveDataMemorySetupResult;
  SceSaveDataMemorySetupResult=packed record
   existedMemorySize:QWORD;
-  reserved:array[0..15] of Byte;
+  reserved         :array[0..15] of Byte;
  end;
 
  PSceSaveDataMemoryData=^SceSaveDataMemoryData;
  SceSaveDataMemoryData=packed record
-  buf:Pointer;
-  bufSize:QWORD;
-  offset:QWORD;
+  buf     :Pointer;
+  bufSize :QWORD;
+  offset  :QWORD;
   reserved:array[0..39] of Byte;
  end;
 
  PSceSaveDataMemoryGet2=^SceSaveDataMemoryGet2;
  SceSaveDataMemoryGet2=packed record
-  userId:SceUserServiceUserId;
-  padding:array[0..3] of Byte;
-  data:PSceSaveDataMemoryData;
-  param:PSceSaveDataParam;
-  icon:PSceSaveDataIcon;
-  slotId:DWORD;
+  userId  :SceUserServiceUserId;
+  padding :array[0..3] of Byte;
+  data    :PSceSaveDataMemoryData;
+  param   :PSceSaveDataParam;
+  icon    :PSceSaveDataIcon;
+  slotId  :DWORD;
   reserved:array[0..27] of Byte;
  end;
 
  PSceSaveDataMemorySet2=^SceSaveDataMemorySet2;
  SceSaveDataMemorySet2=packed record
-  userId:SceUserServiceUserId;
-  padding:array[0..3] of Byte;
-  data:PSceSaveDataMemoryData;
-  param:PSceSaveDataParam;
-  icon:PSceSaveDataIcon;
-  dataNum:DWORD;
-  slotId:DWORD;
+  userId  :SceUserServiceUserId;
+  padding :array[0..3] of Byte;
+  data    :PSceSaveDataMemoryData;
+  param   :PSceSaveDataParam;
+  icon    :PSceSaveDataIcon;
+  dataNum :DWORD;
+  slotId  :DWORD;
   reserved:array[0..23] of Byte;
  end;
 
  PSceSaveDataMemorySync=^SceSaveDataMemorySync;
  SceSaveDataMemorySync=packed record
-  userId:SceUserServiceUserId;
-  slotId:DWORD;
-  option:DWORD; //SceSaveDataMemorySyncOption
+  userId  :SceUserServiceUserId;
+  slotId  :DWORD;
+  option  :DWORD; //SceSaveDataMemorySyncOption
   reserved:array[0..27] of Byte;
  end;
 
@@ -137,126 +137,145 @@ type
 
  pSceSaveDataTitleId=^SceSaveDataTitleId;
  SceSaveDataTitleId=packed record
-  data:array[0..SCE_SAVE_DATA_TITLE_ID_DATA_SIZE-1] of Char;
+  data   :array[0..SCE_SAVE_DATA_TITLE_ID_DATA_SIZE-1] of Char;
   padding:array[0..5] of Byte;
  end;
 
  pSceSaveDataDelete=^SceSaveDataDelete;
  SceSaveDataDelete=packed record
-  userId:SceUserServiceUserId;
-  align1:Integer;
-  titleId:pSceSaveDataTitleId;
-  dirName:pSceSaveDataDirName;
-  unused:Integer;
+  userId  :SceUserServiceUserId;
+  align1  :Integer;
+  titleId :pSceSaveDataTitleId;
+  dirName :pSceSaveDataDirName;
+  unused  :Integer;
   reserved:array[0..31] of Byte;
-  align2:Integer;
+  align2  :Integer;
  end;
 
  pSceSaveDataFingerprint=^SceSaveDataFingerprint;
  SceSaveDataFingerprint=packed record
-  data:array[0..SCE_SAVE_DATA_FINGERPRINT_DATA_SIZE-1] of Byte;
+  data   :array[0..SCE_SAVE_DATA_FINGERPRINT_DATA_SIZE-1] of Byte;
   padding:array[0..14] of Byte;
  end;
 
  pSceSaveDataMount=^SceSaveDataMount;
  SceSaveDataMount=packed record
-  userId:SceUserServiceUserId;
-  align1:Integer;
-  titleId:pSceSaveDataTitleId;
-  dirName:PSceSaveDataDirName;
+  userId     :SceUserServiceUserId;
+  align1     :Integer;
+  titleId    :pSceSaveDataTitleId;
+  dirName    :PSceSaveDataDirName;
   fingerprint:pSceSaveDataFingerprint;
-  blocks:QWORD;    //SceSaveDataBlocks
-  mountMode:DWORD; //SceSaveDataMountMode
-  reserved:array[0..31] of Byte;
+  blocks     :QWORD; //SceSaveDataBlocks
+  mountMode  :DWORD; //SceSaveDataMountMode
+  reserved   :array[0..31] of Byte;
  end;
 
  PSceSaveDataMount2=^SceSaveDataMount2;
  SceSaveDataMount2=packed record
-  userId:SceUserServiceUserId;
-  align1:Integer;
-  dirName:PSceSaveDataDirName;
-  blocks:QWORD;
+  userId   :SceUserServiceUserId;
+  align1   :Integer;
+  dirName  :PSceSaveDataDirName;
+  blocks   :QWORD;
   mountMode:DWORD;
-  reserved:array[0..31] of Byte;
-  align2:Integer;
+  reserved :array[0..31] of Byte;
+  align2   :Integer;
  end;
 
  pSceSaveDataTransferringMount=^SceSaveDataTransferringMount;
  SceSaveDataTransferringMount=packed record
-  userId:SceUserServiceUserId;
-  align1:Integer;
-  titleId:pSceSaveDataTitleId;
-  dirName:PSceSaveDataDirName;
+  userId     :SceUserServiceUserId;
+  align1     :Integer;
+  titleId    :pSceSaveDataTitleId;
+  dirName    :PSceSaveDataDirName;
   fingerprint:pSceSaveDataFingerprint;
-  reserved:array[0..31] of Byte;
+  reserved   :array[0..31] of Byte;
  end;
 
  PSceSaveDataMountResult=^SceSaveDataMountResult;
  SceSaveDataMountResult=packed record
-  mountPoint:SceSaveDataMountPoint;
+  mountPoint    :SceSaveDataMountPoint;
   requiredBlocks:QWORD;
-  unused:DWORD;
-  mountStatus:DWORD;
-  reserved:array[0..27] of Byte;
-  align1:Integer;
+  unused        :DWORD;
+  mountStatus   :DWORD;
+  reserved      :array[0..27] of Byte;
+  align1        :Integer;
  end;
 
  pSceSaveDataMountInfo=^SceSaveDataMountInfo;
  SceSaveDataMountInfo=packed record
   blocks    :QWORD; //SceSaveDataBlocks
   freeBlocks:QWORD; //SceSaveDataBlocks
-  reserved:array[0..31] of Byte;
+  reserved  :array[0..31] of Byte;
  end;
 
  pSceSaveDataDirNameSearchCond=^SceSaveDataDirNameSearchCond;
  SceSaveDataDirNameSearchCond=packed record
-  userId:SceUserServiceUserId;
-  _align:Integer;
-  titleId:pSceSaveDataTitleId;
-  dirName:pSceSaveDataDirName;
-  key:DWORD;   //SceSaveDataSortKey
-  order:DWORD; //SceSaveDataSortOrder
+  userId  :SceUserServiceUserId;
+  _align  :Integer;
+  titleId :pSceSaveDataTitleId;
+  dirName :pSceSaveDataDirName;
+  key     :DWORD; //SceSaveDataSortKey
+  order   :DWORD; //SceSaveDataSortOrder
   reserved:array[0..31] of Byte;
  end;
 
  pSceSaveDataSearchInfo=^SceSaveDataSearchInfo;
  SceSaveDataSearchInfo=packed record
-  blocks:QWORD;     //SceSaveDataBlocks
+  blocks    :QWORD; //SceSaveDataBlocks
   freeBlocks:QWORD; //SceSaveDataBlocks
-  reserved:array[0..31] of Byte;
+  reserved  :array[0..31] of Byte;
  end;
 
  pSceSaveDataDirNameSearchResult=^SceSaveDataDirNameSearchResult;
  SceSaveDataDirNameSearchResult=packed record
-  hitNum:DWORD;
-  _align:Integer;
-  dirNames:pSceSaveDataDirName;
+  hitNum     :DWORD;
+  _align     :Integer;
+  dirNames   :pSceSaveDataDirName;
   dirNamesNum:DWORD;
-  setNum:DWORD;
-  params:pSceSaveDataParam;
-  infos:pSceSaveDataSearchInfo;
-  reserved:array[0..11] of Byte;
-  _align2:Integer;
+  setNum     :DWORD;
+  params     :pSceSaveDataParam;
+  infos      :pSceSaveDataSearchInfo;
+  reserved   :array[0..11] of Byte;
+  _align2    :Integer;
  end;
 
  SceSaveDataParamType=DWORD;
 
  pSceSaveDataEvent=^SceSaveDataEvent;
  SceSaveDataEvent=packed record
-  _type:DWORD; //SceSaveDataEventType;
+  _type    :DWORD; //SceSaveDataEventType;
   errorCode:Integer;
-  userId:SceUserServiceUserId;
-  padding:Integer;
-  titleId:SceSaveDataTitleId;
-  dirName:SceSaveDataDirName;
-  reserved:array[0..39] of Byte;
+  userId   :SceUserServiceUserId;
+  padding  :Integer;
+  titleId  :SceSaveDataTitleId;
+  dirName  :SceSaveDataDirName;
+  reserved :array[0..39] of Byte;
  end;
 
  pSceSaveDataEventParam=Pointer;
 
  SceSaveDataEventCallbackFunc=procedure(event:pSceSaveDataEvent;userdata:Pointer);
 
- PSceSaveDataCheckBackupData=Pointer;
+ pSceSaveDataBackup=^SceSaveDataBackup;
+ SceSaveDataBackup=packed record
+  userId     :SceUserServiceUserId;
+  _align     :Integer;
+  titleId    :pSceSaveDataTitleId;
+  dirName    :pSceSaveDataDirName;
+  fingerprint:pSceSaveDataFingerprint;
+  reserved   :array[0..31] of Byte;
+ end;
+
+ pSceSaveDataCheckBackupData=^SceSaveDataCheckBackupData;
+ SceSaveDataCheckBackupData=packed record
+  userId     :SceUserServiceUserId;
+  _align     :Integer;
+  titleId    :pSceSaveDataTitleId;
+  dirName    :pSceSaveDataDirName;
+  param      :pSceSaveDataParam;
+  icon       :pSceSaveDataIcon;
+  reserved   :array[0..31] of Byte;
+ end;
 
 implementation
 
@@ -725,7 +744,12 @@ begin
  Result:=0;
 end;
 
-function ps4_sceSaveDataCheckBackupData(check:PSceSaveDataCheckBackupData):Integer;
+function ps4_sceSaveDataBackup(backup:pSceSaveDataBackup):Integer;
+begin
+ Result:=0;
+end;
+
+function ps4_sceSaveDataCheckBackupData(check:pSceSaveDataCheckBackupData):Integer;
 begin
  Result:=SCE_SAVE_DATA_ERROR_NOT_FOUND;
 end;
@@ -768,6 +792,7 @@ begin
  lib.set_proc($86C29DE5CDB5B107,@ps4_sceSaveDataRegisterEventCallback);
  lib.set_proc($8FCC4AB62163D126,@ps4_sceSaveDataGetEventResult);
  lib.set_proc($5B3FF82597DE3BD8,@ps4_sceSaveDataClearProgress);
+ lib.set_proc($CF5240F3F889B779,@ps4_sceSaveDataBackup);
  lib.set_proc($4503AA0DB9376D25,@ps4_sceSaveDataCheckBackupData);
 
  //init_save;
