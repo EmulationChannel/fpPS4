@@ -106,7 +106,7 @@ type
   function   UnregisterBufferAttribute(attrid:Byte):Integer; override;
   function   RegisterBuffer           (buf:p_register_buffer):Integer; override;
   function   UnregisterBuffer         (index:Integer):Integer; override;
-  procedure  SubmitNode               (Node:PQNodeSubmit);
+  procedure  SubmitNode               (Node:PQNodeSubmit;is_eop:Boolean);
   procedure  ResetBuffer              (bufferIndex:Integer);
   function   SubmitFlip               (submit:p_submit_flip):Integer; override;
   function   SubmitFlipEop            (submit:p_submit_flip;submit_id:QWORD):Integer; override;
@@ -902,7 +902,7 @@ begin
  ReleaseDC(hWindow, hdc);
 end;
 
-procedure TDisplayHandleSoft.SubmitNode(Node:PQNodeSubmit);
+procedure TDisplayHandleSoft.SubmitNode(Node:PQNodeSubmit;is_eop:Boolean);
 var
  //prev:Integer;
  bufferIndex:Integer;
@@ -923,7 +923,10 @@ begin
   //
   System.InterlockedIncrement(Fflip_count[bufferIndex]);
   //
-  System.InterlockedIncrement(last_status.flipPendingNum0);
+  if not is_eop then
+  begin
+   System.InterlockedIncrement(last_status.flipPendingNum0);
+  end;
  end;
 
  FSubmitQueue.Push(Node);
@@ -984,7 +987,7 @@ begin
 
  Node^.submit:=submit^;
 
- SubmitNode(Node);
+ SubmitNode(Node,False);
 
  Result:=0;
 end;
@@ -1025,9 +1028,14 @@ begin
  Flip^.submit   :=Node;
  Flip^.submit_id:=submit_id;
 
- STAILQ_INSERT_TAIL(@FFlipQueue,Flip,@Flip^.entry);
-
  System.InterlockedIncrement(last_status.gcQueueNum);
+
+ if (submit^.bufferIndex<>-1) then
+ begin
+  System.InterlockedIncrement(last_status.flipPendingNum0);
+ end;
+
+ STAILQ_INSERT_TAIL(@FFlipQueue,Flip,@Flip^.entry);
 
  Result:=0;
 end;
@@ -1061,7 +1069,7 @@ begin
 
    if (Node<>nil) then
    begin
-    SubmitNode(Node);
+    SubmitNode(Node,True);
    end;
 
    Exit;
