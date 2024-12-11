@@ -1768,8 +1768,8 @@ begin
    ri:=TvImage2(resource_instance^.resource^.rimage);
 
    if (ri<>nil) then
+   if not ri.IsDepthAndStencil then
    begin
-    Assert(not ri.IsDepthAndStencil);
 
     //is write on current stage
     if ((resource_instance^.curr.mem_usage and TM_WRITE)<>0) then
