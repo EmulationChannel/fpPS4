@@ -29,6 +29,14 @@ uses
                  +----------+    +---------+
 }
 
+var
+ plt_stub:t_jplt_cache_asm=(
+  plt:nil;
+  src:nil;
+  dst:nil;
+  blk:nil;
+ );
+
 type
  p_jit_dynamic_blob=^t_jit_dynamic_blob;
 
@@ -38,6 +46,7 @@ type
   blob:p_jit_dynamic_blob;
   src :Pointer; //<-guest
   dst :Pointer; //<-host
+  entry_public:Integer;
   procedure inc_ref(name:pchar);
   procedure dec_ref(name:pchar);
  end;
@@ -105,8 +114,6 @@ type
    plta:p_jit_plt;
    pltc:ptruint;
 
-   plt_stub:t_jplt_cache_asm;
-
    lock:Pointer;
    refs:Integer;
 
@@ -122,11 +129,11 @@ type
   function  add_entry_point(src,dst:Pointer):p_jit_entry_point;
   procedure free_entry_point(node:p_jit_entry_point);
   procedure init_plt;
-  procedure attach_plt_cache(node:p_jplt_cache);
-  procedure detach_plt_cache(node:p_jplt_cache);
+  procedure attach_plt_cache(uplock:p_jit_dynamic_blob;node:p_jplt_cache);
+  procedure detach_plt_cache(uplock:p_jit_dynamic_blob;node:p_jplt_cache);
   procedure detach_all_attc;
   procedure detach_all_curr;
-  function  add_plt_cache(plt:p_jit_plt;src,dst:Pointer;blk:p_jit_dynamic_blob):p_jplt_cache;
+  function  add_plt_cache(plt:p_jit_plt;src,dst:Pointer;dst_blk:p_jit_dynamic_blob):p_jplt_cache;
   function  new_chunk(count:QWORD):p_jcode_chunk;
   procedure alloc_base(_size:ptruint);
   procedure free_base;
@@ -705,6 +712,10 @@ begin
 
   jctx^.block:=node^.blob;
 
+  Assert(cache<>nil);
+  Assert(cache^.src<>nil);
+  Assert(cache^.dst<>nil);
+
   //one element plt cache
   System.InterlockedExchange(plt^.cache,cache);
  end;
@@ -1095,6 +1106,7 @@ begin
 
  if (System.InterlockedDecrement(refs)=0) then
  begin
+  //Writeln('free:',HexStr(@self),' ',name);
   Free;
  end;
 end;
@@ -1178,27 +1190,48 @@ begin
  end;
 end;
 
-procedure t_jit_dynamic_blob.attach_plt_cache(node:p_jplt_cache);
+procedure t_jit_dynamic_blob.attach_plt_cache(uplock:p_jit_dynamic_blob;node:p_jplt_cache);
 begin
- rw_wlock(lock);
+ Self.inc_ref('attach_plt_cache');
+
+ if (uplock<>@Self) then
+ begin
+  rw_wlock(lock);
+ end;
 
  TAILQ_INSERT_TAIL(@jpltc_attc,node,@node^.entry);
 
- rw_wunlock(lock);
+ if (node^.entry.tqe_prev=nil) then
+ begin
+  Assert(false);
+ end;
+
+ if (uplock<>@Self) then
+ begin
+  rw_wunlock(lock);
+ end;
 end;
 
-procedure t_jit_dynamic_blob.detach_plt_cache(node:p_jplt_cache);
+procedure t_jit_dynamic_blob.detach_plt_cache(uplock:p_jit_dynamic_blob;node:p_jplt_cache);
 begin
- rw_wlock(lock);
-
  if (node^.entry.tqe_prev<>nil) then
  begin
+  if (uplock<>@Self) then
+  begin
+   rw_wlock(lock);
+  end;
+
   TAILQ_REMOVE(@jpltc_attc,node,@node^.entry);
 
   node^.entry:=Default(TAILQ_ENTRY);
- end;
 
- rw_wunlock(lock);
+  if (uplock<>@Self) then
+  begin
+   rw_wunlock(lock);
+  end;
+
+  Self.dec_ref('attach_plt_cache');
+ end;
 end;
 
 procedure _reset_plt(node:p_jplt_cache);
@@ -1209,7 +1242,7 @@ begin
  if (plt<>nil) then
  begin
   //one element plt reset
-  System.InterlockedCompareExchange(plt^.cache,nil,node);
+  System.InterlockedCompareExchange(plt^.cache,@plt_stub,node);
  end;
 end;
 
@@ -1222,6 +1255,11 @@ begin
  while (node<>nil) do
  begin
   next:=TAILQ_NEXT(node,@node^.entry);
+
+  if (node^.entry.tqe_prev=nil) then
+  begin
+   Assert(false);
+  end;
 
   TAILQ_REMOVE(@jpltc_attc,node,@node^.entry);
 
@@ -1237,6 +1275,12 @@ begin
 
   node:=next;
  end;
+
+ if TAILQ_FIRST(@jpltc_attc)<>nil then
+ begin
+  Assert(false);
+ end;
+
 end;
 
 procedure t_jit_dynamic_blob.detach_all_curr;
@@ -1252,13 +1296,11 @@ begin
 
   _reset_plt(node);
 
-  blk:=node^.blk;
+  blk:=System.InterlockedExchange(node^.blk,nil);
 
   if (blk<>nil) then
   begin
-   blk^.detach_plt_cache(node);
-   blk^.dec_ref('add_plt_cache');
-   node^.blk:=nil;
+   blk^.detach_plt_cache(@Self,node);
   end;
 
   FreeMem(node);
@@ -1267,19 +1309,17 @@ begin
  end;
 end;
 
-function t_jit_dynamic_blob.add_plt_cache(plt:p_jit_plt;src,dst:Pointer;blk:p_jit_dynamic_blob):p_jplt_cache;
+function t_jit_dynamic_blob.add_plt_cache(plt:p_jit_plt;src,dst:Pointer;dst_blk:p_jit_dynamic_blob):p_jplt_cache;
 var
  node:t_jplt_cache;
- dec_blk:p_jit_dynamic_blob;
+ old_blk:p_jit_dynamic_blob;
  _insert:Boolean;
 begin
  Assert(plt<>nil);
- Assert(blk<>nil);
+ Assert(dst_blk<>nil);
 
- dec_blk:=nil;
-
- node.plt:=plt;
- node.src:=src;
+ node.plt:=plt; //key
+ node.src:=src; //key
 
  repeat
 
@@ -1289,28 +1329,15 @@ begin
    begin
     //update
     Result^.dst:=dst;
-    if (Result^.blk<>blk) then
+    //
+    old_blk:=System.InterlockedExchange(Result^.blk,dst_blk);
+    if (old_blk<>dst_blk) then
     begin
-     dec_blk:=Result^.blk;
-
-     Result^.blk:=blk;
-     //
-     blk^.inc_ref('add_plt_cache');
+     old_blk^.detach_plt_cache(@Self,Result);
+     dst_blk^.attach_plt_cache(@Self,Result);
     end;
    end;
   rw_wunlock(lock);
-
-  if (dec_blk<>nil) then
-  begin
-   //del
-   if (Result<>nil) then
-   begin
-    dec_blk^.detach_plt_cache(Result);
-   end;
-
-   dec_blk^.dec_ref('add_plt_cache');
-   dec_blk:=nil;
-  end;
 
   if (Result<>nil) then
   begin
@@ -1318,16 +1345,16 @@ begin
   end else
   begin
    Result:=AllocMem(Sizeof(t_jplt_cache));
-   Result^.plt:=plt;
-   Result^.src:=src;
+   Result^.plt:=plt; //key
+   Result^.src:=src; //key
    Result^.dst:=dst;
-   Result^.blk:=blk;
+   Result^.blk:=dst_blk;
    //
    rw_wlock(lock);
     _insert:=jpltc_curr.Insert(Result);
     if _insert then
     begin
-     blk^.inc_ref('add_plt_cache');
+     dst_blk^.attach_plt_cache(@Self,Result);
     end;
    rw_wunlock(lock);
    //
@@ -1340,11 +1367,6 @@ begin
   end;
 
  until false;
-
- if (Result<>nil) then
- begin
-  blk^.attach_plt_cache(Result);
- end;
 
 end;
 
@@ -1455,12 +1477,24 @@ end;
 //
 
 procedure t_jit_dynamic_blob.attach_entry(node:p_jit_entry_point);
+var
+ data:PPointer;
+ old:p_jit_entry_point;
 begin
  node^.inc_ref('attach_entry');
  self.inc_attach_count;
 
+ old:=nil;
+
  rw_wlock(entry_hamt_lock);
-  HAMT_insert64(@entry_hamt,QWORD(node^.src),node);
+  data:=HAMT_insert64(@entry_hamt,QWORD(node^.src),node);
+  Assert(data<>nil);
+  if (data^<>node) then
+  begin
+   old:=data^;
+   data^:=node;
+  end;
+  node^.entry_public:=1;
  rw_wunlock(entry_hamt_lock);
 end;
 
@@ -1509,13 +1543,25 @@ begin
 end;
 
 function t_jit_dynamic_blob.detach_entry(node:p_jit_entry_point):Boolean;
+var
+ old:p_jit_entry_point;
 begin
+ if (node^.entry_public=0) then Exit;
+
+ old:=nil;
+
  rw_wlock(entry_hamt_lock);
-  HAMT_delete64(@entry_hamt,QWORD(node^.src),nil);
+  HAMT_delete64(@entry_hamt,QWORD(node^.src),@old);
  rw_wunlock(entry_hamt_lock);
 
- Result:=self.dec_attach_count;
- node^.dec_ref('attach_entry');
+ if (old=node) then
+ begin
+  if (System.InterlockedExchange(node^.entry_public,0)<>0) then
+  begin
+   Result:=self.dec_attach_count;
+   node^.dec_ref('attach_entry');
+  end;
+ end;
 end;
 
 procedure t_jit_dynamic_blob.detach_all_entry;
@@ -1556,25 +1602,35 @@ end;
 procedure t_jit_dynamic_blob.detach_chunk(node:p_jcode_chunk);
 var
  tobj:p_vm_track_object;
+ removed:Boolean;
 begin
  tobj:=node^.tobj;
+
  if (tobj<>nil) then
  begin
-  node^.tobj:=nil;
-
   _vm_map_track_delete_deferred(p_proc.p_vmspace,tobj);
-
-  //vm_map_track_remove(p_proc.p_vmspace,tobj);
  end;
 
- rw_wlock(entry_chunk_lock);
+ removed:=False;
 
-  TAILQ_REMOVE(@entry_chunk_list,node,@node^.entry);
+ if (node^.entry.tqe_next<>nil) and
+    (node^.entry.tqe_prev<>nil) then
+ begin
+  rw_wlock(entry_chunk_lock);
+  if (node^.entry.tqe_next<>nil) and
+     (node^.entry.tqe_prev<>nil) then
+  begin
+   TAILQ_REMOVE(@entry_chunk_list,node,@node^.entry);
+   node^.entry:=Default(TAILQ_ENTRY);
+   removed:=True;
+  end;
+  rw_wunlock(entry_chunk_lock);
+ end;
 
-  //entry_chunk.Delete(node);
- rw_wunlock(entry_chunk_lock);
-
- node^.dec_ref('blob_track');
+ if removed then
+ begin
+  node^.dec_ref('blob_track');
+ end;
 end;
 
 procedure t_jit_dynamic_blob.detach_all_chunk;
@@ -1618,20 +1674,21 @@ begin
  blob:=chunk^.blob;
  blob^.detach;
 
- {
- blob:=chunk^.blob;
- rw_wlock(blob^.lock);
-
-  blob^.detach_chunk(chunk);
-  blob^.detach_entry(start,__end);
-
- rw_wunlock(blob^.lock);
- }
+ chunk^.dec_ref('tobj');
 end;
 
 function on_destroy(handle:Pointer):Integer;
+var
+ tobj:Pointer;
 begin
- p_jcode_chunk(handle)^.tobj:=nil; //mark delete
+ //Writeln('on_destroy:',HexStr(handle));
+
+ tobj:=System.InterlockedExchange(p_jcode_chunk(handle)^.tobj,nil); //mark delete
+
+ if (tobj=nil) then
+ begin
+  Exit(DO_DELETE);
+ end;
 
  delete_jit_cache(p_jcode_chunk(handle));
 
@@ -1668,10 +1725,10 @@ begin
    node^.inc_ref('blob_track');
 
    rw_wlock(entry_chunk_lock);
-
     TAILQ_INSERT_TAIL(@entry_chunk_list,node,@node^.entry);
-
    rw_wunlock(entry_chunk_lock);
+
+   node^.inc_ref('tobj');
 
    tobj:=vm_track_object_allocate(node,node^.start,node^.__end,H_JIT_CHUNK,PAGE_TRACK_W);
    tobj^.on_destroy:=@on_destroy;

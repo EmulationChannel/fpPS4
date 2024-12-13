@@ -58,10 +58,17 @@ type
 
    p_entry_point=^t_entry_point;
    t_entry_point=object
+    pLeft   :p_entry_point;
+    pRight  :p_entry_point;
+    //
     next    :p_entry_point;
+    //
     src     :Pointer;
     label_id:t_jit_i_link;
+    //
+    function c(n1,n2:p_entry_point):Integer; static;
    end;
+   t_entry_point_set=specialize TNodeSplay<t_entry_point>;
 
    p_export_point=^t_export_point;
    t_export_point=object
@@ -74,6 +81,7 @@ type
    forward_set:t_forward_set;
    label_set  :t_label_set;
    entry_list :p_entry_point;
+   entry_set  :t_entry_point_set;
    export_list:p_export_point;
 
    obj:Pointer;
@@ -291,7 +299,8 @@ uses
  machdep,
  kern_thr,
  systm,
- kern_jit_asm;
+ kern_jit_asm,
+ kern_jit_dynamic;
 
 procedure print_disassemble(addr:Pointer;vsize:Integer);
 var
@@ -325,6 +334,11 @@ end;
 function t_jit_context2.t_label.c(n1,n2:p_label):Integer;
 begin
  Result:=Integer(n1^.curr>n2^.curr)-Integer(n1^.curr<n2^.curr);
+end;
+
+function t_jit_context2.t_entry_point.c(n1,n2:p_entry_point):Integer;
+begin
+ Result:=Integer(n1^.src>n2^.src)-Integer(n1^.src<n2^.src);
 end;
 
 function t_jit_context2.is_text_addr(addr:QWORD):Boolean;
@@ -504,14 +518,24 @@ end;
 
 procedure t_jit_context2.add_entry_point(src:Pointer;label_id:t_jit_i_link);
 var
+ key :t_entry_point;
  node:p_entry_point;
 begin
  if (src=nil) then Exit;
+ //set key
+ key:=Default(t_entry_point);
+ key.src     :=src;
+ key.label_id:=label_id;
+ //find exists
+ node:=entry_set.Find(@key);
+ if (node<>nil) then Exit; //Already added
+ //new
  node:=builder.Alloc(Sizeof(t_entry_point));
+ node^:=key;
+ //insert set
+ entry_set.Insert(node);
+ //insert list
  node^.next    :=entry_list;
- node^.src     :=src;
- node^.label_id:=label_id;
- //
  entry_list:=node;
 end;
 

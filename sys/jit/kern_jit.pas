@@ -1675,6 +1675,29 @@ begin
 
   ctx.ptr_curr:=ptr;
 
+  //pre check
+  if exist_entry(ptr) then
+  begin
+   if (entry_link=ptr) then
+   begin
+    entry_link:=nil; //clear
+   end;
+
+   link_curr:=ctx.builder.get_curr_label.after;
+   node_curr:=link_curr._node;
+
+   op_set_r14_imm(ctx,Int64(ptr));
+   //
+   op_jmp_dispatcher(ctx,nil);
+
+   link_next:=ctx.builder.get_curr_label.after;
+   node_next:=link_next._node;
+
+   cb:=@op_invalid;
+   ctx.trim:=True;
+   goto _next; //trim
+  end;
+
   //guest->host ptr
   ctx.code:=uplift(ptr);
   ptr:=ctx.code;
@@ -1706,6 +1729,9 @@ begin
 
      ctx.mark_chunk(fpInvalid);
 
+     link_curr:=ctx.builder.get_curr_label.after;
+     node_curr:=link_curr._node;
+
      ctx.builder.int3;
      ctx.builder.int3;
      ctx.builder.ud2;
@@ -1715,8 +1741,8 @@ begin
       op_set_r14_imm(ctx,Int64(ctx.ptr_curr));
      end;
 
-     link_curr:=ctx.builder.get_curr_label.before;
      link_next:=ctx.builder.get_curr_label.after;
+     node_next:=link_next._node;
 
      cb:=@op_invalid;
      ctx.trim:=True;

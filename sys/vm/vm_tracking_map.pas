@@ -130,7 +130,7 @@ procedure vm_track_map_unlock(map:p_vm_track_map;def:Boolean=True);
 function  _vm_track_map_insert(map:p_vm_track_map;start,__end,source:vm_offset_t;obj:p_vm_track_object):Integer;
 
 procedure _vm_track_map_insert_deferred(map:p_vm_track_map;start,__end,source:vm_offset_t;obj:p_vm_track_object);
-procedure _vm_track_map_delete_deferred(map:p_vm_track_map;obj:p_vm_track_object);
+function  _vm_track_map_delete_deferred(map:p_vm_track_map;obj:p_vm_track_object):Boolean;
 
 function  _vm_track_map_insert_mirror(map:p_vm_track_map;start,__end,dst:vm_offset_t):Integer;
 
@@ -1245,7 +1245,6 @@ begin
 
  while (entry<>@map^.header) and (entry^.start<__end) do
  begin
-
   vm_track_map_clip_end(map, entry, __end);
 
   next:=entry^.next;
@@ -1325,8 +1324,10 @@ begin
  TAILQ_INSERT_TAIL(@map^.insert_deferred.list,new,@new^.entry);
 end;
 
-procedure _vm_track_map_delete_deferred(map:p_vm_track_map;obj:p_vm_track_object);
+function _vm_track_map_delete_deferred(map:p_vm_track_map;obj:p_vm_track_object):Boolean;
 begin
+ Result:=False;
+
  VM_MAP_ASSERT_LOCKED(map);
 
  if (obj=nil) then Exit;
@@ -1336,6 +1337,8 @@ begin
  if (obj^.del_link.tqe_prev<>nil) then Exit;
 
  TAILQ_INSERT_TAIL(@map^.delete_deferred,obj,@obj^.del_link);
+
+  Result:=True;
 end;
 
 procedure _vm_track_map_process_deferred(map:p_vm_track_map);
@@ -1726,7 +1729,6 @@ end;
 function vm_track_map_overlap(map:p_vm_track_map;obj:p_vm_track_object;data:Pointer):Integer;
 var
  node:p_vm_track_object_instance;
- entry:p_vm_track_map_entry;
 begin
  Result:=0;
  if (map=nil) or (obj=nil) then Exit;
