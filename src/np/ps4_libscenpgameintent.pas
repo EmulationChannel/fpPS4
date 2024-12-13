@@ -37,12 +37,12 @@ type
   intentData:SceNpGameIntentData;
  end;
 
-function ps4_sceNpGameIntentInitialize(initParam:pSceNpGameIntentInitParam):Integer; SysV_ABI_CDecl;
+function ps4_sceNpGameIntentInitialize(initParam:pSceNpGameIntentInitParam):Integer;
 begin
  Result:=6;
 end;
 
-function ps4_sceNpGameIntentReceiveIntent(intentInfo:pSceNpGameIntentInfo):Integer; SysV_ABI_CDecl;
+function ps4_sceNpGameIntentReceiveIntent(intentInfo:pSceNpGameIntentInfo):Integer;
 begin
  Result:=0;
 end;
@@ -50,7 +50,7 @@ end;
 function ps4_sceNpGameIntentGetPropertyValueString(intentData:pSceNpGameIntentData;
                                                    key:Pchar;
                                                    valueBuf:Pchar;
-                                                   bufSize:QWORD):Integer; SysV_ABI_CDecl;
+                                                   bufSize:QWORD):Integer;
 begin
  if (valueBuf<>nil) then
  begin

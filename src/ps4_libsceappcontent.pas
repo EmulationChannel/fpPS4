@@ -84,7 +84,7 @@ type
  pSceAppContentEntitlementKey=^SceAppContentEntitlementKey;
  SceAppContentEntitlementKey=array[0..SCE_APP_CONTENT_ENTITLEMENT_KEY_SIZE-1] of AnsiChar;
 
-function ps4_sceAppContentInitialize(initParam:PSceAppContentInitParam;bootParam:PSceAppContentBootParam):Integer; SysV_ABI_CDecl;
+function ps4_sceAppContentInitialize(initParam:PSceAppContentInitParam;bootParam:PSceAppContentBootParam):Integer;
 begin
  Writeln('sceAppContentInitialize');
 
