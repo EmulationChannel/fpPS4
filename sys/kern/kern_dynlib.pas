@@ -447,8 +447,9 @@ begin
 
    Writeln(' get_info_ex  :',obj^.lib_path);
    Writeln(' obj.id       :',obj^.id);
-   Writeln(' tls_index    :0x',HexStr(tls_index shr 16,4),':',HexStr(tls_index,4));
-   Writeln(' tls_init_addr:0x',HexStr(obj^.tls_init_addr));
+   Writeln(' tls_flags    :0x',HexStr(tls_index shr 16,4));
+   Writeln(' tls_index    :0x',HexStr(tls_index,4));
+   Writeln(' tls_init_addr:0x',HexStr(QWORD(obj^.tls_init_addr),10));
    Writeln(' tls_init_size:0x',HexStr(obj^.tls_init_size,8));
    Writeln(' tls_size     :0x',HexStr(obj^.tls_size     ,8));
    Writeln(' tls_offset   :0x',HexStr(obj^.tls_offset   ,8));

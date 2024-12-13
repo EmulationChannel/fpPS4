@@ -532,6 +532,11 @@ function dynlib_unlink_non_plt_reloc_each(root,obj:p_lib_info):Integer;
 var
  rela:p_elf64_rela;
 
+ entry:p_elf64_rela;
+
+ def:p_elf64_sym;
+ defobj:p_lib_info;
+
  where:Pointer;
  data:Pointer;
 
@@ -551,73 +556,51 @@ begin
  begin
   if check_relo_bits(obj,i) then
   begin
-   where:=Pointer(obj^.relocbase)+rela^.r_offset;
+   entry:=rela+i;
 
-   r_type:=ELF64_R_TYPE(rela^.r_info);
+   defobj:=nil;
+   def:=find_symdef(ELF64_R_SYM(entry^.r_info),obj,defobj,0,nil,nil);
 
-   case r_type of
+   if (def<>nil) and (defobj=root) then
+   begin
+    where:=Pointer(obj^.relocbase)+entry^.r_offset;
 
-    R_X86_64_NONE:; //ignore
+    r_type:=ELF64_R_TYPE(entry^.r_info);
 
-    R_X86_64_COPY:
-      if (obj^.rtld_flags.mainprog=0) then
-      begin
-       Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','Unexpected R_X86_64_COPY relocation in dynamic library ',dynlib_basename(obj^.lib_path));
-       Exit(-1);
-      end; //R_X86_64_COPY
+    case r_type of
 
-    R_X86_64_64,
-    R_X86_64_GLOB_DAT,
-    R_X86_64_RELATIVE,
-    R_X86_64_TPOFF64:
-      begin
-       data:=Pointer(QWORD($840000000));
+     R_X86_64_NONE:; //ignore
 
-       Result:=relocate_text_or_data_segment(obj,@data,where,SizeOf(Pointer));
-       if (Result<>0) then
+     R_X86_64_COPY:
+       if (obj^.rtld_flags.mainprog=0) then
        begin
-        Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','copyout() failed. where=0x',HexStr(where),' ref=',dynlib_basename(obj^.lib_path));
+        Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','Unexpected R_X86_64_COPY relocation in dynamic library ',dynlib_basename(obj^.lib_path));
         Exit(-1);
-       end;
+       end; //R_X86_64_COPY
 
-       reset_relo_bits(obj,i);
-      end; //64
-
-    R_X86_64_PC32,
-    R_X86_64_TPOFF32:
-     begin
-      data32:=Integer($40000000);
-
-      Result:=relocate_text_or_data_segment(obj,@data32,where,SizeOf(Integer));
-      if (Result<>0) then
-      begin
-       Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','copyout() failed. where32=0x',HexStr(where),' ref=',dynlib_basename(obj^.lib_path));
-       Exit(-1);
-      end;
-
-      reset_relo_bits(obj,i);
-     end; //32
-
-    R_X86_64_DTPMOD64,
-    R_X86_64_DTPOFF64:
-      begin
-       data:=nil;
-
-       Result:=copyout(@data,where,SizeOf(Pointer));
-       if (Result<>0) then
+     R_X86_64_64,
+     R_X86_64_GLOB_DAT,
+     R_X86_64_RELATIVE,
+     R_X86_64_TPOFF64:
        begin
-        Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','copyout() failed. where=0x',HexStr(where),' ref=',dynlib_basename(obj^.lib_path));
-        Exit(-1);
-       end;
+        data:=Pointer(QWORD($840000000));
 
-       reset_relo_bits(obj,i);
-      end; //64
+        Result:=relocate_text_or_data_segment(obj,@data,where,SizeOf(Pointer));
+        if (Result<>0) then
+        begin
+         Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','copyout() failed. where=0x',HexStr(where),' ref=',dynlib_basename(obj^.lib_path));
+         Exit(-1);
+        end;
 
-    R_X86_64_DTPOFF32:
+        reset_relo_bits(obj,i);
+       end; //64
+
+     R_X86_64_PC32,
+     R_X86_64_TPOFF32:
       begin
-       data32:=0;
+       data32:=Integer($40000000);
 
-       Result:=copyout(@data32,where,SizeOf(Integer));
+       Result:=relocate_text_or_data_segment(obj,@data32,where,SizeOf(Integer));
        if (Result<>0) then
        begin
         Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','copyout() failed. where32=0x',HexStr(where),' ref=',dynlib_basename(obj^.lib_path));
@@ -627,11 +610,41 @@ begin
        reset_relo_bits(obj,i);
       end; //32
 
-    else
-      begin
-       Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','Unsupported reloc type=',r_type);
-       Exit(-1);
-      end;
+     R_X86_64_DTPMOD64,
+     R_X86_64_DTPOFF64:
+       begin
+        data:=nil;
+
+        Result:=copyout(@data,where,SizeOf(Pointer));
+        if (Result<>0) then
+        begin
+         Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','copyout() failed. where=0x',HexStr(where),' ref=',dynlib_basename(obj^.lib_path));
+         Exit(-1);
+        end;
+
+        //non reset
+       end; //64
+
+     R_X86_64_DTPOFF32:
+       begin
+        data32:=0;
+
+        Result:=copyout(@data32,where,SizeOf(Integer));
+        if (Result<>0) then
+        begin
+         Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','copyout() failed. where32=0x',HexStr(where),' ref=',dynlib_basename(obj^.lib_path));
+         Exit(-1);
+        end;
+
+        //non reset
+       end; //32
+
+     else
+       begin
+        Writeln(StdErr,'dynlib_unlink_non_plt_reloc_each:','Unsupported reloc type=',r_type);
+        Exit(-1);
+       end;
+   end;
 
    end;
   end; //case
@@ -642,6 +655,8 @@ end;
 function dynlib_unlink_plt_reloc_each(root,obj:p_lib_info):Integer;
 var
  i,count,idofs:Integer;
+
+ plrel:p_elf64_rela;
 
  entry:p_elf64_rela;
 
@@ -655,15 +670,16 @@ var
 begin
  Result:=0;
 
+ plrel:=obj^.rel_data^.pltrela_addr;
  count:=obj^.rel_data^.pltrela_size div SizeOf(elf64_rela);
  idofs:=obj^.rel_data^.rela_size    div SizeOf(elf64_rela);
 
- if (obj^.rel_data^.pltrela_addr<>nil) and (count<>0) then
+ if (plrel<>nil) and (count<>0) then
  For i:=0 to count-1 do
  begin
   if check_relo_bits(obj,idofs+i) then
   begin
-   entry:=obj^.rel_data^.pltrela_addr+i;
+   entry:=plrel+i;
 
    if (ELF64_R_TYPE(entry^.r_info)<>R_X86_64_JUMP_SLOT) then
    begin

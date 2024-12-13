@@ -164,8 +164,8 @@ function  rtld_file_exists(path:pchar):Boolean;
 
 function  convert_prot(flags:Elf64_Word):Byte;
 
-function  rtld_mmap  (addr:PQWORD;size:QWORD):Integer;
-procedure rtld_munmap(base:Pointer;size:QWORD);
+function  rtld_mmap  (addr:PQWORD ;size:QWORD;hint:PChar):Integer;
+procedure rtld_munmap(base:Pointer;size:QWORD;hint:PChar);
 
 function  scan_phdr(imgp:p_image_params;phdr:p_elf64_phdr;count:Integer):Integer;
 
@@ -621,10 +621,12 @@ begin
  if ((flags and PF_R)<>0) then Result:=Result or VM_PROT_READ;
 end;
 
-function rtld_mmap(addr:PQWORD;size:QWORD):Integer;
+function rtld_mmap(addr:PQWORD;size:QWORD;hint:PChar):Integer;
 var
  map:vm_map_t;
 begin
+ Writeln(' rtld_mmap:0x',HexStr(addr^,12),'..0x',HexStr(addr^+size,12),':',hint);
+
  map:=p_proc.p_vmspace;
 
  if (addr^=0) and ((g_appinfo.mmap_flags and 2)<>0) then
@@ -635,10 +637,12 @@ begin
  Result:=vm_mmap2(map,addr,size,0,0,MAP_ANON or MAP_PRIVATE or (21 shl MAP_ALIGNMENT_BIT),OBJT_DEFAULT,nil,0,nil);
 end;
 
-procedure rtld_munmap(base:Pointer;size:QWORD);
+procedure rtld_munmap(base:Pointer;size:QWORD;hint:PChar);
 var
  map:vm_map_t;
 begin
+ Writeln(' rtld_munmap:0x',HexStr(QWORD(base),12),'..0x',HexStr(QWORD(base)+size,12),':',hint);
+
  if (base<>nil) and (size<>0) then
  begin
   map:=p_proc.p_vmspace;

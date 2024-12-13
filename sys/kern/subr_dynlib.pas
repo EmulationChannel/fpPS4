@@ -2195,9 +2195,7 @@ begin
   end;
  end;
 
- error:=rtld_mmap(@addr,imgp^.max_addr-imgp^.min_addr);
-
- Writeln(' rtld_mmap:0x',HexStr(addr,12),'..0x',HexStr(addr+(imgp^.max_addr-imgp^.min_addr),12),':',imgp^.execpath);
+ error:=rtld_mmap(@addr,imgp^.max_addr-imgp^.min_addr,imgp^.execpath);
 
  if (error<>0) then
  begin
@@ -2739,7 +2737,7 @@ begin
 
  _error:
 
- rtld_munmap(new^.map_base,new^.map_size);
+ rtld_munmap(new^.map_base,new^.map_size,dynlib_basename(new^.lib_path));
 
  obj_free(new);
 
@@ -2792,13 +2790,16 @@ begin
  begin
   next:=TAILQ_NEXT(obj,@obj^.link);
   //
-  rtld_munmap(obj^.map_base, obj^.map_size);
+  if (obj^.ref_count=0) then
+  begin
+   rtld_munmap(obj^.map_base, obj^.map_size,dynlib_basename(obj^.lib_path));
 
-  dynlibs_del_obj(obj);
+   dynlibs_del_obj(obj);
 
-  //dynlib_notify_event(td,lib->id,0x80);
+   //dynlib_notify_event(td,lib->id,0x80);
 
-  obj_free(obj);
+   obj_free(obj);
+  end;
   //
   obj:=next;
  end;
@@ -2836,9 +2837,7 @@ begin
 
  //alloc addr
  vaddr_lo:=ET_DYN_LOAD_ADDR_SYS;
- error:=rtld_mmap(@vaddr_lo,obj^.map_size);
-
- Writeln(' rtld_mmap:0x',HexStr(vaddr_lo,12),'..0x',HexStr(vaddr_lo+obj^.map_size,12),':',obj^.lib_path);
+ error:=rtld_mmap(@vaddr_lo,obj^.map_size,dynlib_basename(obj^.lib_path));
 
  if (error<>0) then
  begin
@@ -2903,8 +2902,9 @@ begin
  vm_map_unlock(map);
 
  //
- obj^.map_base :=Pointer(vaddr_lo);
- obj^.data_addr:=data;
+ obj^.map_base     :=Pointer(vaddr_lo);
+ obj^.data_addr    :=data;
+ obj^.tls_init_addr:=data;
 end;
 
 const
@@ -2978,6 +2978,7 @@ begin
     Result^.rtld_flags.init_plt :=1;
     Result^.rtld_flags.is_system:=1;
     Result^.rtld_flags.internal :=1;
+    Result^.rtld_flags.tls_done :=1;
     Result^.loaded:=1;
 
     Writeln(' preload_prx_internal:',path);
