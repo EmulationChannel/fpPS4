@@ -1323,6 +1323,8 @@ begin
 
  repeat
 
+  old_blk:=nil;
+
   rw_wlock(lock);
    Result:=jpltc_curr.Find(@node);
    if (Result<>nil) then
@@ -1333,14 +1335,37 @@ begin
     old_blk:=System.InterlockedExchange(Result^.blk,dst_blk);
     if (old_blk<>dst_blk) then
     begin
-     old_blk^.detach_plt_cache(@Self,Result);
-     dst_blk^.attach_plt_cache(@Self,Result);
+     if (old_blk<>nil) and (old_blk=@Self) then
+     begin
+      //detach immediately
+      old_blk^.detach_plt_cache(@Self,Result);
+     end;
+     if (dst_blk=@Self) then
+     begin
+      //attach immediately
+      dst_blk^.attach_plt_cache(@Self,Result);
+     end;
     end;
    end;
   rw_wunlock(lock);
 
   if (Result<>nil) then
   begin
+   if (old_blk<>dst_blk) then
+   begin
+    if (old_blk<>nil) and (old_blk<>@Self) then
+    begin
+     //detach deferred
+     old_blk^.detach_plt_cache(@Self,Result);
+    end;
+    //
+    if (dst_blk<>@Self) then
+    begin
+     //attach deferred
+     dst_blk^.attach_plt_cache(@Self,Result);
+    end;
+   end;
+   //
    Break;
   end else
   begin
@@ -1352,16 +1377,21 @@ begin
    //
    rw_wlock(lock);
     _insert:=jpltc_curr.Insert(Result);
-    if _insert then
+    if _insert and (dst_blk=@Self) then
     begin
+     //attach immediately
      dst_blk^.attach_plt_cache(@Self,Result);
     end;
    rw_wunlock(lock);
    //
    if _insert then
    begin
-    //add
-
+    //attach deferred
+    if (dst_blk<>@Self) then
+    begin
+     dst_blk^.attach_plt_cache(@Self,Result);
+    end;
+    //
     Break;
    end;
   end;
