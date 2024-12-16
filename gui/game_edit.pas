@@ -373,7 +373,7 @@ begin
  V:=ParamSfo.GetString('TITLE_ID');
  SetGridVal(GridMain,FTitleId_row,V);
 
- V:=ParamSfo.GetString('VERSION');
+ V:=ParamSfo.GetString('APP_VER');
  SetGridVal(GridMain,FVersion_row,V);
 end;
 

@@ -44,14 +44,19 @@ begin
  td^.td_pri_class:=_class;
 end;
 
-function sched_thread_priority(td:p_kthread;prio:Integer):Integer; inline;
+function sched_thread_priority(td:p_kthread;prio:Integer):Integer;
 begin
+ if (td^.td_priority=prio) then Exit;
+
  Result:=cpu_set_priority(td,prio);
+
+ td^.td_priority:=prio;
 end;
 
 procedure sched_prio(td:p_kthread;prio:Integer);
 begin
  td^.td_base_pri:=prio;
+ cpu_set_base_priority(td,prio);
 
  if ((td^.td_flags and TDF_BORROWING)<>0) and
     (td^.td_priority < prio) then Exit;

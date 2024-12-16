@@ -616,6 +616,9 @@ begin
    rtp_to_pri(rtp,newtd);
    sched_prio(newtd,newtd^.td_user_pri);
   end;
+ end else
+ begin
+  sched_prio(newtd,newtd^.td_user_pri);
  end;
 
  n:=cpu_sched_add(newtd);

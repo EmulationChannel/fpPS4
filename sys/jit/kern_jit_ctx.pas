@@ -299,8 +299,7 @@ uses
  machdep,
  kern_thr,
  systm,
- kern_jit_asm,
- kern_jit_dynamic;
+ kern_jit_asm;
 
 procedure print_disassemble(addr:Pointer;vsize:Integer);
 var

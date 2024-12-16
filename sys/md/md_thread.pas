@@ -41,6 +41,7 @@ procedure cpu_sched_throw;
 function  cpu_thread_finished(td:p_kthread):Boolean;
 
 function  cpuset_setaffinity(td:p_kthread;new:Ptruint):Integer;
+function  cpu_set_base_priority(td:p_kthread;prio:Integer):Integer;
 function  cpu_set_priority(td:p_kthread;prio:Integer):Integer;
 
 function  cpu_thread_set_name(td:p_kthread;const name:shortstring):Integer;
@@ -441,15 +442,10 @@ begin
  Result:=NtSetInformationThread(td^.td_handle,ThreadAffinityMask,p_mask,SizeOf(Ptruint));
 end;
 
-function cpu_set_priority(td:p_kthread;prio:Integer):Integer;
-var
- data:array[0..SizeOf(Integer)-1+7] of Byte;
- p_prio:PInteger;
+function cpu_set_base_priority(td:p_kthread;prio:Integer):Integer;
 begin
  if (td=nil) then Exit;
  if (td^.td_handle=0) or (td^.td_handle=THandle(-1)) then Exit(-1);
-
- td^.td_priority:=prio;
 
  Case prio of
     0..255:prio:= 16;
@@ -462,10 +458,35 @@ begin
            prio:=-16;
  end;
 
- p_prio:=Align(@data,8);
- p_prio^:=prio;
+ Result:=NtSetInformationThread(td^.td_handle,ThreadBasePriority,@prio,SizeOf(Integer));
+end;
 
- Result:=NtSetInformationThread(td^.td_handle,ThreadBasePriority,p_prio,SizeOf(Integer));
+function cpu_set_priority(td:p_kthread;prio:Integer):Integer;
+begin
+ if (td=nil) then Exit;
+ if (td^.td_handle=0) or (td^.td_handle=THandle(-1)) then Exit(-1);
+
+ Case prio of
+    0..263:prio:=15;
+  264..299:prio:=14;
+  300..335:prio:=13;
+  336..371:prio:=12;
+  372..407:prio:=11;
+  408..443:prio:=10;
+  444..479:prio:= 9;
+  480..515:prio:= 8;
+  516..551:prio:= 7;
+  552..587:prio:= 6;
+  588..623:prio:= 5;
+  624..659:prio:= 4;
+  660..695:prio:= 3;
+  696..731:prio:= 2;
+  732..767:prio:= 1;
+  else
+           prio:= 1;
+ end;
+
+ Result:=NtSetInformationThread(td^.td_handle,ThreadPriority,@prio,SizeOf(Integer));
 end;
 
 function cpu_thread_set_name(td:p_kthread;const name:shortstring):Integer;
