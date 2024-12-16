@@ -28,12 +28,13 @@ implementation
 
 {$IFDEF ALT_SRW}
 uses
- mqueue,
- windows,
- ntapi;
+ //mqueue,
+ ntapi,
+ windows;
 
 //https://github.com/wine-mirror/wine/blob/a581f11e3e536fbef1865f701c0db2444673d096/dlls/ntdll/sync.c
 
+{
 type
  p_futex_entry=^futex_entry;
  futex_entry=record
@@ -229,7 +230,13 @@ begin
   NtAlertThreadByThreadId(tid);
  end;
 end;
+}
 
+function  RtlWaitOnAddress    (addr,cmp:Pointer;size:QWORD;dwMilliseconds:DWORD):DWORD; stdcall; external 'ntdll';
+procedure RtlWakeAddressAll   (addr:Pointer); stdcall; external 'ntdll';
+procedure RtlWakeAddressSingle(addr:Pointer); stdcall; external 'ntdll';
+
+{
 type
  p_srw_lock=^srw_lock;
  srw_lock=packed record
@@ -284,7 +291,7 @@ begin
   until not (System.InterlockedCompareExchange(u.l^,new.l,old.l)<>old.l);
 
   if (not wait) then Exit;
-  RtlWaitOnAddress(@u.s^.owners,@new.s.owners,sizeof(WORD),nil);
+  RtlWaitOnAddress(@u.s^.owners,@new.s.owners,sizeof(WORD),INFINITE);
  until false;
 end;
 
@@ -313,7 +320,7 @@ begin
   until not (System.InterlockedCompareExchange(u.l^,new.l,old.l)<>old.l);
 
   if (not wait) then Exit;
-  RtlWaitOnAddress(u.s,@new.s,sizeof(srw_lock),nil);
+  RtlWaitOnAddress(u.s,@new.s,sizeof(srw_lock),INFINITE);
  until false;
 end;
 
@@ -472,8 +479,235 @@ begin
   end;
  end;
 end;
+}
 
 {$ENDIF}
+
+Const
+ MAX_SPIN=50000;
+
+function ReaderCount(lock:QWORD):DWORD; inline;
+begin
+ Result:=DWORD(lock and QWORD($000000007FFFFFFF));
+end;
+
+function SetReaders(lock:QWORD;readers:DWORD):QWORD; inline;
+begin
+ Result:=(lock and (not QWORD($000000007FFFFFFF))) or readers;
+end;
+
+function WaitingCount(lock:QWORD):DWORD; inline;
+begin
+ Result:=DWORD((lock and QWORD($3FFFFFFF80000000)) shr 31);
+end;
+
+function SetWaiting(lock:QWORD;waiting:DWORD):QWORD; inline;
+begin
+ Result:=(lock and (not QWORD($3FFFFFFF80000000))) or (QWORD(waiting) shl 31);
+end;
+
+function Writer(lock:QWORD):Boolean; inline;
+begin
+ Result:=(lock and QWORD($4000000000000000))<>0;
+end;
+
+function SetWriter(lock:QWORD;writer:Boolean):QWORD; inline;
+begin
+ if writer then
+  Result:=lock or QWORD($4000000000000000)
+ else
+  Result:=lock and (not QWORD($4000000000000000));
+end;
+
+function AllClear(lock:QWORD):Boolean; inline;
+begin
+ Result:=(lock and QWORD($400000007FFFFFFF))=0;
+end;
+
+function Initialized(lock:QWORD):Boolean; inline;
+begin
+ Result:=(lock and QWORD($8000000000000000))<>0;
+end;
+
+function SetInitialized(lock:QWORD;init:Boolean):QWORD; inline;
+begin
+ if init then
+  Result:=lock or QWORD($8000000000000000)
+ else
+  Result:=lock and (not QWORD($8000000000000000));
+end;
+
+Procedure rw_rlock(Var SRWLock:Pointer);
+Var
+ vLock:QWORD absolute SRWLock;
+ i:SizeUInt;
+ temp:QWORD;
+begin
+ i:=0;
+ repeat
+  temp:=vLock;
+  if not Writer(temp) then
+  begin
+   if System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp)+1),temp)=temp then
+    Break
+   else
+    Continue;
+  end else
+  begin
+   if (i<MAX_SPIN) then
+   begin
+    NtYieldExecution;
+    Continue;
+   end;
+   if System.InterlockedCompareExchange64(vLock,SetWaiting(temp,WaitingCount(temp)+1),temp)<>temp then
+   begin
+    Continue;
+   end;
+   RtlWaitOnAddress(@SRWLock,@temp,sizeof(QWORD),INFINITE);
+   i:=0;
+   repeat
+    temp:=vLock;
+    if (i>MAX_SPIN) then
+    begin
+     NtYieldExecution;
+     Continue;
+    end;
+    Inc(i);
+   until System.InterlockedCompareExchange64(vLock,SetWaiting(temp,WaitingCount(temp)-1),temp)=temp;
+   i:=0;
+  end;
+  Inc(i);
+ until False;
+end;
+
+Procedure rw_wlock(Var SRWLock:Pointer);
+Var
+ vLock:QWORD absolute SRWLock;
+ i:SizeUInt;
+ temp:QWORD;
+begin
+ i:=0;
+ repeat
+  temp:=vLock;
+  if AllClear(temp) then
+  begin
+   if System.InterlockedCompareExchange64(vLock,SetWriter(temp,true),temp)=temp then
+    Break
+   else
+    Continue;
+  end else
+  begin
+   if (i<MAX_SPIN) then
+   begin
+    NtYieldExecution;
+    Continue;
+   end;
+   if System.InterlockedCompareExchange64(vLock,SetWaiting(temp,WaitingCount(temp)+1),temp)<>temp then
+   begin
+    Continue;
+   end;
+   RtlWaitOnAddress(@SRWLock,@temp,sizeof(QWORD),INFINITE);
+   i:=0;
+   repeat
+    temp:=vLock;
+    if (i>MAX_SPIN) then
+    begin
+     NtYieldExecution;
+     Continue;
+    end;
+    Inc(i);
+   until System.InterlockedCompareExchange64(vLock,SetWaiting(temp,WaitingCount(temp)-1),temp)=temp;
+   i:=0;
+  end;
+  Inc(i);
+ until False;
+end;
+
+procedure rw_wunlock(Var SRWLock:Pointer);
+Var
+ vLock:QWORD absolute SRWLock;
+ temp:QWORD;
+begin
+ repeat
+  repeat
+   temp:=vLock;
+   if (WaitingCount(temp)=0) then break;
+   RtlWakeAddressSingle(@SRWLock);
+  until False;
+ until System.InterlockedCompareExchange64(vLock,SetWriter(temp,false),temp)=temp;
+end;
+
+procedure rw_runlock(Var SRWLock:Pointer);
+Var
+ vLock:QWORD absolute SRWLock;
+ temp:QWORD;
+begin
+ repeat
+  temp:=vLock;
+  if (ReaderCount(temp)=1) and (WaitingCount(temp)<>0) then
+  begin
+   RtlWakeAddressSingle(@SRWLock);
+  end;
+ until System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp)-1),temp)=temp;
+end;
+
+Procedure rw_unlock(Var SRWLock:Pointer);
+Var
+ vLock:QWORD absolute SRWLock;
+ temp:QWORD;
+begin
+ if ReaderCount(vLock)=0 then
+ begin
+  repeat
+   repeat
+    temp:=vLock;
+    if (WaitingCount(temp)=0) then break;
+    RtlWakeAddressSingle(@SRWLock);
+   until False;
+  until System.InterlockedCompareExchange64(vLock,SetWriter(temp,false),temp)=temp;
+ end else
+ begin
+  repeat
+   temp:=vLock;
+   if (ReaderCount(temp)=1) and (WaitingCount(temp)<>0) then
+   begin
+    RtlWakeAddressSingle(@SRWLock);
+   end;
+  until System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp)-1),temp)=temp;
+ end;
+end;
+
+function rw_try_rlock(Var SRWLock:Pointer):Boolean;
+Var
+ vLock:QWORD absolute SRWLock;
+ temp:QWORD;
+begin
+ Result:=False;
+ temp:=vLock;
+ if not Writer(temp) then
+ begin
+  if System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp)+1),temp)=temp then
+  begin
+   Result:=True;
+  end;
+ end;
+end;
+
+function rw_try_wlock(Var SRWLock:Pointer):Boolean;
+Var
+ vLock:QWORD absolute SRWLock;
+ temp:QWORD;
+begin
+ Result:=False;
+ temp:=vLock;
+ if AllClear(temp) then
+ begin
+  if System.InterlockedCompareExchange64(vLock,SetWriter(temp,true),temp)=temp then
+  begin
+   Result:=True;
+  end;
+ end;
+end;
 
 end.
 
