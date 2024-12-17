@@ -195,9 +195,9 @@ type
  t_op_hint=Set of (his_mov,
                    his_xor,
                    his_xchg,
-                   his_ro, //read only
-                   his_wo, //write only
-                   his_rw, //read-write
+                   his_ro,   //read only
+                   his_wo,   //write only
+                   his_rw,   //read-write
                    his_align,
                    his_bt);
 

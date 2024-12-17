@@ -25,7 +25,7 @@ type
  t_vw_mode=(vwZero,vwOne,vwR64,vwM64);
  t_vl_mode=(vl256,vlZero,vlOne);
 
- t_op_opt=Set of (not_impl,not_os8,not_prefix,verif_vex_len,verif_rexw);
+ t_op_opt=Set of (not_impl,not_os8,reg_size,not_prefix,verif_vex_len,verif_rexw);
 
  t_op_type=bitpacked object
   op     :DWORD;     //instruction op
@@ -2390,7 +2390,8 @@ begin
  Assert(is_reg_type(mreg,[regNone,regGeneral,regRip]));
  Assert(is_valid_scale(mreg));
 
- if (mreg.AMemSize=os0) then
+ if (reg_size in desc.opt) or
+    (mreg.AMemSize=os0) then
  begin
   mreg.AMemSize:=reg.ASize;
  end;
@@ -2471,7 +2472,8 @@ begin
  Assert(is_reg_type(mreg,[regNone,regGeneral,regRip]));
  Assert(is_valid_scale(mreg));
 
- if (mreg.AMemSize=os0) then
+ if (reg_size in desc.opt) or
+    (mreg.AMemSize=os0) then
  begin
   mreg.AMemSize:=reg.ASize;
  end;
@@ -2560,7 +2562,8 @@ begin
  Assert(is_reg_type(mreg,[regNone,regGeneral,regRip]));
  Assert(is_valid_scale(mreg));
 
- if (mreg.AMemSize=os0) then
+ if (reg_size in desc.opt) or
+    (mreg.AMemSize=os0) then
  begin
   mreg.AMemSize:=reg.ASize;
  end;
