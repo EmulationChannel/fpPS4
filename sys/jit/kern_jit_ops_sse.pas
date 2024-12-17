@@ -617,6 +617,14 @@ begin
  op_emit1(ctx,stmxcsr_desc,[his_wo]);
 end;
 
+//REX.W
+//CVTSD2SI
+//CVTSI2SD
+//CVTSI2SS
+//CVTSS2SI
+//CVTTSD2SI
+//CVTTSS2SI
+
 //
 
 procedure init_cbs_sse;

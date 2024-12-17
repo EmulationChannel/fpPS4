@@ -2200,7 +2200,7 @@ var
 
        override_mem_out_beg(ctx,ovr,desc.hint,new2);
 
-       _RM(desc.mem_reg,new2,[flags(ctx)+r_tmp0]);
+       _RM(desc.mem_reg,new2,[flags(ctx)+r_tmp0,mem_size]);
 
        override_mem_out_fin(ctx,ovr,desc.hint,new2);
 
@@ -2227,7 +2227,7 @@ var
 
        op_load(ctx,new2,2);
 
-       _RM(desc.mem_reg,new2,[flags(ctx)+r_tmp0]);
+       _RM(desc.mem_reg,new2,[flags(ctx)+r_tmp0,mem_size]);
 
        if (his_xchg in desc.hint) then
        begin
@@ -2263,7 +2263,7 @@ var
 
        end else
        begin
-        _RM(desc.reg_mem,new1,[flags(ctx)+r_tmp0]);
+        _RM(desc.reg_mem,new1,[flags(ctx)+r_tmp0,mem_size]);
        end;
 
        override_mem_in_fin(ctx,ovr,desc.hint,new1);
@@ -2293,7 +2293,7 @@ var
         op_rmi(ctx,desc,new1,[flags(ctx)+r_tmp0,mem_size],imm,imm_size);
        end else
        begin
-        _RM(desc.reg_mem,new1,[flags(ctx)+r_tmp0]);
+        _RM(desc.reg_mem,new1,[flags(ctx)+r_tmp0,mem_size]);
        end;
 
        if not (his_ro in desc.hint) then
@@ -2323,7 +2323,7 @@ var
        op_rmi(ctx,desc,new2,[flags(ctx)+r_tmp0,mem_size],imm,imm_size);
       end else
       begin
-       _RM(desc.mem_reg,new2,[flags(ctx)+r_tmp0]);
+       _RM(desc.mem_reg,new2,[flags(ctx)+r_tmp0,mem_size]);
       end;
 
       override_mem_out_fin(ctx,ovr,desc.hint,new2);
@@ -2348,7 +2348,7 @@ var
        op_rmi(ctx,desc,new2,[flags(ctx)+r_tmp0,mem_size],imm,imm_size);
       end else
       begin
-       _RM(desc.mem_reg,new2,[flags(ctx)+r_tmp0]);
+       _RM(desc.mem_reg,new2,[flags(ctx)+r_tmp0,mem_size]);
       end;
 
      end;
