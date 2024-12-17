@@ -5,7 +5,8 @@ unit kern_bnet;
 
 interface
 
-function sys_netcontrol(fd,op:Integer;buf:Pointer;nbuf:DWORD):Integer;
+function sys_netcontrol  (fd,op:Integer;buf:Pointer;nbuf:DWORD):Integer;
+function sys_netgetiflist(param1:Pointer;param2,param3:Integer):Integer;
 
 implementation
 
@@ -90,7 +91,11 @@ begin
  end;
 end;
 
-
+function sys_netgetiflist(param1:Pointer;param2,param3:Integer):Integer;
+begin
+ Writeln('TODO:sys_netgetiflist(0x',HexStr(QWORD(param1),10),',',param2,',',param3,')');
+ Result:=0;
+end;
 
 
 end.

@@ -683,7 +683,7 @@ var
   ),
   (//[125]
      sy_narg:3;
-     sy_call:nil;
+     sy_call:@sys_netgetiflist;
      sy_name:'sys_netgetiflist'
   ),
   (//[126]

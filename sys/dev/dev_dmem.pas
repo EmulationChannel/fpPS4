@@ -62,6 +62,57 @@ type
   size     :QWORD;
  end;
 
+ p_set_prt_aperture=^t_set_prt_aperture;
+ t_set_prt_aperture=packed record
+  addr      :Pointer;
+  len       :QWORD;
+  apertureId:Integer;
+ end;
+
+function set_prt_aperture(data:p_set_prt_aperture):Integer;
+var
+ addr:QWORD;
+ len :QWORD;
+begin
+ Result:=0;
+
+ addr:=QWORD(data^.addr);
+
+ if ((addr and $3fff) <> 0) then
+ begin
+  Exit(EINVAL);
+ end;
+
+ len:=data^.len;
+
+ if ((QWORD($fc00000000) - addr) < len) then
+ begin
+  Exit(EINVAL);
+ end;
+
+ if (DWORD((addr - QWORD($1000000000)) shr 34) > 58) then
+ begin
+  Exit(EINVAL);
+ end;
+
+ if (Int64(len) < 0) then
+ begin
+  Exit(EINVAL);
+ end;
+
+ if (DWORD(data^.apertureId) > 2) then
+ begin
+  Exit(EINVAL);
+ end;
+
+ if ((len and $3fff) <> 0) then
+ begin
+  Exit(EINVAL);
+ end;
+
+ Writeln('TODO:set_prt_aperture(0x',HexStr(addr,10),',0x',HexStr(len,10),',',data^.apertureId,')');
+end;
+
 Function dmem_ioctl(dev:p_cdev;cmd:QWORD;data:Pointer;fflag:Integer):Integer;
 var
  dmap:p_dmem_obj;
@@ -141,6 +192,11 @@ begin
   $C0208004: //sceKernelGetDirectMemoryType
             begin
              Result:=dmem_map_get_memory_type(dmap^.dmem,data);
+            end;
+
+  $80188008: //sceKernelSetPrtAperture
+            begin
+             set_prt_aperture(data);
             end;
 
   else
