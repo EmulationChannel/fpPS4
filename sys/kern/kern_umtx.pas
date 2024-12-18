@@ -158,7 +158,6 @@ uses
  systm,
  md_time,
  kern_proc,
- kern_synch,
  kern_param,
  sched_ule,
  vm,

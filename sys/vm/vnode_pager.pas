@@ -30,7 +30,7 @@ uses
  vnode_if,
  vfs_subr,
  vfs_vnops,
- kern_synch,
+ systm,
  kern_param,
  kern_mtx;
 

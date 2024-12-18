@@ -70,7 +70,7 @@ uses
  devfs_devs;
 
 var
- unr_desc:t_id_desc=(free:nil;refs:0);
+ unr_desc:t_id_desc=(free:nil;refs:0); //temp
 
 function VFSTODEVFS(mp:p_mount):p_devfs_mount; inline;
 begin

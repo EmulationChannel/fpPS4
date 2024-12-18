@@ -1129,7 +1129,7 @@ begin
 
  Writeln('sys_mname(','0x',HexStr(QWORD(addr),10),
                      ',0x',HexStr(len,10),
-                       ',',name,
+                       ',','"',name,'"',
                        ')'
                      );
 

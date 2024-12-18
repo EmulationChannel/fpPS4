@@ -5,6 +5,9 @@ unit systm;
 
 interface
 
+uses
+ kern_mtx;
+
 function copystr(from,_to:pchar;maxlen:ptruint;lencopied:pptruint):Integer;
 function copyin(udaddr,kaddr:Pointer;len:ptruint):Integer;
 function copyin_nofault(udaddr,kaddr:Pointer;len:ptruint):Integer;
@@ -23,6 +26,24 @@ function suword(var base:Pointer;word:Pointer):Pointer;
 
 function fuptr(var base:Pointer):Pointer;
 function fuptr(var base:QWORD):QWORD;
+
+///
+
+function  msleep(ident   :Pointer;
+                 lock    :p_mtx;
+                 priority:Integer;
+                 wmesg   :PChar;
+                 timo    :Int64):Integer; external;
+
+function  tsleep(ident   :Pointer;
+                 priority:Integer;
+                 wmesg   :PChar;
+                 timo    :Int64):Integer; external;
+
+function  pause(wmesg:PChar;timo:Int64):Integer; external;
+
+procedure wakeup(ident:Pointer); external;
+procedure wakeup_one(ident:Pointer); external;
 
 implementation
 

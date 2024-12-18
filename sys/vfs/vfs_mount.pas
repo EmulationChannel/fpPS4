@@ -116,18 +116,6 @@ uses
  vfs_subr,
  vfs_cache;
 
-//
-
-function  msleep(ident   :Pointer;
-                 lock    :Pointer;
-                 priority:Integer;
-                 wmesg   :PChar;
-                 timo    :Int64):Integer; external;
-
-procedure wakeup(ident:Pointer); external;
-
-//
-
 {
  * ---------------------------------------------------------------------
  * Functions for building and sanitizing the mount options

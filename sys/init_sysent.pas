@@ -20,6 +20,7 @@ uses
  kern_exit,
  kern_mdbg,
  kern_osem,
+ kern_pipe,
  kern_prot,
  kern_time,
  kern_umtx,
@@ -268,7 +269,7 @@ var
   ),
   (//[42]
      sy_narg:0;
-     sy_call:nil;
+     sy_call:@sys_pipe;
      sy_name:'sys_pipe'
   ),
   (//[43]

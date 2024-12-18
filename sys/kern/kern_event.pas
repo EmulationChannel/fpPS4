@@ -15,7 +15,6 @@ uses
  sys_eventvar,
  kern_thr,
  kern_mtx,
- kern_synch,
  kern_descrip,
  vuio,
  vfile,

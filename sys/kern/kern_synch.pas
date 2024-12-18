@@ -126,12 +126,12 @@ end;
 function tsleep(ident   :Pointer;
                 priority:Integer;
                 wmesg   :PChar;
-                timo    :Int64):Integer;
+                timo    :Int64):Integer; public;
 begin
  Result:=msleep(ident,nil,priority,wmesg,timo);
 end;
 
-function pause(wmesg:PChar;timo:Int64):Integer;
+function pause(wmesg:PChar;timo:Int64):Integer; public;
 begin
  // silently convert invalid timeouts
  if (timo < 1) then timo:=1;
@@ -146,7 +146,7 @@ begin
  sleepq_release(ident);
 end;
 
-procedure wakeup_one(ident:Pointer);
+procedure wakeup_one(ident:Pointer); public;
 begin
  sleepq_lock(ident);
  sleepq_signal(ident,SLEEPQ_SLEEP,0,0);

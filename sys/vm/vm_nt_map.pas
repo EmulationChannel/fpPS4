@@ -9,6 +9,7 @@ uses
  sysutils,
  vm,
  kern_mtx,
+ systm,
  vm_pmap_prot,
  vm_nt_sub_map;
 
@@ -325,14 +326,6 @@ begin
 
  Result:=(addr<MD_IDX_TO_OFF(range.__end)) and ((addr+size)>MD_IDX_TO_OFF(range.start));
 end;
-
-function  msleep(ident   :Pointer;
-                 lock    :p_mtx;
-                 priority:Integer;
-                 wmesg   :PChar;
-                 timo    :Int64):Integer; external;
-
-procedure wakeup(ident:Pointer); external;
 
 procedure t_danger_zone.d_wait(addr,size:vm_offset_t);
 begin

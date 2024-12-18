@@ -25,7 +25,7 @@ uses
  errno,
  devfs_int,
  vsys_generic,
- kern_synch;
+ systm;
 
 function dev2unit(d:p_cdev):Integer; inline;
 begin
@@ -123,7 +123,9 @@ begin
  begin
   dev:=vp^.v_rdev;
   if (dev=nil) then
+  begin
    Exit(nil);
+  end;
   Assert((dev^.si_flags and SI_ETERNAL)<>0,'Not eternal cdev');
   ref^:=0;
   csw:=dev^.si_devsw;
@@ -145,7 +147,9 @@ begin
  begin
   csw:=dev^.si_devsw;
   if (csw<>nil) then
+  begin
    Inc(dev^.si_threadcount);
+  end;
  end;
  dev_unlock();
  if (csw<>nil) then
@@ -865,7 +869,9 @@ begin
  physpath_len:=strlen(physpath);
  ret:=EINVAL;
  if (physpath_len=0) then
+ begin
   goto _out;
+ end;
 
  if (strlcomp('id1,', physpath, 4)=0) then
  begin
@@ -977,7 +983,9 @@ begin
   csw^.d_purge(dev);
   msleep(csw, @devmtx, PRIBIO, 'devprg', hz div 10);
   if (dev^.si_threadcount<>0) then
+  begin
    Writeln(Format('Still %lu threads in %sn',[dev^.si_threadcount, devtoname(dev)]));
+  end;
  end;
  while (dev^.si_threadcount<>0) do
  begin

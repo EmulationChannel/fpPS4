@@ -67,7 +67,7 @@ uses
  null_vnops,
  kern_thr,
  kern_mtx,
- kern_synch;
+ systm;
 
 function MOUNTTONULLMOUNT(mp:p_mount):p_null_mount; inline;
 begin

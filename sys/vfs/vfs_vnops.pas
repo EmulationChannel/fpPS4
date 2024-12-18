@@ -84,7 +84,7 @@ uses
  vfs_subr,
  vfs_syscalls,
  kern_thr,
- kern_synch,
+ systm,
  kern_mtx,
  kern_mtxpool,
  kern_descrip;

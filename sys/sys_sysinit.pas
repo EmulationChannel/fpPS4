@@ -37,6 +37,7 @@ uses
  vfs_lookup,
  vfs_init,
  kern_event,
+ kern_pipe,
  devfs,
  devfs_devs,
  devfs_vfsops,
@@ -117,6 +118,7 @@ begin
  vntblinit;
  nameiinit;
  knote_init;
+ pipeinit;
  vfs_event_init;
  devfs_mtx_init;
  devfs_devs_init;

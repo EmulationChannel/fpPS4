@@ -8,6 +8,7 @@ interface
 uses
  mqueue,
  kern_thr,
+ systm,
  kern_mtx;
 
 const
@@ -47,18 +48,6 @@ function  rangelock_trywlock    (lock:p_rangelock;start,__end:off_t;ilk:p_mtx):P
 procedure rlqentry_free         (rleq:p_rl_q_entry);
 
 implementation
-
-//
-
-function  msleep(ident   :Pointer;
-                 lock    :p_mtx;
-                 priority:Integer;
-                 wmesg   :PChar;
-                 timo    :Int64):Integer; external;
-
-procedure wakeup(ident:Pointer); external;
-
-//
 
 function rlqentry_alloc():p_rl_q_entry; inline;
 begin

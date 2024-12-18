@@ -34,6 +34,7 @@ function  sync():Integer;
 function  kill(pid,signum:Integer):Integer;
 function  getppid():Integer;
 function  dup(u_fd:Integer):Integer;
+function  pipe():Integer;
 function  getegid():Integer;
 function  getgid():Integer;
 function  getlogin(namebuf:PChar;namelen:DWORD):Integer;
@@ -76,6 +77,7 @@ function  _writev(fd:Integer;iovp:Pointer;iovcnt:DWORD):Integer;
 function  settimeofday(tv,tzp:Pointer):Integer;
 function  fchown(fd,uid,gid:Integer):Integer;
 function  fchmod(fd,mode:Integer):Integer;
+function  __sys_netgetiflist(param1:Pointer;param2,param3:Integer):Integer;
 function  setreuid(ruid,euid:Integer):Integer;
 function  setregid(rgid,egid:Integer):Integer;
 function  rename(from,_to:PChar):Integer;
@@ -456,6 +458,13 @@ asm
  jmp   cerror
 end;
 
+function pipe():Integer; assembler; nostackframe;
+asm
+ movq  $42,%rax
+ call  fast_syscall
+ jmp   cerror
+end;
+
 function getegid():Integer; assembler; nostackframe;
 asm
  movq  $43,%rax
@@ -746,6 +755,13 @@ end;
 function fchmod(fd,mode:Integer):Integer; assembler; nostackframe;
 asm
  movq  $124,%rax
+ call  fast_syscall
+ jmp   cerror
+end;
+
+function __sys_netgetiflist(param1:Pointer;param2,param3:Integer):Integer; assembler; nostackframe;
+asm
+ movq  $125,%rax
  call  fast_syscall
  jmp   cerror
 end;

@@ -55,19 +55,12 @@ uses
  vmount,
  vfs_subr,
  vfs_vnops,
- kern_mtx;
+ kern_mtx,
+ systm;
 
 //
 
 procedure vm_pager_deallocate(obj:vm_object_t); external;
-
-function  msleep(ident   :Pointer;
-                 lock    :Pointer;
-                 priority:Integer;
-                 wmesg   :PChar;
-                 timo    :Int64):Integer; external;
-
-procedure wakeup(ident:Pointer); external;
 
 //
 

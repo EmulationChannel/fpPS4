@@ -1558,6 +1558,10 @@
         <Filename Value="sys\vm\vm_nt_sub_map.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="sys\kern\kern_pipe.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

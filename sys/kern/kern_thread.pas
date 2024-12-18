@@ -92,14 +92,6 @@ function  umtx_copyin_timeout(addr:Pointer;tsp:p_timespec):Integer; external;
 
 procedure jit_ctx_free(td:p_kthread);  external;
 
-function  msleep(ident   :Pointer;
-                 lock    :p_mtx;
-                 priority:Integer;
-                 wmesg   :PChar;
-                 timo    :Int64):Integer; external;
-
-procedure wakeup(ident:Pointer); external;
-
 //
 
 var
