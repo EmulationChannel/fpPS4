@@ -118,10 +118,10 @@ begin
  vntblinit;
  nameiinit;
  knote_init;
- pipeinit;
  vfs_event_init;
  devfs_mtx_init;
  devfs_devs_init;
+ pipeinit;
  module_init;
  sys_daemon_init;
 end;

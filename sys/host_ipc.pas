@@ -424,7 +424,14 @@ procedure THostIpcSimpleMGUI.SendImpl(mtype,mlen,mtid:DWORD;buf:Pointer);
 begin
  if (FDest<>nil) then
  begin
-  FDest.Pack(mtype,mlen,mtid,buf);
+  if (mtype=iRESULT) then
+  begin
+   //Trigger Direct on Simple mode!
+   FDest.RecvResultDirect(mlen,mtid,buf);
+  end else
+  begin
+   FDest.Pack(mtype,mlen,mtid,buf);
+  end;
   //
   RTLEventSetEvent(FDest.FEvent);
   //
