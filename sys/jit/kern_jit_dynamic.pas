@@ -1325,6 +1325,7 @@ begin
 
   old_blk:=nil;
 
+  //high threads concurrency
   rw_wlock(lock);
    Result:=jpltc_curr.Find(@node);
    if (Result<>nil) then

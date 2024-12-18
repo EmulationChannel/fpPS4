@@ -1141,6 +1141,16 @@ var
 begin
  //Assert(pctx^.stream_type=stGfxDcb);
 
+ if (Body^.Flags2.saic=CPDMA_ADDR_SPACE_REG) then
+ begin
+  Assert(Body^.Flags2.saic<>0,'DmaData: read from fifo reg');
+ end;
+
+ if (Body^.Flags2.das=CPDMA_ADDR_SPACE_REG) then
+ begin
+  Assert(Body^.Flags2.daic<>0,'DmaData: send to fifo reg');
+ end;
+
  srcSel:=((PDWORD(Body)[1] shr $1d) and 3) or ((PDWORD(Body)[6] shr $19) and 8) or ((PDWORD(Body)[6] shr $18) and 4);
  dstSel:=((PDWORD(Body)[1] shr $14) and 1) or ((PDWORD(Body)[6] shr $1a) and 8) or ((PDWORD(Body)[6] shr $19) and 4);
 
@@ -1216,7 +1226,10 @@ var
  engineSel:Byte;
  dstSel:Byte;
 begin
- Assert(Body^.CONTROL.wrOneAddr=0,'WriteData: wrOneAddr<>0');
+ if (Body^.CONTROL.dstSel=WRITE_DATA_DST_SEL_REGISTER) then
+ begin
+  Assert(Body^.CONTROL.wrOneAddr=0,'WriteData: send to fifo reg');
+ end;
 
  if p_print_gpu_ops then
  begin

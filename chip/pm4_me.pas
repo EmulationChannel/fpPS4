@@ -999,6 +999,8 @@ begin
     begin
      buf:=FetchHostBuffer(ctx.Cmd,QWORD(addr),size);
 
+     Assert(buf<>nil);
+
      resource_instance^.resource^.rimage:=buf;
     end;
 
@@ -1178,6 +1180,8 @@ begin
 
    buf:=FetchHostBuffer(ctx.Cmd,QWORD(addr),size);
 
+   Assert(buf<>nil);
+
    diff:=QWORD(addr)-buf.FAddr;
 
    align:=diff-AlignDw(diff,limits.minStorageBufferOffsetAlignment);
@@ -1278,6 +1282,8 @@ begin
                   i^.curr.img_usage + i^.next.img_usage
                  );
 
+   Assert(ri<>nil);
+
    resource^.rimage:=ri;
 
    //now preload only sampled image
@@ -1323,6 +1329,8 @@ begin
                 rt_info.DB_INFO.FImageInfo,
                 [iu_depthstenc]
                 );
+
+ Assert(ri<>nil);
 
  ri.PushBarrier(CmdBuffer,
                 ord(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -1576,6 +1584,8 @@ begin
                    {[iu_attachment]}  color_instance[i]^.curr.img_usage
                    );
 
+    Assert(ri<>nil);
+
     color_instance[i]^.resource^.rimage:=ri;
    end;
 
@@ -1665,6 +1675,8 @@ begin
                   ctx.rt_info^.DB_INFO.FImageInfo,
                   [iu_depthstenc]
                   );
+
+   Assert(ri<>nil);
 
    rd:=ri.DepthOnly;
    rs:=ri.StencilOnly;
@@ -2001,10 +2013,14 @@ begin
                     [iu_transfer]
                     );
 
+ Assert(ri_src<>nil);
+
  ri_dst:=FetchImage(ctx.Cmd,
                     node^.RT[1].FImageInfo,
                     [iu_transfer]
                     );
+
+ Assert(ri_dst<>nil);
 
  ri_src.PushBarrier(ctx.Cmd,
                     ord(VK_ACCESS_TRANSFER_READ_BIT),
@@ -2131,6 +2147,9 @@ begin
 
  //set flag by buffer to next stream
  hb:=FetchBuffer(ctx.Cmd,buffer^.rkey.Addr,buffer^.rsize);
+
+ Assert(hb<>nil);
+
  hb.rclear:=True;
 
  //set flag by htile in current stream

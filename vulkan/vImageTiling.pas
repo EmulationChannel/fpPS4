@@ -47,7 +47,11 @@ var
  m_padwidth,m_padheight:Ptruint;
  m_slice:Ptruint;
 begin
- Assert(key.params.samples<=1,'key.params.samples>1');
+ if key.params.samples>1 then
+ begin
+  Writeln(stderr,'TODO:samples:',key.params.samples);
+  Assert(key.params.samples<=1,'key.params.samples>1');
+ end;
 
  m_bytePerElement:=getFormatSize(key.cformat);
 
@@ -610,6 +614,8 @@ begin
   vmem:=MemManager.FetchMemory(buf.GetRequirements,V_PROP_HOST_VISIBLE);
  end;
 
+ Assert(vmem.FMemory<>nil);
+
  buf.BindMem(vmem);
 
  //Release ref in ReleaseTmp
@@ -717,6 +723,8 @@ begin
  buf:=FetchHostBuffer(cmd,
                       QWORD(image.key.addr),
                       size);
+
+ Assert(buf<>nil);
 
  m_offset:=buf.FAddr-QWORD(image.key.addr);
 
@@ -828,6 +836,8 @@ begin
  buf:=FetchHostBuffer(cmd,
                       QWORD(image.key.addr),
                       size);
+
+ Assert(buf<>nil);
 
  m_offset:=buf.FAddr-QWORD(image.key.addr);
 
@@ -1050,6 +1060,7 @@ begin
  begin
   Writeln(stderr,'tiling:'+get_tiling_name(image.key.params.tiling.idx)+' alt:'+IntToStr(image.key.params.tiling.alt));
   Assert (false ,'tiling:'+get_tiling_name(image.key.params.tiling.idx)+' alt:'+IntToStr(image.key.params.tiling.alt));
+  Exit;
  end;
 
  cmd.EndRenderPass;
@@ -1093,6 +1104,7 @@ begin
  begin
   Writeln(stderr,'tiling:'+get_tiling_name(image.key.params.tiling.idx)+' alt:'+IntToStr(image.key.params.tiling.alt));
   Assert (false ,'tiling:'+get_tiling_name(image.key.params.tiling.idx)+' alt:'+IntToStr(image.key.params.tiling.alt));
+  Exit;
  end;
 
  cmd.EndRenderPass;
@@ -1121,6 +1133,7 @@ begin
  begin
   Writeln(stderr,'tiling:'+get_tiling_name(key.params.tiling.idx)+' alt:'+IntToStr(key.params.tiling.alt));
   Assert (false ,'tiling:'+get_tiling_name(key.params.tiling.idx)+' alt:'+IntToStr(key.params.tiling.alt));
+  Exit(0);
  end;
 
  Result:=cb(key);
