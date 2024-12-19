@@ -25,7 +25,6 @@ uses
  kern_proc,
  signal,
  kern_sig,
- kern_synch,
  sched_ule,
  machdep;
 
