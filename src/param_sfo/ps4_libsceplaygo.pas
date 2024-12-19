@@ -132,6 +132,7 @@ begin
  end;
 
  init_playgo;
+ Result:=0;
 end;
 
 function ps4_scePlayGoTerminate:Integer;
@@ -142,6 +143,7 @@ begin
  end;
 
  free_playgo;
+ Result:=0;
 end;
 
 function ps4_scePlayGoOpen(
