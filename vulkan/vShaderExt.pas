@@ -936,32 +936,38 @@ var
  i:Integer;
  pData :Pointer;
  pSharp:Pointer;
+ pDmem :Pointer;
 begin
  Result:=nil;
  if (Length(addr)=0) then Exit;
 
  pData :=pUserData;
- pSharp:=pData;
+ pSharp:=pUserData;
+ pDmem :=pUserData;
 
  For i:=High(addr) downto 0 do
  begin
   pData:=pData+addr[i].offset;
+  pDmem:=pDmem+addr[i].offset;
 
   Case addr[i].rtype of
    vtRoot:
      begin
       pSharp:=pData;
+      pDmem :=pData;
      end;
    vtImmData:
      begin
       pData :=pImmData+addr[i].offset;
       pSharp:=pData;
+      pDmem :=pData;
      end;
    vtBufPtr2:
      begin
-      pData:=Pointer(PPtrUint(pData)^ and (not 3));
+      pData:=Pointer(PPtrUint(pDmem)^ and (not 3));
 
-      if not get_dmem_ptr(pData,@pData,nil) then
+      pDmem:=nil;
+      if not get_dmem_ptr(pData,@pDmem,nil) then
       begin
        Assert(false,'vtBufPtr2:get_dmem_ptr($'+HexStr(pData)+')');
       end;
@@ -970,9 +976,10 @@ begin
      end;
    vtFunPtr2:
      begin
-      pData:=PPointer(pData)^;
+      pData:=PPointer(pDmem)^;
 
-      if not get_dmem_ptr(pData,@pData,nil) then
+      pDmem:=nil;
+      if not get_dmem_ptr(pData,@pDmem,nil) then
       begin
        Assert(false,'vtFunPtr2:get_dmem_ptr($'+HexStr(pData)+')');
       end;
@@ -985,9 +992,10 @@ begin
 
       if (i<>0) then
       begin
-       pData:=Pointer(PVSharpResource4(pData)^.base);
+       pData:=Pointer(PVSharpResource4(pDmem)^.base);
 
-       if not get_dmem_ptr(pData,@pData,nil) then
+       pDmem:=nil;
+       if not get_dmem_ptr(pData,@pDmem,nil) then
        begin
         Assert(false,'vtVSharp4:get_dmem_ptr($'+HexStr(pData)+')');
        end;
@@ -1006,9 +1014,10 @@ begin
 
       if (i<>0) then
       begin
-       pData:=Pointer(PTSharpResource4(pData)^.base shl 8);
+       pData:=Pointer(PTSharpResource4(pDmem)^.base shl 8);
 
-       if not get_dmem_ptr(pData,@pData,nil) then
+       pDmem:=nil;
+       if not get_dmem_ptr(pData,@pDmem,nil) then
        begin
         Assert(false,'vtTSharp:get_dmem_ptr($'+HexStr(pData)+')');
        end;
