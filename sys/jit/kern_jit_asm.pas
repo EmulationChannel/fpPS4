@@ -594,7 +594,7 @@ begin
  td:=curkthread;
  jit_save_to_sys_save(td);
  td^.td_frame.tf_rip:=tf_rip;
- print_error_td('TODO:jit_cpuid:0x'+HexStr(rax,16));
+ print_error_td('TODO:jit_cpuid:0x'+HexStr(rax,8));
  Assert(False);
 end;
 
@@ -609,12 +609,14 @@ end;
 //0x40000010
 
 //cpuid(0x80000000):eax=0x8000001e ebx=0x68747541 ecx=0x444d4163 edx=0x69746e65
-//cpuid(0x80000001):eax=0x710f31   ebx=0x0        ecx=0x154837ff edx=0x2fd3fbff
-//0x80000002
-//0x80000004
+//cpuid(0x80000001):eax=0x00710f31 ebx=0x00000000 ecx=0x154837ff edx=0x2fd3fbff
+//cpuid(0x80000002):eax=0x31314744 ebx=0x4b533130 ecx=0x48343846 edx=0x20202056
+//cpuid(0x80000003):eax=0x20202020 ebx=0x20202020 ecx=0x20202020 edx=0x20202020
+//cpuid(0x80000004):eax=0x20202020 ebx=0x20202020 ecx=0x20202020 edx=0x00202020
+
 //0x80000005
 //0x80000006
-//cpuid(0x80000008):eax=0x3028     ebx=0x0        ecx=0x3007     edx=0x0
+//cpuid(0x80000008):eax=0x00003028 ebx=0x00000000 ecx=0x3007     edx=0x00000000
 
 //0xc0000000
 //0xc0000001
@@ -625,6 +627,8 @@ label
  _cpuid_7,
  _cpuid_80000000,
  _cpuid_80000001,
+ _cpuid_80000002,
+ _cpuid_80000003,
  _cpuid_80000008,
  _exit;
 asm
@@ -647,6 +651,15 @@ asm
 
  cmp $0x80000001,%eax
  je _cpuid_80000001
+
+ cmp $0x80000002,%eax
+ je _cpuid_80000002
+
+ cmp $0x80000003,%eax
+ je _cpuid_80000003
+
+ cmp $0x80000004,%eax
+ je _cpuid_80000003
 
  cmp $0x80000008,%eax
  je _cpuid_80000008
@@ -731,6 +744,24 @@ asm
  mov $0x00000000,%ebx
  mov $0x2fd3fbff,%edx //amd_feature
  mov $0x154837ff,%ecx //amd_feature2
+
+ jmp _exit
+
+ _cpuid_80000002:
+
+ mov $0x31314744,%eax
+ mov $0x4b533130,%ebx
+ mov $0x20202056,%edx
+ mov $0x48343846,%ecx
+
+ jmp _exit
+
+ _cpuid_80000003:
+
+ mov $0x20202020,%eax
+ mov $0x20202020,%ebx
+ mov $0x20202020,%edx
+ mov $0x20202020,%ecx
 
  jmp _exit
 
