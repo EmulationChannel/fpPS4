@@ -1394,6 +1394,10 @@ begin
     end;
     //
     Break;
+   end else
+   begin
+    FreeMem(Result);
+    Result:=nil;
    end;
   end;
 
