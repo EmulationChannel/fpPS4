@@ -649,14 +649,19 @@ begin
  end;
 end;
 
+function hash_addr(addr:Pointer):Byte; inline;
+begin
+ Result:=Byte(QWORD(addr) shr 4) xor Byte(QWORD(addr) shr 12);
+end;
+
 function jmp_dispatcher(addr:Pointer;plt:p_jit_plt;from:Pointer):Pointer; public;
 label
  _start;
 var
- td:p_kthread;
- node:p_jit_entry_point;
- jctx:p_td_jctx;
- curr:p_jit_dynamic_blob;
+ td   :p_kthread;
+ node :p_jit_entry_point;
+ jctx :p_td_jctx;
+ curr :p_jit_dynamic_blob;
  cache:p_jplt_cache;
 begin
  td:=curkthread;
@@ -691,6 +696,25 @@ begin
   Assert(False,'TODO');
  end;
 
+ jctx:=@td^.td_jctx;
+
+ cache:=jctx^.local_cache[hash_addr(addr)];
+
+ if (cache<>nil) then
+ begin
+  if (cache^.src=addr) then
+  begin
+   jctx^.block:=cache^.blk;
+
+   Result:=cache^.dst;
+
+   Exit;
+  end else
+  begin
+   cache:=nil;
+  end;
+ end;
+
  node:=fetch_entry(addr);
 
  if (node=nil) then
@@ -699,9 +723,11 @@ begin
   goto _start;
  end;
 
- jctx:=@td^.td_jctx;
+ //jctx:=@td^.td_jctx;
 
  curr:=jctx^.block;
+
+ //curr:=node^.blob;
 
  if (curr=nil) or (plt=nil) then
  begin
@@ -709,6 +735,8 @@ begin
  end else
  begin
   cache:=curr^.add_plt_cache(plt,node^.src,node^.dst,node^.blob);
+
+  jctx^.local_cache[hash_addr(addr)]:=cache;
 
   jctx^.block:=node^.blob;
 
@@ -1159,6 +1187,7 @@ begin
 
  free_base;
 
+ //TODO: GC FREE
  FreeMem(@Self);
 end;
 
@@ -1303,6 +1332,7 @@ begin
    blk^.detach_plt_cache(@Self,node);
   end;
 
+  //TODO: GC FREE
   FreeMem(node);
 
   node:=jpltc_curr.Min;

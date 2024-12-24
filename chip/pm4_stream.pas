@@ -495,8 +495,7 @@ begin
  if (i^.init_entry.tqe_next<>nil) or
     (i^.init_entry.tqe_prev<>nil) then Exit;
 
- if (list.tqh_first=nil) and
-    (list.tqh_last =nil) then
+ if (list.tqh_last=nil) then
  begin
   TAILQ_INIT(@list);
  end;
@@ -819,8 +818,7 @@ end;
 
 Procedure t_pm4_stream.add_node(node:p_pm4_node);
 begin
- if (list.tqh_first=nil) and
-    (list.tqh_last =nil) then
+ if (list.tqh_last=nil) then
  begin
   TAILQ_INIT(@list);
  end;

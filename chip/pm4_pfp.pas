@@ -268,7 +268,7 @@ begin
 
  buft:=node^.buft;
 
- if (stall[buft].tqh_first=nil) and (stall[buft].tqh_last=nil) then
+ if (stall[buft].tqh_last=nil) then
  begin
   TAILQ_INIT(@stall[buft]);
  end;

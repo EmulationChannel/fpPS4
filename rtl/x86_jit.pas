@@ -1250,8 +1250,7 @@ begin
   Result^.pData:=P;
   Result^.pId:=ADataCount;
   ADataSet.Insert(Result);
-  if (ADataList.tqh_first=nil) and
-     (ADataList.tqh_last=nil) then
+  if (ADataList.tqh_last=nil) then
   begin
    TAILQ_INIT(@ADataList);
   end;

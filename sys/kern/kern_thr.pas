@@ -192,6 +192,7 @@ type
   block:Pointer;
   rsp:Pointer;
   rbp:Pointer;
+  local_cache:array[0..255] of Pointer;
  end;
 
  pp_kthread=^p_kthread;
