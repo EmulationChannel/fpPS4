@@ -4,10 +4,10 @@ unit kern_rwlock;
 
 interface
 
-{$DEFINE ALT_SRW}
+{$DEFINE ALT_SRW1}
+{/$DEFINE ALT_SRW2}
 
-
-{$IFDEF ALT_SRW}
+{$IF defined(ALT_SRW1) or defined(ALT_SRW2)}
 procedure rw_rlock    (Var SRWLock:Pointer);
 procedure rw_runlock  (Var SRWLock:Pointer);
 procedure rw_wlock    (Var SRWLock:Pointer);
@@ -26,11 +26,12 @@ Function  rw_try_wlock(Var SRWLock:Pointer):Boolean; stdcall; external 'kernel32
 
 implementation
 
-{$IFDEF ALT_SRW}
+{$IF defined(ALT_SRW1) or defined(ALT_SRW2)}
 uses
  //mqueue,
  ntapi,
  windows;
+{$ENDIF}
 
 //https://github.com/wine-mirror/wine/blob/a581f11e3e536fbef1865f701c0db2444673d096/dlls/ntdll/sync.c
 
@@ -232,15 +233,16 @@ begin
 end;
 }
 
-function  RtlWaitOnAddress    (addr,cmp:Pointer;size:QWORD;dwMilliseconds:DWORD):DWORD; stdcall; external 'ntdll';
+function  RtlWaitOnAddress    (addr,cmp:Pointer;size:QWORD;timeout:PLARGE_INTEGER):DWORD; stdcall; external 'ntdll';
 procedure RtlWakeAddressAll   (addr:Pointer); stdcall; external 'ntdll';
 procedure RtlWakeAddressSingle(addr:Pointer); stdcall; external 'ntdll';
 
-{
+{$IFDEF ALT_SRW1}
+
 type
  p_srw_lock=^srw_lock;
  srw_lock=packed record
-  exclusive_waiters:Word;
+  exclusive_waiters:Smallint;
   owners           :Word;
  end;
 
@@ -257,7 +259,7 @@ type
    1:(l:DWORD);
  end;
 
-function InterlockedExchangeAdd16(var addr:WORD;New:WORD):WORD; assembler; nostackframe; sysv_abi_default;
+procedure InterlockedExchangeAdd16(addr:Pointer;New:WORD); assembler; nostackframe; sysv_abi_default;
 asm
  lock xadd %si,(%rdi)
 end;
@@ -270,28 +272,28 @@ var
 begin
  u.r:=@SRWLock;
 
- InterlockedExchangeAdd16(u.s^.exclusive_waiters,2);
+ InterlockedExchangeAdd16(@u.s^.exclusive_waiters,2);
 
  repeat
 
   repeat
    old.s:=u.s^;
-   new.s:=old.s;
+   new:=old;
 
    if (old.s.owners=0) then
    begin
     new.s.owners:=1;
-    new.s.exclusive_waiters:=new.s.exclusive_waiters-2;
+    Dec(new.s.exclusive_waiters,2);
     new.s.exclusive_waiters:=new.s.exclusive_waiters or 1;
     wait:=FALSE;
    end else
    begin
     wait:=TRUE;
    end;
-  until not (System.InterlockedCompareExchange(u.l^,new.l,old.l)<>old.l);
+  until (System.InterlockedCompareExchange(u.l^,new.l,old.l) = old.l);
 
   if (not wait) then Exit;
-  RtlWaitOnAddress(@u.s^.owners,@new.s.owners,sizeof(WORD),INFINITE);
+  RtlWaitOnAddress(@u.s^.owners,@new.s.owners,sizeof(Smallint),nil);
  until false;
 end;
 
@@ -311,16 +313,16 @@ begin
 
    if (old.s.exclusive_waiters=0) then
    begin
-    new.s.owners:=new.s.owners+1;
+    Inc(new.s.owners);
     wait:=FALSE;
    end else
    begin
     wait:=TRUE;
    end;
-  until not (System.InterlockedCompareExchange(u.l^,new.l,old.l)<>old.l);
+  until (System.InterlockedCompareExchange(u.l^,new.l,old.l) = old.l);
 
   if (not wait) then Exit;
-  RtlWaitOnAddress(u.s,@new.s,sizeof(srw_lock),INFINITE);
+  RtlWaitOnAddress(u.s,@new.s,sizeof(srw_lock),nil);
  until false;
 end;
 
@@ -333,7 +335,7 @@ begin
 
  repeat
   old.s:=u.s^;
-  new.s:=old.s;
+  new:=old;
 
   if (old.s.owners=0) then
   begin
@@ -344,7 +346,7 @@ begin
   begin
    Result:=FALSE;
   end;
- until not (System.InterlockedCompareExchange(u.l^,new.l,old.l)<>old.l);
+ until (System.InterlockedCompareExchange(u.l^,new.l,old.l) = old.l);
 end;
 
 function rw_try_rlock(Var SRWLock:Pointer):Boolean;
@@ -356,17 +358,17 @@ begin
 
  repeat
   old.s:=u.s^;
-  new.s:=old.s;
+  new:=old;
 
   if (old.s.exclusive_waiters=0) then
   begin
-   new.s.owners:=new.s.owners+1;
+   Inc(new.s.owners);
    Result:=TRUE;
   end else
   begin
    Result:=FALSE;
   end;
- until not (System.InterlockedCompareExchange(u.l^,new.l,old.l)<>old.l);
+ until (System.InterlockedCompareExchange(u.l^,new.l,old.l) = old.l);
 end;
 
 procedure rw_wunlock(Var SRWLock:Pointer);
@@ -387,7 +389,7 @@ begin
 
   new.s.owners:=0;
   new.s.exclusive_waiters:=new.s.exclusive_waiters and (not 1);
- until not (System.InterlockedCompareExchange(u.l^,new.l,old.l)<>old.l);
+ until (System.InterlockedCompareExchange(u.l^,new.l,old.l) = old.l);
 
  if (new.s.exclusive_waiters<>0) then
  begin
@@ -418,8 +420,8 @@ begin
    Assert(false,'Lock 0x'+HexStr(@SRWLock)+' is not owned shared!');
   end;
 
-  new.s.owners:=new.s.owners-1;
- until not (System.InterlockedCompareExchange(u.l^,new.l,old.l)<>old.l);
+  Dec(new.s.owners);
+ until (System.InterlockedCompareExchange(u.l^,new.l,old.l) = old.l);
 
  if (new.s.owners=0) then
  begin
@@ -453,7 +455,7 @@ begin
 
   if shared then
   begin
-   new.s.owners:=new.s.owners-1;
+   Dec(new.s.owners);
   end else
   begin
    new.s.owners:=0;
@@ -479,146 +481,168 @@ begin
   end;
  end;
 end;
-}
 
 {$ENDIF}
 
+{$IFDEF ALT_SRW2}
+
 Const
- MAX_SPIN=50000;
+ MAX_SPIN=10;
+
+ SRW_MASK_READERS=QWORD($000000007FFFFFFF);
+ SRW_FLAG_WRITING=QWORD($0000000080000000);
+ SRW_MASK_WAITERS=QWORD($7FFFFFFF00000000);
+ SRW_FLAG_READIED=QWORD($8000000000000000);
+
+ SRW_INC_WAITER  =QWORD($0000000100000000);
 
 function ReaderCount(lock:QWORD):DWORD; inline;
 begin
- Result:=DWORD(lock and QWORD($000000007FFFFFFF));
+ Result:=DWORD(lock and SRW_MASK_READERS);
 end;
 
 function SetReaders(lock:QWORD;readers:DWORD):QWORD; inline;
 begin
- Result:=(lock and (not QWORD($000000007FFFFFFF))) or readers;
+ Result:=(lock and (not SRW_MASK_READERS)) or readers;
 end;
 
 function WaitingCount(lock:QWORD):DWORD; inline;
 begin
- Result:=DWORD((lock and QWORD($3FFFFFFF80000000)) shr 31);
+ Result:=DWORD((lock and SRW_MASK_WAITERS) shr 32);
 end;
 
 function SetWaiting(lock:QWORD;waiting:DWORD):QWORD; inline;
 begin
- Result:=(lock and (not QWORD($3FFFFFFF80000000))) or (QWORD(waiting) shl 31);
+ Result:=(lock and (not SRW_MASK_WAITERS)) or (QWORD(waiting) shl 32);
+end;
+
+function IncWaiting(var lock:QWORD):QWORD; inline;
+begin
+ Result:=System.InterlockedExchangeAdd64(lock,SRW_INC_WAITER)+SRW_INC_WAITER;
+end;
+
+function DecWaiting(var lock:QWORD):QWORD; inline;
+begin
+ Result:=System.InterlockedExchangeAdd64(lock,QWORD(-SRW_INC_WAITER))+QWORD(-SRW_INC_WAITER);
 end;
 
 function Writer(lock:QWORD):Boolean; inline;
 begin
- Result:=(lock and QWORD($4000000000000000))<>0;
+ Result:=(lock and SRW_FLAG_WRITING)<>0;
 end;
 
 function SetWriter(lock:QWORD;writer:Boolean):QWORD; inline;
 begin
  if writer then
-  Result:=lock or QWORD($4000000000000000)
+  Result:=lock or SRW_FLAG_WRITING
  else
-  Result:=lock and (not QWORD($4000000000000000));
+  Result:=lock and (not SRW_FLAG_WRITING);
 end;
 
 function AllClear(lock:QWORD):Boolean; inline;
 begin
- Result:=(lock and QWORD($400000007FFFFFFF))=0;
+ Result:=(lock and (SRW_MASK_READERS or SRW_FLAG_WRITING))=0;
 end;
 
 function Initialized(lock:QWORD):Boolean; inline;
 begin
- Result:=(lock and QWORD($8000000000000000))<>0;
+ Result:=(lock and SRW_FLAG_READIED)<>0;
 end;
 
 function SetInitialized(lock:QWORD;init:Boolean):QWORD; inline;
 begin
  if init then
-  Result:=lock or QWORD($8000000000000000)
+  Result:=lock or SRW_FLAG_READIED
  else
-  Result:=lock and (not QWORD($8000000000000000));
+  Result:=lock and (not SRW_FLAG_READIED);
 end;
 
 Procedure rw_rlock(Var SRWLock:Pointer);
+label
+ _next;
 Var
  vLock:QWORD absolute SRWLock;
  i:SizeUInt;
- temp:QWORD;
+ temp,new:QWORD;
 begin
  i:=0;
  repeat
   temp:=vLock;
+
   if not Writer(temp) then
   begin
-   if System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp)+1),temp)=temp then
-    Break
-   else
-    Continue;
+
+   if System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp) + 1),temp) = temp then
+   begin
+    Exit;
+   end else
+   begin
+    goto _next;
+   end;
+
   end else
   begin
+
    if (i<MAX_SPIN) then
    begin
     NtYieldExecution;
-    Continue;
+    goto _next;
    end;
-   if System.InterlockedCompareExchange64(vLock,SetWaiting(temp,WaitingCount(temp)+1),temp)<>temp then
-   begin
-    Continue;
-   end;
-   RtlWaitOnAddress(@SRWLock,@temp,sizeof(QWORD),INFINITE);
+
+   new:=IncWaiting(vLock);
+
    i:=0;
-   repeat
-    temp:=vLock;
-    if (i>MAX_SPIN) then
-    begin
-     NtYieldExecution;
-     Continue;
-    end;
-    Inc(i);
-   until System.InterlockedCompareExchange64(vLock,SetWaiting(temp,WaitingCount(temp)-1),temp)=temp;
-   i:=0;
+   RtlWaitOnAddress(@SRWLock,@new,sizeof(QWORD),nil);
+
+   DecWaiting(vLock);
   end;
+
+  _next:
   Inc(i);
  until False;
 end;
 
 Procedure rw_wlock(Var SRWLock:Pointer);
+label
+ _next;
 Var
  vLock:QWORD absolute SRWLock;
  i:SizeUInt;
- temp:QWORD;
+ temp,new:QWORD;
 begin
  i:=0;
  repeat
   temp:=vLock;
+
   if AllClear(temp) then
   begin
-   if System.InterlockedCompareExchange64(vLock,SetWriter(temp,true),temp)=temp then
-    Break
-   else
-    Continue;
+
+   if System.InterlockedCompareExchange64(vLock,SetWriter(temp,true),temp) = temp then
+   begin
+    Exit;
+   end else
+   begin
+    goto _next;
+   end;
+
   end else
   begin
+
    if (i<MAX_SPIN) then
    begin
     NtYieldExecution;
-    Continue;
+    goto _next;
    end;
-   if System.InterlockedCompareExchange64(vLock,SetWaiting(temp,WaitingCount(temp)+1),temp)<>temp then
-   begin
-    Continue;
-   end;
-   RtlWaitOnAddress(@SRWLock,@temp,sizeof(QWORD),INFINITE);
+
+   new:=IncWaiting(vLock);
+
    i:=0;
-   repeat
-    temp:=vLock;
-    if (i>MAX_SPIN) then
-    begin
-     NtYieldExecution;
-     Continue;
-    end;
-    Inc(i);
-   until System.InterlockedCompareExchange64(vLock,SetWaiting(temp,WaitingCount(temp)-1),temp)=temp;
-   i:=0;
+   RtlWaitOnAddress(@SRWLock,@new,sizeof(QWORD),nil);
+
+   DecWaiting(vLock);
   end;
+
+  _next:
   Inc(i);
  until False;
 end;
@@ -629,12 +653,13 @@ Var
  temp:QWORD;
 begin
  repeat
-  repeat
-   temp:=vLock;
-   if (WaitingCount(temp)=0) then break;
-   RtlWakeAddressSingle(@SRWLock);
-  until False;
- until System.InterlockedCompareExchange64(vLock,SetWriter(temp,false),temp)=temp;
+  temp:=vLock;
+
+  Assert(Writer(temp));
+
+ until System.InterlockedCompareExchange64(vLock,SetWriter(temp,false),temp) = temp;
+
+ RtlWakeAddressAll(@SRWLock);
 end;
 
 procedure rw_runlock(Var SRWLock:Pointer);
@@ -644,11 +669,15 @@ Var
 begin
  repeat
   temp:=vLock;
-  if (ReaderCount(temp)=1) and (WaitingCount(temp)<>0) then
-  begin
-   RtlWakeAddressSingle(@SRWLock);
-  end;
- until System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp)-1),temp)=temp;
+
+  Assert(ReaderCount(temp) > 0);
+
+ until System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp) - 1),temp) = temp;
+
+ if (ReaderCount(temp)=1) and (WaitingCount(temp)<>0) then
+ begin
+  RtlWakeAddressSingle(@SRWLock);
+ end;
 end;
 
 Procedure rw_unlock(Var SRWLock:Pointer);
@@ -656,25 +685,37 @@ Var
  vLock:QWORD absolute SRWLock;
  temp:QWORD;
 begin
- if ReaderCount(vLock)=0 then
- begin
-  repeat
-   repeat
-    temp:=vLock;
-    if (WaitingCount(temp)=0) then break;
-    RtlWakeAddressSingle(@SRWLock);
-   until False;
-  until System.InterlockedCompareExchange64(vLock,SetWriter(temp,false),temp)=temp;
- end else
- begin
-  repeat
-   temp:=vLock;
-   if (ReaderCount(temp)=1) and (WaitingCount(temp)<>0) then
+ repeat
+
+  temp:=vLock;
+  if ReaderCount(temp)=0 then
+  begin
+   //rw_wunlock
+
+   if System.InterlockedCompareExchange64(vLock,SetWriter(temp,false),temp) = temp then
    begin
-    RtlWakeAddressSingle(@SRWLock);
+    RtlWakeAddressAll(@SRWLock);
+    Break;
    end;
-  until System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp)-1),temp)=temp;
- end;
+   //
+  end else
+  begin
+   //rw_runlock
+
+   if System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp) - 1),temp) = temp then
+   begin
+
+    if (ReaderCount(temp)=1) and (WaitingCount(temp)<>0) then
+    begin
+     RtlWakeAddressSingle(@SRWLock);
+    end;
+
+    Break;
+   end;
+   //
+  end;
+
+ until false;
 end;
 
 function rw_try_rlock(Var SRWLock:Pointer):Boolean;
@@ -686,7 +727,7 @@ begin
  temp:=vLock;
  if not Writer(temp) then
  begin
-  if System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp)+1),temp)=temp then
+  if System.InterlockedCompareExchange64(vLock,SetReaders(temp,ReaderCount(temp) + 1),temp) = temp then
   begin
    Result:=True;
   end;
@@ -702,12 +743,14 @@ begin
  temp:=vLock;
  if AllClear(temp) then
  begin
-  if System.InterlockedCompareExchange64(vLock,SetWriter(temp,true),temp)=temp then
+  if System.InterlockedCompareExchange64(vLock,SetWriter(temp,true),temp) = temp then
   begin
    Result:=True;
   end;
  end;
 end;
+
+{$ENDIF}
 
 end.
 
