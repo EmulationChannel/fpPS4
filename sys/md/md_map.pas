@@ -6,6 +6,7 @@ unit md_map;
 interface
 
 uses
+ sysutils,
  ntapi,
  vm,
  windows;
@@ -56,6 +57,8 @@ const
  BCACHE=ICACHE or DCACHE;
 
 procedure md_cacheflush(addr:Pointer;nbytes,cache:Integer);
+
+Function  md_create_swap_file(const FNAME:RawByteString;SIZE:QWORD;Var FD:THandle):DWORD;
 
 implementation
 
@@ -451,7 +454,83 @@ begin
  end;
 end;
 
+Function NtTruncate(FD:THandle;SIZE:QWORD):DWORD; inline;
+var
+ BLK:IO_STATUS_BLOCK;
+begin
+ Result:=NtSetInformationFile(
+          FD,
+          @BLK,
+          @SIZE,
+          SizeOf(Int64),
+          FileEndOfFileInformation);
 
+ if (Result<>0) then
+ begin
+  Result:=NtSetInformationFile(
+           FD,
+           @BLK,
+           @SIZE,
+           SizeOf(Int64),
+           FileAllocationInformation);
+ end;
+end;
+
+Function md_create_swap_file(const FNAME:RawByteString;SIZE:QWORD;Var FD:THandle):DWORD;
+var
+ W:WideString;
+
+ OBJ  :OBJECT_ATTRIBUTES;
+ UPATH:UNICODE_STRING;
+ BLK  :IO_STATUS_BLOCK;
+
+begin
+ W:=UTF8Decode(FNAME);
+ W:='\??\'+W;
+
+ OBJ:=Default(OBJECT_ATTRIBUTES);
+ OBJ.Length    :=SizeOf(OBJECT_ATTRIBUTES);
+ OBJ.ObjectName:=@UPATH;
+
+ UPATH:=Default(UNICODE_STRING);
+ UPATH.Length       :=strlen(PWideChar(w))*SizeOf(WideChar);
+ UPATH.MaximumLength:=UPATH.Length+SizeOf(WideChar);
+ UPATH.Buffer       :=PWideChar(w);
+
+ BLK:=Default(IO_STATUS_BLOCK);
+ FD:=0;
+
+ Result:=NtCreateFile(@FD,
+                      FILE_READ_DATA or
+                      FILE_WRITE_DATA or
+                      FILE_APPEND_DATA or
+                      FILE_READ_ATTRIBUTES or
+                      FILE_WRITE_ATTRIBUTES or
+                      FILE_CAN_DELETE or
+                      SYNCHRONIZE,
+                      @OBJ,
+                      @BLK,
+                      nil,
+                      FILE_ATTRIBUTE_TEMPORARY,
+                      0,
+                      FILE_OVERWRITE_IF,
+                      FILE_SYNCHRONOUS_IO_NONALERT or
+                      FILE_OPEN_REPARSE_POINT or
+                      FILE_NON_DIRECTORY_FILE or
+                      FILE_DELETE_ON_CLOSE,
+                      nil,
+                      0);
+
+ if (Result<>0) then Exit;
+
+ Result:=NtTruncate(FD,SIZE);
+
+ if (Result<>0) then
+ begin
+  NtClose(FD);
+  FD:=0;
+ end;
+end;
 
 end.
 

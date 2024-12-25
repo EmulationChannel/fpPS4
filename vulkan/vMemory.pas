@@ -147,6 +147,9 @@ type
    Function    FetchHostMap(Addr,Size:TVkDeviceSize;device_local:Boolean):TvPointer;
 
    Procedure   Flush;
+
+   Procedure   _print_host;
+   Procedure   _print_devs;
  end;
 
 var
@@ -1693,6 +1696,8 @@ begin
  rw_wunlock(global_mem_lock);
 end;
 
+procedure _print_dmem_fd; external;
+
 Function TvMemManager.FetchHostMap(Addr,Size:TVkDeviceSize;mtindex:Byte):TvPointer;
 label
  _retry,
@@ -1769,6 +1774,13 @@ begin
 
  _fail:
 
+ if (node=nil) then
+ begin
+  _print_host;
+  _print_devs;
+  _print_dmem_fd;
+ end;
+
  //
  rw_wunlock(global_mem_lock);
  //
@@ -1825,6 +1837,77 @@ begin
  rw_wunlock(global_mem_lock);
 end;
 
+function get_str_mem_info(const m:TvMemInfo):RawByteString;
+begin
+ Result:='HI:0x'+HexStr(m.heap_index,2)+'|'+
+         'MI:0x'+HexStr(m.mem_type  ,2)+'|';
+
+ if m.device_local then
+ begin
+  Result:=Result+'DL|';
+ end;
+
+ if m.device_coherent then
+ begin
+  Result:=Result+'DC|';
+ end;
+
+ if m.host_visible then
+ begin
+  Result:=Result+'HV|';
+ end;
+
+ if m.host_coherent then
+ begin
+  Result:=Result+'HC|';
+ end;
+end;
+
+Procedure TvMemManager._print_host;
+var
+ node:TvHostMemory;
+begin
+ if (Self=nil) then Exit;
+
+ Writeln('[Host]:');
+
+ node:=TvHostMemory(TAILQ_FIRST(@FHosts));
+ while (node<>nil) do
+ begin
+
+  Writeln(' 0x',HexStr(node.FHandle,16),':[',get_str_mem_info(node.FMemInfo),']');
+
+  Writeln('   0x',HexStr(node.FStart,16),'..',HexStr(node.F__End,16));
+
+  node:=TvHostMemory(TAILQ_NEXT(node,@node.entry));
+ end;
+
+end;
+
+Procedure TvMemManager._print_devs;
+var
+ node:TvDeviceMemory;
+begin
+ if (Self=nil) then Exit;
+
+ Writeln('[Devs]:');
+
+ node:=TvDeviceMemory(TAILQ_FIRST(@FDevs));
+ while (node<>nil) do
+ begin
+
+  Writeln(' 0x',HexStr(node.FHandle,16),':[',get_str_mem_info(node.FMemInfo),']');
+
+  Writeln('   ',(node.FMap.size),'/',(node.FSize),':',(node.FMap.size/node.FSize)*100:0:2,'%');
+
+  node:=TvDeviceMemory(TAILQ_NEXT(node,@node.entry));
+ end;
+
+end;
+
+threadvar
+ last_alloc_error:TVkResult;
+
 //
 
 function vkAllocMemory(device:TVkDevice;Size:TVkDeviceSize;mtindex:TVkUInt32):TVkDeviceMemory;
@@ -1841,6 +1924,7 @@ begin
  r:=vkAllocateMemory(device,@ainfo,nil,@Result);
  if (r<>VK_SUCCESS) then
  begin
+  last_alloc_error:=r;
   Writeln(StdErr,'vkAllocateMemory:',r,' Size=0x',HexStr(Size,16),' mtindex=',mtindex);
   print_backtrace(StdErr,Get_pc_addr,get_frame,0);
  end;
@@ -1867,7 +1951,8 @@ begin
  r:=vkAllocateMemory(device,@ainfo,nil,@Result);
  if (r<>VK_SUCCESS) then
  begin
-  Writeln(StdErr,'vkAllocHostMemory:',r,' Size=0x',HexStr(Size,16),' mtindex=',mtindex,' addr=',HexStr(addr));
+  last_alloc_error:=r;
+  Writeln(StdErr,'vkAllocHostMemory:',r,' Size=0x',HexStr(Size,16),' mtindex=',mtindex,' addr=0x',HexStr(addr));
  end;
 end;
 
@@ -1889,6 +1974,7 @@ begin
  r:=vkAllocateMemory(device,@ainfo,nil,@Result);
  if (r<>VK_SUCCESS) then
  begin
+  last_alloc_error:=r;
   Writeln(StdErr,'vkAllocateMemory:',r);
  end;
 end;
@@ -1911,6 +1997,7 @@ begin
  r:=vkAllocateMemory(device,@ainfo,nil,@Result);
  if (r<>VK_SUCCESS) then
  begin
+  last_alloc_error:=r;
   Writeln(StdErr,'vkAllocateMemory:',r);
  end;
 end;

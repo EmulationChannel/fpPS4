@@ -138,16 +138,16 @@ var
 
 procedure vm_set_budget_limit(ptype,field:Integer;value:QWORD);
 begin
+ case field of
+  field_dmem_alloc:Writeln('vm_set_budget_limit(dmem_alloc,0x',HexStr(value,16),')');
+  field_mlock     :Writeln('vm_set_budget_limit(mlock     ,0x',HexStr(value,16),')');
+  field_malloc    :Writeln('vm_set_budget_limit(malloc    ,0x',HexStr(value,16),')');
+  else;
+ end;
+
  rw_wlock(budget_lock);
 
-  case field of
-   field_dmem_alloc:Writeln('vm_set_budget_limit(dmem_alloc,0x',HexStr(value,16),')');
-   field_mlock     :Writeln('vm_set_budget_limit(mlock     ,0x',HexStr(value,16),')');
-   field_malloc    :Writeln('vm_set_budget_limit(malloc    ,0x',HexStr(value,16),')');
-   else;
-  end;
-
-  //ptype/budget_id ignored TODO
+  //TODO: ptype/budget_id ignored
   PQWORD(@budget_limit)[field]:=value;
 
  rw_wunlock(budget_lock);
@@ -157,7 +157,7 @@ function vm_budget_limit(ptype,field:Integer):QWORD;
 begin
  rw_wlock(budget_lock);
 
-  //ptype/budget_id ignored TODO
+  //TODO: ptype/budget_id ignored
   Result:=PQWORD(@budget_limit)[field];
 
  rw_wunlock(budget_lock);
@@ -167,7 +167,7 @@ function vm_budget_used(ptype,field:Integer):QWORD;
 begin
  rw_wlock(budget_lock);
 
-  //ptype/budget_id ignored TODO
+  //TODO: ptype/budget_id ignored
   Result:=PQWORD(@budget_reserve)[field];
 
  rw_wunlock(budget_lock);
@@ -184,7 +184,7 @@ begin
  begin
   rw_wlock(budget_lock);
 
-   //ptype/budget_id ignored TODO
+   //TODO: ptype/budget_id ignored
 
    rsv  :=PQWORD(@budget_reserve)[field];
    limit:=PQWORD(@budget_limit  )[field];
@@ -218,7 +218,7 @@ begin
  begin
   rw_wlock(budget_lock);
 
-   //ptype/budget_id ignored TODO
+   //TODO: ptype/budget_id ignored
 
    rsv:=PQWORD(@budget_reserve)[field];
 

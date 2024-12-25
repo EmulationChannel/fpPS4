@@ -133,6 +133,7 @@ function  pmap_danger_zone(pmap:pmap_t;
 implementation
 
 uses
+ sysutils,
  ntapi,
  sys_bootparam;
 
@@ -156,20 +157,68 @@ begin
  Result:=((x+PAGE_MASK) shr PAGE_SHIFT);
 end;
 
+const
+ external_dmem_swap_mode:Boolean=False;
+
 procedure dmem_init;
 var
  base:Pointer;
  i,r:Integer;
+
+ fname:RawByteString;
+ fd:THandle;
+ md:THandle;
+ size:QWORD;
 begin
- for i:=0 to PMAPP_BLK_DMEM_BLOCKS-2 do
+ if external_dmem_swap_mode then
  begin
-  base:=Pointer(VM_MIN_GPU_ADDRESS+i*PMAPP_BLK_SIZE);
-  r:=md_split(base,PMAPP_BLK_SIZE);
+  base:=Pointer(VM_MIN_GPU_ADDRESS);
+  size:=VM_MIN_DEV_ADDRESS-VM_MIN_GPU_ADDRESS;
+
+  fd:=0;
+  fname:=sysutils.GetTempFileName(GetTempDir,'fpps4_dmem');
+  r:=md_create_swap_file(fname,size,fd);
   if (r<>0) then
   begin
-   Writeln('failed md_split(',HexStr(base),',',HexStr(base+PMAPP_BLK_SIZE),'):0x',HexStr(r,8));
+   Writeln('failed md_create_swap_file("',fname,'",',HexStr(size,16),'):0x',HexStr(r,8));
    Assert(false,'dmem_init');
   end;
+
+  md:=0;
+  r:=md_memfd_open(md,fd,VM_PROT_RW);
+  Assert(r=0);
+
+  DMEM_FD[0].hfile:=md;
+  DMEM_FD[0].maxp :=VM_RW;
+
+  r:=md_split(base,size);
+  if (r<>0) then
+  begin
+   Writeln('failed md_split(',HexStr(base),',',HexStr(base+size),'):0x',HexStr(r,8));
+   Assert(false,'dmem_init');
+  end;
+
+  r:=md_file_mmap_ex(md,base,0,size,VM_RW);
+  if (r<>0) then
+  begin
+   Writeln('failed md_file_mmap_ex(',HexStr(base),',',HexStr(base+size),'):0x',HexStr(r,8));
+   Assert(false,'dmem_init');
+  end;
+
+ end else
+ begin
+
+  for i:=0 to PMAPP_BLK_DMEM_BLOCKS-2 do
+  begin
+   base:=Pointer(VM_MIN_GPU_ADDRESS+i*PMAPP_BLK_SIZE);
+   r:=md_split(base,PMAPP_BLK_SIZE);
+   if (r<>0) then
+   begin
+    Writeln('failed md_split(',HexStr(base),',',HexStr(base+PMAPP_BLK_SIZE),'):0x',HexStr(r,8));
+    Assert(false,'dmem_init');
+   end;
+  end;
+
  end;
 end;
 
@@ -198,11 +247,14 @@ begin
 
  DEV_INFO.DEV_PTR:=Pointer(VM_MIN_DEV_ADDRESS); //force
 
- r:=md_split(DEV_INFO.DEV_PTR,DEV_INFO.DEV_SIZE);
- if (r<>0) then
+ if not external_dmem_swap_mode then
  begin
-  Writeln('failed md_split(',HexStr(DEV_INFO.DEV_PTR),',',HexStr(DEV_INFO.DEV_SIZE,11),'):0x',HexStr(r,8));
-  Assert(false,'dev_mem_init');
+  r:=md_split(DEV_INFO.DEV_PTR,DEV_INFO.DEV_SIZE);
+  if (r<>0) then
+  begin
+   Writeln('failed md_split(',HexStr(DEV_INFO.DEV_PTR),',',HexStr(DEV_INFO.DEV_SIZE,11),'):0x',HexStr(r,8));
+   Assert(false,'dev_mem_init');
+  end;
  end;
 
  r:=md_file_mmap_ex(DEV_INFO.DEV_FD.hfile,DEV_INFO.DEV_PTR,0,DEV_INFO.DEV_SIZE,VM_RW);
@@ -355,6 +407,7 @@ type
   __end :QWORD;
   obj   :p_vm_nt_file_obj;
   offset:QWORD;
+  olocal:QWORD;
  end;
 
 function get_priv_block_count:Integer;
@@ -408,6 +461,7 @@ begin
 
  //current block offset
  o:=o and PMAPP_BLK_MASK;
+ info.olocal:=o; //block local offset
 
  //mem size
  d:=info.__end-info.start;
@@ -422,6 +476,31 @@ begin
   e:=PMAPP_BLK_SIZE-o;
   e:=e+info.start;
   info.__end:=e;
+ end;
+end;
+
+procedure _print_dmem_fd; public;
+var
+ i:Integer;
+ base:Pointer;
+begin
+ Writeln('[DMEM_FD]');
+ if external_dmem_swap_mode then
+ begin
+  Writeln(' 0x',HexStr(VM_MIN_GPU_ADDRESS,16),'..',HexStr(VM_MIN_DEV_ADDRESS,16));
+ end else
+ begin
+
+  For i:=0 to High(DMEM_FD) do
+  begin
+   //
+   if (DMEM_FD[i].hfile<>0) then
+   begin
+    base:=Pointer(VM_MIN_GPU_ADDRESS+i*PMAPP_BLK_SIZE);
+    Writeln(' 0x',HexStr(base),'..',HexStr(base+PMAPP_BLK_SIZE));
+   end;
+  end;
+
  end;
 end;
 
@@ -449,40 +528,50 @@ begin
  end else
  begin
   //dmem
-  BLK_SIZE:=PMAPP_BLK_SIZE;
-
-  //current block id
-  i:=o shr PMAPP_BLK_SHIFT;
-
-  if (DMEM_FD[i].hfile=0) then
+  if external_dmem_swap_mode then
   begin
-   R:=md_memfd_create(DMEM_FD[i].hfile,BLK_SIZE,VM_RW);
+   BLK_SIZE:=VM_MIN_DEV_ADDRESS-VM_MIN_GPU_ADDRESS;
 
-   DMEM_FD[i].maxp:=VM_RW;
+   info.obj:=@DMEM_FD[0];
+  end else
+  begin
+   BLK_SIZE:=PMAPP_BLK_SIZE;
 
-   if (r<>0) then
+   //current block id
+   i:=o shr PMAPP_BLK_SHIFT;
+
+   if (DMEM_FD[i].hfile=0) then
    begin
-    Writeln('failed md_memfd_create(',HexStr(BLK_SIZE,11),'):0x',HexStr(r,8));
-    Assert(false,'get_dmem_fd');
+    R:=md_memfd_create(DMEM_FD[i].hfile,BLK_SIZE,VM_RW);
+
+    DMEM_FD[i].maxp:=VM_RW;
+
+    if (r<>0) then
+    begin
+     Writeln('failed md_memfd_create(',HexStr(BLK_SIZE,11),'):0x',HexStr(r,8));
+     Assert(false,'get_dmem_fd');
+    end;
+
+    //dmem mirror
+    base:=Pointer(VM_MIN_GPU_ADDRESS+i*PMAPP_BLK_SIZE);
+    r:=md_file_mmap_ex(DMEM_FD[i].hfile,base,0,BLK_SIZE,VM_RW);
+    if (r<>0) then
+    begin
+     Writeln('failed md_file_mmap_ex(',HexStr(base),',',HexStr(base+BLK_SIZE),'):0x',HexStr(r,8));
+     Assert(false,'get_dmem_fd');
+    end;
    end;
 
-   //dmem mirror
-   base:=Pointer(VM_MIN_GPU_ADDRESS+i*PMAPP_BLK_SIZE);
-   r:=md_file_mmap_ex(DMEM_FD[i].hfile,base,0,BLK_SIZE,VM_RW);
-   if (r<>0) then
-   begin
-    Writeln('failed md_file_mmap_ex(',HexStr(base),',',HexStr(base+BLK_SIZE),'):0x',HexStr(r,8));
-    Assert(false,'get_dmem_fd');
-   end;
+   info.obj:=@DMEM_FD[i];
   end;
 
-  info.obj:=@DMEM_FD[i];
  end;
 
  vm_nt_file_obj_reference(info.obj);
 
  //current block offset
- o:=o and PMAPP_BLK_MASK;
+ o:=o mod BLK_SIZE;
+ info.olocal:=o; //block local offset
 
  //max offset
  e:=o+MEM_SIZE;
@@ -730,7 +819,7 @@ begin
 
        r:=vm_nt_map_insert(@pmap^.nt_map,
                            info.obj,
-                           info.start and PMAPP_BLK_MASK, //block local offset
+                           info.olocal, //block local offset
                            info.start,
                            info.__end,
                            delta,
@@ -790,7 +879,7 @@ begin
 
        r:=vm_nt_map_insert(@pmap^.nt_map,
                            info.obj,
-                           info.offset and PMAPP_BLK_MASK, //block local offset
+                           info.olocal, //block local offset
                            info.start,
                            info.__end,
                            delta,
@@ -884,7 +973,7 @@ begin
 
        r:=vm_nt_map_insert(@pmap^.nt_map,
                            info.obj,
-                           info.start and PMAPP_BLK_MASK, //block local offset
+                           info.olocal, //block local offset
                            info.start,
                            info.__end,
                            delta,
@@ -906,7 +995,7 @@ begin
        pmap_copy(cow,
                  info.offset,
                  info.obj,
-                 info.start and PMAPP_BLK_MASK, //block local offset
+                 info.olocal, //block local offset
                  delta,
                  size);
 
@@ -1042,6 +1131,8 @@ procedure pmap_prot_track(pmap :pmap_t;
                           __end:vm_offset_t;
                           prot :Byte); public;
 begin
+ //exit;
+
  if (p_print_pmap) then
  begin
   Writeln('pmap_prot_track:',HexStr(start,11),':',HexStr(__end,11),':',HexStr(prot,2));

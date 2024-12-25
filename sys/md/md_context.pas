@@ -114,7 +114,8 @@ uses
  errno,
  systm,
  kern_psl,
- signal;
+ signal,
+ md_sleep;
 
 //
 
@@ -688,6 +689,23 @@ end;
 
 procedure host_sigipi; external;
 
+procedure on_ipi(td           :p_kthread;
+                 ApcArgument2 :Pointer;
+                 ApcArgument3 :Pointer;
+                 ContextRecord:PCONTEXT); stdcall;
+begin
+
+ if IS_SYSTEM_STACK(td,ContextRecord^.Rsp) or //system?
+    IS_TRAP_FUNC(ContextRecord^.Rip) or       //syscall func?
+    IS_JIT_FUNC (ContextRecord^.Rip) then     //syscall func?
+ begin
+  Exit;
+ end;
+
+ Writeln('TODO:on_ipi');
+ //Assert(false,'on_ipi');
+end;
+
 function ipi_send_cpu(td:p_kthread):Integer;
 label
  resume,
@@ -704,9 +722,21 @@ var
  oonstack:Integer;
 begin
  Result   :=0;
- td_handle:=td^.td_handle;
- iflag    :=cpu_get_iflag(td);
+ //td_handle:=td^.td_handle;
+ //iflag    :=cpu_get_iflag(td);
 
+ Result:=NtQueueApcThreadEx(
+  td^.td_handle,
+  QUEUE_USER_APC_FLAGS_SPECIAL_USER_APC,
+  @on_ipi,
+  td,
+  nil,
+  nil
+ );
+
+ Assert(Result=0,'NtQueueApcThreadEx failed');
+
+ {
  PROC_LOCK;
 
  tryagain:
@@ -873,6 +903,7 @@ begin
  resume:
   NtResumeThread(td_handle,nil);
   PROC_UNLOCK;
+ }
 end;
 
 end.
