@@ -106,8 +106,9 @@ const
  HW_MAXID       =13; // number of valid hw ids
 
 //MACHDEP subtypes
- MACHDEP_TSC_FREQ  =$1EC; //(OID_AUTO) Time Stamp Counter frequency
- MACHDEP_BOOTPARAMS=$14D; //(OID_AUTO) orbis bootparams
+ MACHDEP_TSC_FREQ        =$1EC; //(OID_AUTO) Time Stamp Counter frequency
+ MACHDEP_BOOTPARAMS      =$14D; //(OID_AUTO) orbis bootparams
+ MACHDEP_CPUMODE_PLATFORM=$600; //(OID_AUTO) CPU mode platform (PS4/PS5)
 
 //BOOTPARAMS subtypes
  BOOTPARAMS_IS_MAIN_ON_STANDBY=$100; //(OID_AUTO) Is main on standby mode
@@ -600,6 +601,12 @@ begin
      oid[2]:=BOOTPARAMS_BASE_PS4_MODE;
      len^  :=3;
     end;
+  'machdep.cpumode_platform':
+    begin
+     oid[0]:=CTL_MACHDEP;
+     oid[1]:=MACHDEP_CPUMODE_PLATFORM;
+     len^  :=2;
+    end;
   'vm.ps4dev.trcmem_total':
     begin
      oid[0]:=CTL_VM;
@@ -856,8 +863,9 @@ begin
  Result:=ENOENT;
 
  case name[0] of
-  MACHDEP_TSC_FREQ  :Result:=SYSCTL_HANDLE(noid,name,$C0000009,@sysctl_machdep_tsc_freq);
-  MACHDEP_BOOTPARAMS:Result:=sysctl_bootparams(name+1,namelen-1,noid,req);
+  MACHDEP_TSC_FREQ        :Result:=SYSCTL_HANDLE(noid,name,$C0000009,@sysctl_machdep_tsc_freq);
+  MACHDEP_BOOTPARAMS      :Result:=sysctl_bootparams(name+1,namelen-1,noid,req);
+  MACHDEP_CPUMODE_PLATFORM:Result:=SYSCTL_HANDLE(noid,name,$80000002,0,@sysctl_handle_int);
 
   else
    begin
