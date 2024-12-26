@@ -1177,6 +1177,9 @@ begin
  jit_cbs[OPPv,OPaddsub,OPSx_pd]:=@op_avx3_gen;
  jit_cbs[OPPv,OPaddsub,OPSx_ps]:=@op_avx3_gen;
 
+ jit_cbs[OPPv,OPphsub,OPSx_w]:=@op_avx3_gen;
+ jit_cbs[OPPv,OPphsub,OPSx_d]:=@op_avx3_gen;
+
  jit_cbs[OPPv,OPdiv   ,OPSx_ps]:=@op_avx3_gen;
  jit_cbs[OPPv,OPdiv   ,OPSx_pd]:=@op_avx3_gen;
  jit_cbs[OPPv,OPdiv   ,OPSx_ss]:=@op_avx3_gen;
