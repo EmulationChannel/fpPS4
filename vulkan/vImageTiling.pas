@@ -1038,6 +1038,11 @@ begin
 
  if (IMAGE_USAGE and TM_READ)=0 then Exit;
 
+ if image.key.params.samples>1 then
+ begin
+  Exit;
+ end;
+
  if image.IsDepthAndStencil then
  begin
   pm4_load_from(cmd,image.DepthOnly  ,IMAGE_USAGE);
@@ -1085,6 +1090,11 @@ var
  cb:t_write_back_cb;
 begin
  if (cmd=nil) or (image=nil) then Exit;
+
+ if image.key.params.samples>1 then
+ begin
+  Exit;
+ end;
 
  if image.IsDepthAndStencil then
  begin

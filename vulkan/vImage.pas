@@ -1189,6 +1189,19 @@ begin
  end;
 end;
 
+Function GetNormalizedTiling(tiling:TvTiling):TvTiling; inline;
+begin
+ //
+ case tiling.idx of
+  9,13,27:begin Result.idx:=5;  Result.alt:=tiling.alt; end;
+    14,28:begin Result.idx:=10; Result.alt:=tiling.alt; end;
+    16,29:begin Result.idx:=11; Result.alt:=tiling.alt; end;
+    17,30:begin Result.idx:=12; Result.alt:=tiling.alt; end;
+  else
+          Result:=tiling;
+ end;
+end;
+
 Function GetNormalizedParams(const key:TvImageKey):TvImageKeyParams;
 begin
  Result:=key.params;
@@ -1198,6 +1211,8 @@ begin
   Result.width :=(Result.width +3) shr 2;
   Result.height:=(Result.height+3) shr 2;
  end;
+
+ Result.tiling    :=GetNormalizedTiling(Result.tiling);
 
  Result.pitch     :=0;
  Result.pad_width :=0;

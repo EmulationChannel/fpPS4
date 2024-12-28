@@ -1204,7 +1204,7 @@ begin
  node^.scope :=Default(t_pm4_resource_curr_scope);
 
  //
- RT:=GPU_REGS.GET_RT_INFO(0);
+ RT:=GPU_REGS.GET_RT_INFO(0,True);
 
  //-TM_READ +TM_CLEAR
  RT.IMAGE_USAGE:=RT.IMAGE_USAGE and (not TM_READ) or TM_CLEAR;
@@ -1253,8 +1253,8 @@ begin
  node^.scope :=Default(t_pm4_resource_curr_scope);
 
  //
- RT[0]:=GPU_REGS.GET_RT_INFO(0);
- RT[1]:=GPU_REGS.GET_RT_INFO(1);
+ RT[0]:=GPU_REGS.GET_RT_INFO(0,True);
+ RT[1]:=GPU_REGS.GET_RT_INFO(1,True);
 
  RT[0].IMAGE_USAGE:=TM_READ;
  RT[1].IMAGE_USAGE:=TM_WRITE;

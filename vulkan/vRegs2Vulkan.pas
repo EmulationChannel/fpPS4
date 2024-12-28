@@ -114,7 +114,7 @@ type
   Function  GET_SCREEN_SIZE:TVkExtent2D;
   Function  GET_RT_BLEND(i:Byte):TVkPipelineColorBlendAttachmentState; //0..7
   Function  GET_BLEND_INFO:TBLEND_INFO;
-  Function  GET_RT_INFO(i:Byte):TRT_INFO; //0..7
+  Function  GET_RT_INFO(i:Byte;ignore_mask:Boolean=False):TRT_INFO; //0..7
   Function  DB_ENABLE:Boolean;
   Function  GET_DB_INFO:TDB_INFO;
 
@@ -267,50 +267,185 @@ begin
  }
 end;
 
-Function _fix_scissor_range(i:Word):Word;
+Function _fix_scissor_range(i:Word):Word; inline;
 begin
  Result:=i;
  if SmallInt(Result)<0 then Result:=0;
  if SmallInt(Result)>16384 then Result:=16384;
 end;
 
-Function TGPU_REGS.GET_SCISSOR(i:Byte):TVkRect2D; //0..15
+function Min(a,b:Integer):Integer; inline;
 begin
+ if (a<b) then Result:=a else Result:=b;
+end;
 
- if (CX_REG^.PA_SC_MODE_CNTL_0.VPORT_SCISSOR_ENABLE<>0) and
-    ((DWORD(CX_REG^.PA_SC_VPORT_SCISSOR[i].TL)<>0) or
-     (DWORD(CX_REG^.PA_SC_VPORT_SCISSOR[i].BR)<>0)) then
- begin
-  Result.offset.x     :=_fix_scissor_range(CX_REG^.PA_SC_VPORT_SCISSOR[i].TL.TL_X);
-  Result.offset.y     :=_fix_scissor_range(CX_REG^.PA_SC_VPORT_SCISSOR[i].TL.TL_Y);
-  Result.extent.width :=_fix_scissor_range(CX_REG^.PA_SC_VPORT_SCISSOR[i].BR.BR_X);
-  Result.extent.height:=_fix_scissor_range(CX_REG^.PA_SC_VPORT_SCISSOR[i].BR.BR_Y);
- end else
- begin
-  Result.offset.x     :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_TL.TL_X);
-  Result.offset.y     :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_TL.TL_Y);
-  Result.extent.width :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_X);
-  Result.extent.height:=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_Y);
+function Max(a,b:Integer):Integer; inline;
+begin
+ if (a>b) then Result:=a else Result:=b;
+end;
+
+Function TGPU_REGS.GET_SCISSOR(i:Byte):TVkRect2D; //0..15
+var
+ u:record
+  Case Byte of
+   0:(
+      V_TL:TPA_SC_VPORT_SCISSOR_0_TL;
+      V_BR:TPA_SC_VPORT_SCISSOR_0_BR;
+     );
+   1:(
+      S_TL:TPA_SC_SCREEN_SCISSOR_TL;
+      S_BR:TPA_SC_SCREEN_SCISSOR_BR;
+     );
+   2:(
+      W_TL:TPA_SC_WINDOW_SCISSOR_TL;
+      W_BR:TPA_SC_WINDOW_SCISSOR_BR;
+     );
+   3:(
+      OFS:TPA_SC_WINDOW_OFFSET;
+     );
  end;
 
- Result.extent.width :=Result.extent.width -Result.offset.x;
- Result.extent.height:=Result.extent.height-Result.offset.y;
+ ofs:TVkOffset2D;
+
+ sum:TVkRect2D;
+ tmp:TVkRect2D;
+begin
+
+ if (CX_REG^.PA_SC_CLIPRECT_RULE.CLIP_RULE<>$FFFF) then
+ begin
+  Assert(false,'VK_EXT_discard_rectangles');
+ end;
+
+ //Screen Scissor rectangle
+ u.S_TL:=CX_REG^.PA_SC_SCREEN_SCISSOR_TL;
+ u.S_BR:=CX_REG^.PA_SC_SCREEN_SCISSOR_BR;
+ //
+ sum.offset.x     :=Min(SmallInt(u.S_TL.TL_X),16383);
+ sum.offset.y     :=Min(SmallInt(u.S_TL.TL_Y),16383);
+ sum.extent.width :=Min(SmallInt(u.S_BR.BR_X),16384);
+ sum.extent.height:=Min(SmallInt(u.S_BR.BR_Y),16384);
+ //
+
+ //Offset from screen coords to window coords
+ u.ofs:=CX_REG^.PA_SC_WINDOW_OFFSET;
+ //
+ ofs.x:=SmallInt(u.ofs.WINDOW_X_OFFSET);
+ ofs.y:=SmallInt(u.ofs.WINDOW_Y_OFFSET);
+ //
+
+ if (CX_REG^.PA_SU_SC_MODE_CNTL.VTX_WINDOW_OFFSET_ENABLE<>0) then
+ if (DWORD(u.ofs)<>0) then
+ begin
+  Assert(false,'VTX_WINDOW_OFFSET_ENABLE');
+ end;
+
+ //Generic Scissor rectangle specification
+ u.V_TL:=CX_REG^.PA_SC_GENERIC_SCISSOR.TL;
+ u.V_BR:=CX_REG^.PA_SC_GENERIC_SCISSOR.BR;
+ //
+ tmp.offset.x     :=Min(Word(u.V_TL.TL_X),16383);
+ tmp.offset.y     :=Min(Word(u.V_TL.TL_Y),16383);
+ tmp.extent.width :=Min(Word(u.V_BR.BR_X),16384);
+ tmp.extent.height:=Min(Word(u.V_BR.BR_Y),16384);
+ //
+ if (u.V_TL.WINDOW_OFFSET_DISABLE=0) then
+ begin
+  Inc(tmp.offset.x     ,ofs.x);
+  Inc(tmp.offset.y     ,ofs.y);
+  Inc(tmp.extent.width ,ofs.x);
+  Inc(tmp.extent.height,ofs.y);
+ end;
+ //
+
+ //apply
+ sum.offset.x     :=Max(sum.offset.x     ,tmp.offset.x     );
+ sum.offset.y     :=Max(sum.offset.y     ,tmp.offset.y     );
+ sum.extent.width :=Min(sum.extent.width ,tmp.extent.width );
+ sum.extent.height:=Min(sum.extent.height,tmp.extent.height);
+ //apply
+
+ //Window Scissor rectangle specification
+ u.W_TL:=CX_REG^.PA_SC_WINDOW_SCISSOR_TL;
+ u.W_BR:=CX_REG^.PA_SC_WINDOW_SCISSOR_BR;
+ //
+ tmp.offset.x     :=Min(Word(u.W_TL.TL_X),16383);
+ tmp.offset.y     :=Min(Word(u.W_TL.TL_Y),16383);
+ tmp.extent.width :=Min(Word(u.W_BR.BR_X),16384);
+ tmp.extent.height:=Min(Word(u.W_BR.BR_Y),16384);
+ //
+ if (u.W_TL.WINDOW_OFFSET_DISABLE=0) then
+ begin
+  Inc(tmp.offset.x     ,ofs.x);
+  Inc(tmp.offset.y     ,ofs.y);
+  Inc(tmp.extent.width ,ofs.x);
+  Inc(tmp.extent.height,ofs.y);
+ end;
+ //
+
+ //apply
+ sum.offset.x     :=Max(sum.offset.x     ,tmp.offset.x     );
+ sum.offset.y     :=Max(sum.offset.y     ,tmp.offset.y     );
+ sum.extent.width :=Min(sum.extent.width ,tmp.extent.width );
+ sum.extent.height:=Min(sum.extent.height,tmp.extent.height);
+ //apply
+
+ if (CX_REG^.PA_SC_MODE_CNTL_0.VPORT_SCISSOR_ENABLE<>0) then
+ begin
+  u.V_TL:=CX_REG^.PA_SC_VPORT_SCISSOR[i].TL;
+  u.V_BR:=CX_REG^.PA_SC_VPORT_SCISSOR[i].BR;
+  //
+  tmp.offset.x     :=Min(Word(u.V_TL.TL_X),16383);
+  tmp.offset.y     :=Min(Word(u.V_TL.TL_Y),16383);
+  tmp.extent.width :=Min(Word(u.V_BR.BR_X),16384);
+  tmp.extent.height:=Min(Word(u.V_BR.BR_Y),16384);
+  //
+  if (u.V_TL.WINDOW_OFFSET_DISABLE=0) then
+  begin
+   Inc(tmp.offset.x     ,ofs.x);
+   Inc(tmp.offset.y     ,ofs.y);
+   Inc(tmp.extent.width ,ofs.x);
+   Inc(tmp.extent.height,ofs.y);
+  end;
+  //
+
+  //apply
+  sum.offset.x     :=Max(sum.offset.x     ,tmp.offset.x     );
+  sum.offset.y     :=Max(sum.offset.y     ,tmp.offset.y     );
+  sum.extent.width :=Min(sum.extent.width ,tmp.extent.width );
+  sum.extent.height:=Min(sum.extent.height,tmp.extent.height);
+  //apply
+ end;
+
+ Result.offset.x     :=sum.offset.x;
+ Result.offset.y     :=sum.offset.y;
+ Result.extent.width :=sum.extent.width -sum.offset.x;
+ Result.extent.height:=sum.extent.height-sum.offset.y;
 end;
 
 Function TGPU_REGS.GET_SCREEN:TVkRect2D;
+var
+ S_TL:TPA_SC_SCREEN_SCISSOR_TL;
+ S_BR:TPA_SC_SCREEN_SCISSOR_BR;
 begin
- Result.offset.x     :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_TL.TL_X);
- Result.offset.y     :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_TL.TL_Y);
- Result.extent.width :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_X);
- Result.extent.height:=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_Y);
+ S_TL:=CX_REG^.PA_SC_SCREEN_SCISSOR_TL;
+ S_BR:=CX_REG^.PA_SC_SCREEN_SCISSOR_BR;
+ //
+ Result.offset.x     :=Min(SmallInt(S_TL.TL_X),16383);
+ Result.offset.y     :=Min(SmallInt(S_TL.TL_Y),16383);
+ Result.extent.width :=Min(SmallInt(S_BR.BR_X),16384);
+ Result.extent.height:=Min(SmallInt(S_BR.BR_Y),16384);
  Result.extent.width :=Result.extent.width -Result.offset.x;
  Result.extent.height:=Result.extent.height-Result.offset.y;
 end;
 
 Function TGPU_REGS.GET_SCREEN_SIZE:TVkExtent2D;
+var
+ S_BR:TPA_SC_SCREEN_SCISSOR_BR;
 begin
- Result.width :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_X);
- Result.height:=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_Y);
+ S_BR:=CX_REG^.PA_SC_SCREEN_SCISSOR_BR;
+ //
+ Result.width :=Min(SmallInt(S_BR.BR_X),16384);
+ Result.height:=Min(SmallInt(S_BR.BR_Y),16384);
 end;
 
 Function GetBlendFactor(i:Byte):TVkBlendFactor;
@@ -861,8 +996,9 @@ begin
 
 end;
 
-Function TGPU_REGS.GET_RT_INFO(i:Byte):TRT_INFO; //0..7
+Function TGPU_REGS.GET_RT_INFO(i:Byte;ignore_mask:Boolean=False):TRT_INFO; //0..7
 var
+ scr:TVkExtent2D;
  RENDER_TARGET:TRENDER_TARGET;
  COMP_MAP:TCOMP_MAP;
  W:QWORD;
@@ -872,7 +1008,7 @@ var
 begin
  Result:=Default(TRT_INFO);
 
- if not RT_ENABLE(i) then
+ if (not ignore_mask) and (not RT_ENABLE(i)) then
  begin
   Result.attachment:=VK_ATTACHMENT_UNUSED;
 
@@ -902,8 +1038,10 @@ begin
   Result.FImageInfo.Addr:=Pointer(QWORD(Result.FImageInfo.Addr) or Byte(RENDER_TARGET.VIEW.SLICE_START));
  end;
 
- Result.FImageInfo.params.width :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_X);
- Result.FImageInfo.params.height:=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_Y);
+ scr:=GET_SCREEN_SIZE;
+
+ Result.FImageInfo.params.width :=scr.width;
+ Result.FImageInfo.params.height:=scr.height;
  Result.FImageInfo.params.depth :=1;
 
  tmp:=(RENDER_TARGET.PITCH.TILE_MAX+1);
@@ -1178,6 +1316,7 @@ const
 
 Function TGPU_REGS.GET_DB_INFO:TDB_INFO;
 var
+ scr:TVkExtent2D;
  RENDER_CONTROL  :TDB_RENDER_CONTROL;
  DEPTH_CONTROL   :TDB_DEPTH_CONTROL;
  STENCIL_CONTROL :TDB_STENCIL_CONTROL;
@@ -1375,8 +1514,10 @@ begin
  Result.FImageInfo.Addr   :=Result.Z_READ_ADDR;
  Result.FImageInfo.Addr2  :=Result.STENCIL_READ_ADDR;
 
- Result.FImageInfo.params.width :=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_X);
- Result.FImageInfo.params.height:=_fix_scissor_range(CX_REG^.PA_SC_SCREEN_SCISSOR_BR.BR_Y);
+ scr:=GET_SCREEN_SIZE;
+
+ Result.FImageInfo.params.width :=scr.width;
+ Result.FImageInfo.params.height:=scr.height;
  Result.FImageInfo.params.depth :=1;
 
  Result.FImageInfo.params.tiling.idx:=DB_Z_INFO.TILE_MODE_INDEX;
