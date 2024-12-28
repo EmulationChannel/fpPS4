@@ -1189,16 +1189,14 @@ begin
  end;
 end;
 
-Function GetNormalizedTiling(tiling:TvTiling):TvTiling; inline;
+procedure FixToNormalizedTiling(var tiling:TvTiling); inline;
 begin
- //
  case tiling.idx of
-  9,13,27:begin Result.idx:=5;  Result.alt:=tiling.alt; end;
-    14,28:begin Result.idx:=10; Result.alt:=tiling.alt; end;
-    16,29:begin Result.idx:=11; Result.alt:=tiling.alt; end;
-    17,30:begin Result.idx:=12; Result.alt:=tiling.alt; end;
-  else
-          Result:=tiling;
+  9,13,27:tiling.idx:=5;
+    14,28:tiling.idx:=10;
+    16,29:tiling.idx:=11;
+    17,30:tiling.idx:=12;
+  else;
  end;
 end;
 
@@ -1212,7 +1210,7 @@ begin
   Result.height:=(Result.height+3) shr 2;
  end;
 
- Result.tiling    :=GetNormalizedTiling(Result.tiling);
+ FixToNormalizedTiling(Result.tiling);
 
  Result.pitch     :=0;
  Result.pad_width :=0;
