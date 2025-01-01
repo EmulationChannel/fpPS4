@@ -805,7 +805,7 @@ begin
    fdrop(fp);
    Exit(ENFILE);
   end;
-  fdrop(fp);
+  fdrop(fp); //<-id_new
  end;
  fdrop(fp);
 

@@ -87,7 +87,7 @@ function alloc_unr(p:p_id_desc_table):Integer;
 begin
  if id_new(p,@unr_desc,@Result) then
  begin
-  //
+  id_release(@unr_desc); //<-id_new
  end else
  begin
   Result:=-1;

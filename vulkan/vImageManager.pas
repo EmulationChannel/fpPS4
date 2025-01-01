@@ -948,7 +948,6 @@ end;
 procedure _DeleteImage(t:TvCustomImage2);
 begin
  FImage2Set.delete(@t.key);
- t._Release(nil); //map ref
 
  if (t.DepthOnly<>nil) and
     (t.DepthOnly<>t) then
@@ -962,6 +961,7 @@ begin
   FImage2Set.delete(@t.StencilOnly.key);
  end;
 
+ t._Release(nil); //map ref
 end;
 
 procedure _DeleteAlias(const F:TvImageKey);

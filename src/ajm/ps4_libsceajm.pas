@@ -106,7 +106,7 @@ begin
  pContext^:=-1;
  if id_new(@FAjmMap,@H.desc,pContext) then
  begin
-  id_release(@H.desc);
+  id_release(@H.desc); //<-id_new
  end;
  Result:=0;
 end;
@@ -221,7 +221,7 @@ begin
   SCE_AJM_CODEC_CELP_ENC :Writeln('SCE_AJM_CODEC_CELP_ENC ');
  end;
 
- id_release(@H.desc);
+ id_release(@H.desc); //<-id_ctx_get
 end;
 
 function ps4_sceAjmModuleUnregister(uiContext:SceAjmContextId;uiCodec:SceAjmCodecType):Integer;

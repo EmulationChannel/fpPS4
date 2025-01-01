@@ -144,7 +144,7 @@ function ufs_alloc_cdp_inode():Integer;
 begin
  if id_new(@ufs_inos,@ufs_desc,@Result) then
  begin
-  id_release(@ufs_desc);
+  id_release(@ufs_desc); //<-id_new
  end else
  begin
   Result:=-1;

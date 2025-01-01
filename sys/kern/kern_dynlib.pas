@@ -11,7 +11,8 @@ uses
  kern_rtld,
  subr_dynlib,
  kern_dlsym,
- kern_reloc;
+ kern_reloc,
+ kern_named_id;
 
 const
  SCE_DBG_MAX_NAME_LENGTH = 256;
@@ -261,7 +262,6 @@ end;
 function sys_dynlib_unload_prx(handle:Integer;args:QWORD;argp:Pointer):Integer;
 var
  obj:p_lib_info;
- ref,id:Integer;
 begin
  if not_dynamic then
  begin
@@ -279,15 +279,11 @@ begin
   Result:=ESRCH;
  end else
  begin
-  ref:=obj^.ref_count;
-  id :=obj^.id;
+  id_acqure(obj);
   //
   Result:=unload_prx(obj);
   //
-  if (ref=1) then
-  begin
-   free_obj_id(id);
-  end;
+  id_release(obj); //<-id_acqure
  end;
 
  dynlibs_unlock;

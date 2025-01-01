@@ -469,7 +469,7 @@ begin
  if (sem=nil) then Exit;
 
  Result:=osem_cancel(sem,setCount,@num);
- id_release(sem);
+ id_release(sem); //<-id_name_new
 
  if (Result=0) then
  begin
@@ -494,7 +494,7 @@ begin
  if (sem=nil) then Exit;
 
  Result:=osem_post(sem,signalCount);
- id_release(sem);
+ id_release(sem); //<-id_name_new
 end;
 
 function sys_osem_trywait(key,needCount:Integer):Integer;
@@ -510,7 +510,7 @@ begin
  if (sem=nil) then Exit;
 
  Result:=osem_trywait(sem,needCount);
- id_release(sem);
+ id_release(sem); //<-id_name_new
 end;
 
 function sys_osem_wait(key,needCount:Integer;pTimeout:PDWORD):Integer;
@@ -539,7 +539,7 @@ begin
  if (sem=nil) then Exit;
 
  Result:=osem_wait(sem,needCount,timeout);
- id_release(sem);
+ id_release(sem); //<-id_name_new
 
  if (pTimeout<>nil) then
  begin

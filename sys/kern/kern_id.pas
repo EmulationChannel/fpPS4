@@ -46,13 +46,13 @@ function  id_del(t:p_id_desc_table;Key:Integer;old:PPointer;cb:t_filter_cb=nil):
 
 implementation
 
-Procedure id_acqure(d:p_id_desc);
+Procedure id_acqure(d:p_id_desc); public;
 begin
  if (d=nil) then Exit;
  System.InterlockedIncrement(d^.refs);
 end;
 
-Procedure id_release(d:p_id_desc);
+Procedure id_release(d:p_id_desc); public;
 begin
  if (d=nil) then Exit;
  Assert(d^.refs>0);
@@ -71,7 +71,7 @@ begin
  end;
 end;
 
-procedure id_table_init(t:p_id_desc_table;min:Integer;max:Integer=def_max_key);
+procedure id_table_init(t:p_id_desc_table;min:Integer;max:Integer=def_max_key); public;
 begin
  if (t=nil) then Exit;
  FillChar(t^,SizeOf(t_id_desc_table),0);
@@ -88,13 +88,13 @@ begin
  t^.FLast:=-1;
 end;
 
-procedure id_table_fini(t:p_id_desc_table);
+procedure id_table_fini(t:p_id_desc_table); public;
 begin
  if (t=nil) then Exit;
  HAMT_clear32(@t^.FHAMT,@_free_data_cb,nil);
 end;
 
-function id_new(t:p_id_desc_table;d:p_id_desc;pKey:PInteger):Boolean;
+function id_new(t:p_id_desc_table;d:p_id_desc;pKey:PInteger):Boolean; public;
 Label
  _insert,
  _exit;
@@ -246,7 +246,7 @@ begin
   end;
  end;
 
- id_acqure(d);
+ id_acqure(d); //table ref
 
  Result:=True;
 

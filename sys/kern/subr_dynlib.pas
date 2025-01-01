@@ -582,9 +582,16 @@ begin
  Result:=h_entry^.native;
 end;
 
+procedure _free_obj(data:pointer);
+begin
+ FreeMem(data);
+end;
+
 function obj_new():p_lib_info;
 begin
  Result:=AllocMem(SizeOf(t_lib_info));
+ Result^.desc.free:=@_free_obj;
+ id_acqure(Result);
 
  TAILQ_INIT(@Result^.needed);
  TAILQ_INIT(@Result^.lib_table);
@@ -1110,7 +1117,9 @@ begin
 
  release_per_file_info_obj(obj);
 
- FreeMem(obj);
+ free_obj_id(obj^.id);
+
+ id_release(obj); //-> obj_new
 end;
 
 procedure objlist_push_tail(var list:TAILQ_HEAD;obj:p_lib_info);
@@ -3427,7 +3436,6 @@ begin
 
  if (obj^.id>0) then Exit(True);
 
- obj^.desc.free:=nil;
  obj^.objt:=NAMED_DYNL;
  obj^.name:=dynlib_basename(obj^.lib_path);
 
@@ -3435,7 +3443,7 @@ begin
  if id_name_new(@named_table,obj,@key) then
  begin
   obj^.id:=(key+1);
-  id_release(obj);
+  id_release(obj); //<-id_name_new
   Result:=True;
  end;
 end;
@@ -3464,7 +3472,7 @@ begin
  Result:=id_name_get(@named_table,key,NAMED_DYNL);
  if (Result=nil) then Exit;
 
- id_release(Result);
+ id_release(Result); //<-id_name_get
 end;
 
 function find_obj_by_handle(id:Integer):p_lib_info;

@@ -4043,6 +4043,8 @@ begin
   end;
  end;
 
+ print_disassemble(addr,Result.code_size);
+
  Assert(false,'get_instruction_info');
 end;
 

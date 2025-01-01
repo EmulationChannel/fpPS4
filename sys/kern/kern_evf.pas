@@ -614,7 +614,7 @@ begin
 
  Result:=0;
  num:=evf_cancel(evf,setPattern);
- id_release(evf);
+ id_release(evf); //<-id_name_new
 
  if (pNumWait=nil) then
  begin
@@ -635,7 +635,7 @@ begin
  if (evf=nil) then Exit;
 
  evf_clear(evf,bitPattern);
- id_release(evf);
+ id_release(evf); //<-id_name_new
 
  Result:=0;
 end;
@@ -650,7 +650,7 @@ begin
  if (evf=nil) then Exit;
 
  evf_set(evf,bitPattern);
- id_release(evf);
+ id_release(evf); //<-id_name_new
 
  Result:=0;
 end;
@@ -684,7 +684,7 @@ begin
   ret_c:=copyout(@res,pRes,SizeOf(QWORD));
  end;
 
- id_release(evf);
+ id_release(evf); //<-id_name_new
 
  if (ret_w<>0) then ret_c:=ret_w;
  Result:=ret_c;
@@ -731,7 +731,7 @@ begin
   ret_c:=copyout(@res,pRes,SizeOf(QWORD));
  end;
 
- id_release(evf);
+ id_release(evf); //<-id_name_new
 
  if (ret_c=0) and (pTimeout<>nil) then
  begin

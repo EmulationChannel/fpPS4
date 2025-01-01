@@ -21,13 +21,13 @@ type
  p_id_desc_table=kern_id.p_id_desc_table;
  t_id_desc_table=kern_id.t_id_desc_table;
 
-Procedure id_acqure (d:Pointer);
-Procedure id_release(d:Pointer);
+Procedure id_acqure (d:Pointer); external;
+Procedure id_release(d:Pointer); external;
 
-procedure id_table_init(t:p_id_desc_table;min:Integer;max:Integer=def_max_key);
-procedure id_table_fini(t:p_id_desc_table);
+procedure id_table_init(t:p_id_desc_table;min:Integer;max:Integer=def_max_key); external;
+procedure id_table_fini(t:p_id_desc_table); external;
 
-function  id_name_new(t:p_id_desc_table;d:Pointer;pKey:PInteger):Boolean;
+function  id_name_new(t:p_id_desc_table;d:Pointer;pKey:PInteger):Boolean; external name 'id_new';
 function  id_name_get(t:p_id_desc_table;Key,objt:Integer):Pointer;
 function  id_name_del(t:p_id_desc_table;Key,objt:Integer;old:PPointer):Boolean;
 
@@ -42,31 +42,6 @@ type
 function t_objt_filter.filter(d:p_id_desc):Boolean;
 begin
  Result:=(objt=p_id_named_desc(d)^.objt);
-end;
-
-Procedure id_acqure(d:Pointer);
-begin
- kern_id.id_acqure(d);
-end;
-
-Procedure id_release(d:Pointer);
-begin
- kern_id.id_release(d);
-end;
-
-procedure id_table_init(t:p_id_desc_table;min:Integer;max:Integer=def_max_key);
-begin
- kern_id.id_table_init(t,min,max);
-end;
-
-procedure id_table_fini(t:p_id_desc_table);
-begin
- kern_id.id_table_fini(t);
-end;
-
-function id_name_new(t:p_id_desc_table;d:Pointer;pKey:PInteger):Boolean;
-begin
- Result:=kern_id.id_new(t,d,pKey);
 end;
 
 function id_name_get(t:p_id_desc_table;Key,objt:Integer):Pointer;

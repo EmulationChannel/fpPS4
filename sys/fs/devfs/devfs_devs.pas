@@ -690,7 +690,7 @@ function devfs_alloc_cdp_inode():ino_t; public;
 begin
  if id_new(@devfs_inos,@devfs_desc,@Result) then
  begin
-  //
+  id_release(@devfs_desc); //<-id_new
  end else
  begin
   Result:=-1;
