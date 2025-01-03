@@ -1968,7 +1968,7 @@ begin
  case node^.ntype of
   ntDrawIndex2:
    begin
-    ctx.Cmd.DrawIndex2(Pointer(node^.indexBase),node^.indexCount);
+    ctx.Cmd.DrawIndexOffset2(Pointer(node^.indexBase),node^.indexOffset,node^.indexCount);
    end;
   ntDrawIndexOffset2:
    begin
@@ -1976,7 +1976,7 @@ begin
    end;
   ntDrawIndexAuto:
    begin
-    ctx.Cmd.DrawIndexAuto(node^.indexCount);
+    ctx.Cmd.DrawIndexAuto(node^.indexOffset,node^.indexCount);
    end;
   ntClearDepth:
    begin

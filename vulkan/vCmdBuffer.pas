@@ -204,8 +204,7 @@ type
   Procedure   WriteEvent(eventType:Byte);
 
   Procedure   DrawIndexOffset2(IndexBase:Pointer;indexOffset,indexCount:DWORD);
-  Procedure   DrawIndex2(IndexBase:Pointer;indexCount:DWORD);
-  Procedure   DrawIndexAuto(indexCount:DWORD);
+  Procedure   DrawIndexAuto   (indexOffset,indexCount:DWORD);
  end;
 
 implementation
@@ -915,6 +914,8 @@ var
 
  last_binding:TVkUInt32;
  last_size   :TVkUInt32;
+
+ diff:TVkDeviceSize;
 begin
  if (Self=nil) then
  begin
@@ -927,6 +928,7 @@ begin
 
  if (not BeginCmdBuffer) then Exit;
 
+ rb:=nil;
  last_binding:=0;
  last_size   :=0;
  For i:=0 to c-1 do
@@ -947,10 +949,12 @@ begin
    last_binding:=binding;
   end;
 
-  Buffers[last_size]:=rb.FHandle;
-  Offsets[last_size]:=QWORD(min_addr)-rb.FAddr;
+  diff:=QWORD(min_addr)-rb.FAddr;
 
-  last_size:=last_size+1;
+  Buffers[last_size]:=rb.FHandle;
+  Offsets[last_size]:=diff;
+
+  Inc(last_size);
  end;
 
  //flush
@@ -972,6 +976,8 @@ begin
  end;
 
  if not limits.VK_EXT_vertex_input_dynamic_state then Exit;
+
+ if (FAttrBuilder.FAttrDescsCount=0) then Exit;
 
  if (not BeginCmdBuffer) then Exit;
 
@@ -1572,18 +1578,18 @@ begin
      InsertLabel('DI_PT_QUADLIST');
 
      Assert(FinstanceCount<=1,'instance DI_PT_QUADLIST');
-     Assert(indexOffset=0,'OFFSET DI_PT_QUADLIST');
+
      h:=indexCount div 4;
      if (h>0) then h:=h-1;
      For i:=0 to h do
      begin
       vkCmdDrawIndexed(
        Fcmdbuf,
-       4,      //indexCount
-       1,      //instanceCount
-       i*4,    //firstIndex
-       0,      //vertexOffset
-       0);     //firstInstance
+       4,               //indexCount
+       1,               //instanceCount
+       indexOffset+i*4, //firstIndex
+       0,               //vertexOffset
+       0);              //firstInstance
      end;
     end;
   else
@@ -1592,12 +1598,7 @@ begin
 
 end;
 
-Procedure TvCmdBuffer.DrawIndex2(IndexBase:Pointer;indexCount:DWORD);
-begin
- DrawIndexOffset2(IndexBase,0,indexCount);
-end;
-
-Procedure TvCmdBuffer.DrawIndexAuto(indexCount:DWORD);
+Procedure TvCmdBuffer.DrawIndexAuto(indexOffset,indexCount:DWORD);
 var
  i,h:DWORD;
 begin
@@ -1625,7 +1626,7 @@ begin
       FCmdbuf,
       indexCount,     //vertexCount
       FinstanceCount, //instanceCount
-      0,              //firstVertex
+      indexOffset,    //firstVertex
       0);             //firstInstance
     end;
 
@@ -1653,10 +1654,10 @@ begin
        Inc(cmd_count);
        vkCmdDraw(
            FCmdbuf,
-           4,       //vertexCount
-           1,       //instanceCount
-           0,       //firstVertex
-           0);      //firstInstance
+           4,               //vertexCount
+           1,               //instanceCount
+           indexOffset+i*3, //firstVertex
+           0);              //firstInstance
       end;
 
      end else
@@ -1668,7 +1669,7 @@ begin
        FCmdbuf,
        indexCount,     //vertexCount
        FinstanceCount, //instanceCount
-       0,              //firstVertex
+       indexOffset,    //firstVertex
        0);             //firstInstance
      end;
 
@@ -1679,6 +1680,7 @@ begin
      InsertLabel('DI_PT_QUADLIST');
 
      Assert(FinstanceCount<=1,'instance DI_PT_QUADLIST');
+
      h:=indexCount div 4;
      if (h>0) then h:=h-1;
      For i:=0 to h do
@@ -1686,10 +1688,10 @@ begin
       Inc(cmd_count);
       vkCmdDraw(
           FCmdbuf,
-          4,       //vertexCount
-          1,       //instanceCount
-          i*4,     //firstVertex
-          0);      //firstInstance
+          4,               //vertexCount
+          1,               //instanceCount
+          indexOffset+i*4, //firstVertex
+          0);              //firstInstance
      end;
     end;
   //DI_PT_QUADSTRIP:;

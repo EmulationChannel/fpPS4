@@ -630,9 +630,9 @@ begin
 
   if (pData<>nil) then
    case t of
-    rtRoot,
-    rtBufPtr2,
-    rtFunPtr2:Result.pData:={%H-}Pointer(PPtrUint(pData+o)^ and (not 3));
+    rtRoot   :Result.pData:=pData;
+    rtFunPtr2:Result.pData:={%H-}Pointer(PPtrUint(pData+o)^);
+    rtBufPtr2:Result.pData:={%H-}Pointer(PPtrUint(pData+o)^ and (not 3));
     rtVSharp4,
     rtSSharp4,
     rtTSharp4,
