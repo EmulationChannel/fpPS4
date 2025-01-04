@@ -977,8 +977,6 @@ begin
 
  if not limits.VK_EXT_vertex_input_dynamic_state then Exit;
 
- if (FAttrBuilder.FAttrDescsCount=0) then Exit;
-
  if (not BeginCmdBuffer) then Exit;
 
  FAttrBuilder.Export2(input);
