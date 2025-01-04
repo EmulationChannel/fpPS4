@@ -157,7 +157,8 @@ begin
 
     if cpu_thread_finished(td_first) then
     begin
-     TAILQ_REMOVE(@zombie_threads,@td_first,@td_first^.td_zombie);
+     //Writeln('thread_reap:',HexStr(td_first));
+     TAILQ_REMOVE(@zombie_threads,td_first,@td_first^.td_zombie);
      thread_free(td_first);
     end else
     begin
