@@ -1264,7 +1264,7 @@ end;
 const
  movx_desc:t_op_desc=(
   mem_reg:(opt:[not_impl]);
-  reg_mem:(op:$00;opt:[not_os8,reg_size]);
+  reg_mem:(op:$00;opt:[not_os8,reg_size_pri]);
   reg_imm:(opt:[not_impl]);
   reg_im8:(opt:[not_impl]);
   hint:[his_mov,his_wo];
@@ -1339,7 +1339,7 @@ end;
 const
  movsxd_desc:t_op_desc=(
   mem_reg:(opt:[not_impl]);
-  reg_mem:(op:$63;opt:[not_os8,reg_size]);
+  reg_mem:(op:$63;opt:[not_os8,reg_size_pri]);
   reg_imm:(opt:[not_impl]);
   reg_im8:(opt:[not_impl]);
   hint:[his_mov,his_wo];

@@ -197,8 +197,23 @@ end;
 
 function get_vl_mode(var ctx:t_jit_context2):t_vl_mode;
 begin
- Result:=vl256;
+ Result:=vlM256;
  case ctx.din.OpCode.Opcode of
+
+  OPcvtdq2:
+    case ctx.din.OpCode.Suffix of
+     OPSx_pd:Result:=vlR256;
+     else;
+    end;
+
+  OPcvtps2:
+    case ctx.din.OpCode.Suffix of
+     OPSx_pd:Result:=vlR256;
+     OPSx_ph:Result:=vlR256;
+     else;
+    end;
+
+  OPvcvtph2ps:Result:=vlR256;
 
   OPvperm2:Result:=vlOne;
   OPvperm :Result:=vlOne;
@@ -976,7 +991,7 @@ end;
 const
  vbroadcastss_desc:t_op_desc=(
   mem_reg:(opt:[not_impl]);
-  reg_mem:(op:$18;simdop:1;mm:2);
+  reg_mem:(op:$18;simdop:1;mm:2;vw_mode:vwZero;vl_mode:vlR256);
   reg_imm:(opt:[not_impl]);
   reg_im8:(opt:[not_impl]);
   hint:[his_wo];
@@ -996,7 +1011,7 @@ end;
 const
  vbroadcastsd_desc:t_op_desc=(
   mem_reg:(opt:[not_impl]);
-  reg_mem:(op:$19;simdop:1;mm:2;vw_mode:vwZero);
+  reg_mem:(op:$19;simdop:1;mm:2;vw_mode:vwZero;vl_mode:vlOne);
   reg_imm:(opt:[not_impl]);
   reg_im8:(opt:[not_impl]);
   hint:[];
@@ -1016,7 +1031,7 @@ end;
 const
  vbroadcastf128_desc:t_op_desc=(
   mem_reg:(opt:[not_impl]);
-  reg_mem:(op:$1A;simdop:1;mm:2;vl_mode:vlOne);
+  reg_mem:(op:$1A;simdop:1;mm:2;vw_mode:vwZero;vl_mode:vlOne);
   reg_imm:(opt:[not_impl]);
   reg_im8:(opt:[not_impl]);
   hint:[his_wo];
