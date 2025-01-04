@@ -233,9 +233,13 @@ begin
 end;
 }
 
+{$IF defined(ALT_SRW1) or defined(ALT_SRW2)}
+
 function  RtlWaitOnAddress    (addr,cmp:Pointer;size:QWORD;timeout:PLARGE_INTEGER):DWORD; stdcall; external 'ntdll';
 procedure RtlWakeAddressAll   (addr:Pointer); stdcall; external 'ntdll';
 procedure RtlWakeAddressSingle(addr:Pointer); stdcall; external 'ntdll';
+
+{$ENDIF}
 
 {$IFDEF ALT_SRW1}
 
@@ -344,7 +348,7 @@ begin
    Result:=TRUE;
   end else
   begin
-   Result:=FALSE;
+   Exit(FALSE);
   end;
  until (System.InterlockedCompareExchange(u.l^,new.l,old.l) = old.l);
 end;
@@ -366,7 +370,7 @@ begin
    Result:=TRUE;
   end else
   begin
-   Result:=FALSE;
+   Exit(FALSE);
   end;
  until (System.InterlockedCompareExchange(u.l^,new.l,old.l) = old.l);
 end;
