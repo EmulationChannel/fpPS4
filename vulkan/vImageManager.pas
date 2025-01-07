@@ -568,6 +568,13 @@ begin
    else;
   end;
 
+  //uplift imageview
+  if (FFormat=VK_FORMAT_D32_SFLOAT_S8_UINT) and
+     (cinfo.format=VK_FORMAT_D32_SFLOAT) then
+  begin
+   cinfo.format:=VK_FORMAT_D32_SFLOAT_S8_UINT;
+  end;
+
   cinfo.format:=vkFixFormatSupport(cinfo.format,VK_IMAGE_TILING_OPTIMAL,usage);
 
   cinfo.pNext:=@uinfo;
