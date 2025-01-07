@@ -970,8 +970,7 @@ begin
                        '):',Integer(Result)
                      );
 
- // vm_map_remove returns nothing but KERN_SUCCESS anyway
- Exit(0);
+ Result:=vm_mmap_to_errno(Result);
 end;
 
 function sys_msync(addr:Pointer;len:QWORD;flags:Integer):Integer;
