@@ -404,7 +404,10 @@ begin
     Writeln(' SCRATCH_EN:',GPU_REGS.CS.RSRC2.SCRATCH_EN);
    end;
 
-   SprvEmit.InitCs(GPU_REGS.CS.RSRC1,GPU_REGS.CS.RSRC2,GPU_REGS.CS.NUM_THREAD_X,GPU_REGS.CS.NUM_THREAD_Y,GPU_REGS.CS.NUM_THREAD_Z);
+   SprvEmit.InitCs(GPU_REGS.CS.RSRC1,GPU_REGS.CS.RSRC2);
+
+   SprvEmit.SET_NUM_THREADS(GPU_REGS.CS.NUM_THREAD_X,GPU_REGS.CS.NUM_THREAD_Y,GPU_REGS.CS.NUM_THREAD_Z);
+
    SprvEmit.SetUserData(@GPU_REGS.CS.USER_DATA);
   end;
 
@@ -520,7 +523,6 @@ begin
  ParseCmd;
 
  //TODO: TsrField -> interval map
- //TODO: MUBUF nmft/dfmt cache
  //TODO: bitcast pointer on OpAtomic
  //TODO: SPV_KHR_float_controls
  //TODO: SPV_EXT_demote_to_helper_invocation

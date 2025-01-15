@@ -21,14 +21,6 @@ type
 
 implementation
 
-const
- DEFAULT_VAL:array[0..3] of Tvec4f=(
-  (0.0, 0.0, 0.0, 0.0),
-  (0.0, 0.0, 0.0, 1.0),
-  (1.0, 1.0, 1.0, 0.0),
-  (1.0, 1.0, 1.0, 1.0)
- );
-
 procedure TEmit_VINTRP.emit_VINTRP;
 var
  inp_M0:TsrInput;
@@ -50,7 +42,7 @@ var
 
   if InputCntl^.USE_DEFAULT then
   begin
-   elm:=NewImm_s(dtFloat32,DEFAULT_VAL[InputCntl^.DEFAULT_VAL][FSPI.VINTRP.ATTRCHAN]);
+   elm:=NewImm_s(dtFloat32,InputCntl^.DEFAULT_VAL[FSPI.VINTRP.ATTRCHAN]);
 
    MakeCopy(dst,elm);
   end else

@@ -17,6 +17,8 @@ uses
  srConfig;
 
 type
+ String2=String[2];
+
  TsrBuffer=class;
 
  TsrField=class;
@@ -128,13 +130,14 @@ type
   function  _chain_write:DWORD;
   function  chain_write:DWORD;
   function  GetStorageName:RawByteString;
-  function  GetTypeChar:Char;
-  function  GetRw:Char;
-  function  GetString:RawByteString;
+  function  GetTypeStr:PChar;
+  function  GetFlagsStr:String2;
   function  GetStructName:RawByteString;
   function  GetSize:PtrUint;
   procedure EnumAllField(cb:TFieldEnumCb);
   procedure ShiftOffset(Offset:PtrUint);
+  //
+  procedure AllocSourceExtension2(var Writer:TseWriter); override;
  end;
 
  ntBuffer=TsrBuffer;
@@ -158,7 +161,6 @@ type
   procedure OnAllocID(pField:TsrField);
   procedure AllocID;
   procedure AllocBinding(Var FBinding:Integer);
-  procedure AllocSourceExtension;
   function  FindUserDataBuf:TsrBuffer;
   procedure ApplyBufferType;
   procedure AlignOffset(node:TsrBuffer;offset:PtrUint);
@@ -910,44 +912,23 @@ begin
  end;
 end;
 
-function TsrBuffer.GetTypeChar:Char;
+function TsrBuffer.GetTypeStr:PChar;
 begin
- Result:=#0;
+ Result:=nil;
  Case bType of
-  btStorageBuffer:Result:='S';
-  btUniformBuffer:Result:='U';
-  btPushConstant :Result:='P';
+  btStorageBuffer:Result:='+STR_BUF';
+  btUniformBuffer:Result:='+UNF_BUF';
+  btPushConstant :Result:='+PSH_CST';
  end;
 end;
 
-function TsrBuffer.GetRw:Char;
+function TsrBuffer.GetFlagsStr:String2;
+const
+ _R:array[0..1] of AnsiChar='_R';
+ _W:array[0..1] of AnsiChar='_W';
 begin
- Result:='0';
- if (chain_read<>0) then
- begin
-  Result:='1';
- end;
- if (chain_write<>0) then
- begin
-  Result:=Char(ord(Result) or ord('2'));
- end;
-end;
-
-function TsrBuffer.GetString:RawByteString;
-var
- PID:DWORD;
-begin
- PID:=0;
- if (pLayout<>nil) then
- begin
-  PID:=pLayout.FID;
- end;
- Result:='B'+GetTypeChar+
-         ';PID='+HexStr(PID,8)+
-         ';BND='+HexStr(FBinding,8)+
-         ';LEN='+HexStr(GetSize,8)+
-         ';OFS='+HexStr(align_offset,8)+
-         ';MRW='+GetRw;
+ Result:=_R[ord(chain_read <>0)]+
+         _W[ord(chain_write<>0)];
 end;
 
 function TsrBuffer.GetStructName:RawByteString;
@@ -1027,6 +1008,8 @@ begin
   Result.InitVar();
   //
   FTree.Insert(Result);
+  //
+  s.FDescList.Push_tail(Result);
  end;
  //
  if GLC then
@@ -1180,22 +1163,24 @@ begin
  end;
 end;
 
-procedure TsrBufferList.AllocSourceExtension;
-var
- pDebugInfoList:TsrDebugInfoList;
- node:TsrBuffer;
+procedure TsrBuffer.AllocSourceExtension2(var Writer:TseWriter);
 begin
- pDebugInfoList:=FEmit.GetDebugInfoList;
- node:=First;
- While (node<>nil) do
+ if is_export_used then
+ if not (bType in [btWorkgroup,btPrivate]) then
  begin
-  if node.is_export_used then
-  if not (node.bType in [btWorkgroup,btPrivate]) then
-  begin
-   pDebugInfoList.OpSource(node.GetString);
-  end;
+  //start block
+  Writer.Header(GetTypeStr);
   //
-  node:=Next(node);
+  Writer.IntOpt('BND',FBinding);
+  if (GetSize<>High(PtrUint)) then
+  begin
+   Writer.HexOpt('LEN',GetSize);
+  end;
+  if (align_offset<>0) then
+  begin
+   Writer.HexOpt('OFS',align_offset);
+  end;
+  Writer.StrOpt('FLG',GetFlagsStr);
  end;
 end;
 
@@ -1237,7 +1222,7 @@ begin
  begin
   node.bType   :=btPushConstant;
   node.FStorage:=StorageClass.PushConstant;
-  FPushConstant :=node;
+  FPushConstant:=node;
  end;
 
  node:=First;
@@ -1275,7 +1260,7 @@ begin
    begin
     node.bType   :=btPushConstant;
     node.FStorage:=StorageClass.PushConstant;
-    FPushConstant :=node;
+    FPushConstant:=node;
    end else
    if (fchain_write=0) and
       (node.GetSize<=pConfig^.maxUniformBufferRange) then

@@ -137,27 +137,37 @@ type
 
  PsrDataLayoutKey=^TsrDataLayoutKey;
  TsrDataLayoutKey=packed record
-  parent:TsrDataLayout;
   offset:PtrUint;
   rtype :TsrResourceType;
  end;
 
+ TsrDescriptor=class;
+
  TsrDataLayout=class
   type
+   TDataTree =specialize TNodeTreeClass<TsrDataLayout>;
+   TDescList =specialize TNodeListClass<TsrDescriptor>;
    TChainList=specialize TNodeListClass<TsrChain>;
    TChainTree=specialize TNodeTreeClass<TsrChain>;
   var
+   pPrev,pNext :TsrDataLayout;
    pLeft,pRight:TsrDataLayout;
    //----
-   key:TsrDataLayoutKey;
-   pData :Pointer;
-   FID   :Integer;
-   FOrder:Integer;
-   FSetid:Integer;
-   FCache:Integer;
-   FEmit :TCustomEmit;
-   FList :TChainList;
-   FTree :TChainTree;
+   key       :TsrDataLayoutKey;
+   pData     :Pointer;
+   FID       :Integer;
+   FOrder    :Integer;
+   FSetid    :Integer;
+   FCache    :Integer;
+   FEmit     :TCustomEmit;
+   FParent   :TsrDataLayout;
+   FDataTree :TDataTree;
+   FDescList :TDescList;
+   FChainList:TChainList;
+   FChainTree:TChainTree;
+   //
+   res_data_p:Boolean; //Resource data precompiled (dst_sel,nfmt,dfmt)
+   //
   class function c(n1,n2:PsrDataLayoutKey):Integer; static;
   function  Order:Integer;
   function  Fetch(lvl_0:PsrChainLvl_0;lvl_1:PsrChainLvl_1;cflags:Byte=0):TsrChain;
@@ -172,8 +182,6 @@ type
   function  UseBitcast:Boolean;
   function  GetStride:PtrUint;
   function  GetTypeChar:Char;
-  function  GetString:RawByteString;
-  function  GetFuncString(LEN:DWORD):RawByteString;
  end;
 
  PsrDataImmKey=^TsrDataImmKey;
@@ -195,11 +203,11 @@ type
  PsrDataLayoutList=^TsrDataLayoutList;
  TsrDataLayoutList=object
   type
-   TNodeTree=specialize TNodeTreeClass<TsrDataLayout>;
+   TDataList   =specialize TNodeListClass<TsrDataLayout>;
    TDataImmTree=specialize TNodeTreeClass<TsrDataImm>;
   var
    FTop      :TsrDataLayout;
-   FTree     :TNodeTree;
+   FDataList :TDataList;
    FOrder    :Integer;
    FImmOffset:DWORD;
    FImmData  :TDataImmTree;
@@ -216,17 +224,29 @@ type
   function  FetchGDS():TsrDataLayout;
   function  EnumChain(cb:TChainCb):Integer;
   Procedure AllocID;
-  procedure AllocSourceExtension;
-  procedure AllocFuncExt;
-  procedure AllocImmExt;
+  procedure AllocSourceExtension2;
+ end;
+
+ TseWriter=object
+  pList:TsrDebugInfoList;
+  node :TsrDataLayout;
+  deep :Integer;
+  function  Next:Boolean;
+  Procedure Header(const name:RawByteString);
+  Procedure StrOpt(const name,Value:RawByteString);
+  Procedure IntOpt(const name:RawByteString;Value:QWORD);
+  Procedure HexOpt(const name:RawByteString;Value:QWORD);
+  Procedure ImmOpt(const name:RawByteString;P:Pointer;len:qword);
  end;
 
 //----
 
  TsrDescriptor=class(TsrNode)
+  private
+   pPrev,pNext:TsrDescriptor;
   protected
-   FVar:TsrVariable;
-   FType:TsrType;
+   FVar    :TsrVariable;
+   FType   :TsrType;
    FStorage:DWORD;
    FBinding:Integer;
    procedure InitVar();
@@ -244,6 +264,8 @@ type
    Procedure _zero_unread    ;         override;
    Function  _GetPtype       :TsrNode; override;
    Function  _GetStorageClass:DWORD;   override;
+   //
+   procedure AllocSourceExtension2(var Writer:TseWriter); virtual;
    //
    property  pVar:TsrVariable read FVar;
    property  pType:TsrType    read FType write SetType;
@@ -362,17 +384,19 @@ begin
  Result:=FStorage;
 end;
 
+procedure TsrDescriptor.AllocSourceExtension2(var Writer:TseWriter);
+begin
+ //
+end;
+
 //
 
 class function TsrDataLayout.c(n1,n2:PsrDataLayoutKey):Integer;
 begin
- //first parent
- Result:=ord(n1^.parent.Order>n2^.parent.Order)-ord(n1^.parent.Order<n2^.parent.Order);
- if (Result<>0) then Exit;
- //second offset
+ //first offset
  Result:=ord(n1^.offset>n2^.offset)-ord(n1^.offset<n2^.offset);
  if (Result<>0) then Exit;
- //third rtype
+ //second rtype
  Result:=ord(n1^.rtype>n2^.rtype)-ord(n1^.rtype<n2^.rtype);
 end;
 
@@ -408,14 +432,14 @@ begin
  //
  _key.Flags:=TsrChainFlags(cflags);
  //
- Result:=FTree.Find(@_key);
+ Result:=FChainTree.Find(@_key);
  if (Result=nil) then
  begin
   Result:=FEmit.specialize New<TsrChain>;
   Result.Init(Self);
   Result.key   :=_key;
   Result.Fdtype:=_key.Flags.dtype;
-  FTree.Insert(Result);
+  FChainTree.Insert(Result);
   //
   Inc(FSetid);
  end;
@@ -430,15 +454,15 @@ begin
   FCache:=FSetid;
   //Clear
   repeat
-   node:=FList.Pop_tail;
+   node:=FChainList.Pop_tail;
   until (node=nil);
   //Load
-  node:=FTree.Min;
+  node:=FChainTree.Min;
   while (node<>nil) do
   begin
-   FList.Push_tail(node);
+   FChainList.Push_tail(node);
    //
-   node:=FTree.Next(node);
+   node:=FChainTree.Next(node);
   end;
  end;
 end;
@@ -446,13 +470,13 @@ end;
 Function TsrDataLayout.First:TsrChain;
 begin
  UpdateCache;
- Result:=FList.pHead;
+ Result:=FChainList.pHead;
 end;
 
 Function TsrDataLayout.Last:TsrChain;
 begin
  UpdateCache;
- Result:=FList.pTail;
+ Result:=FChainList.pTail;
 end;
 
 function TsrDataLayout.EnumChain(cb:TChainCb):Integer;
@@ -553,27 +577,6 @@ begin
  end;
 end;
 
-function TsrDataLayout.GetString:RawByteString;
-var
- PID:DWORD;
-begin
- PID:=0;
- if (key.parent<>nil) then
- begin
-  PID:=key.parent.FID;
- end;
- Result:='#'+GetTypeChar+
-         ';PID='+HexStr(PID,8)+
-         ';OFS='+HexStr(key.offset,8);
-end;
-
-function TsrDataLayout.GetFuncString(LEN:DWORD):RawByteString;
-begin
- Result:='FF'+
-         ';PID='+HexStr(FID,8)+
-         ';LEN='+HexStr(LEN,8);
-end;
-
 class function TsrDataImm.c(a,b:PsrDataImmKey):Integer;
 begin
  //first size
@@ -592,7 +595,7 @@ procedure TsrDataLayoutList.Init(Emit:TCustomEmit);
 begin
  FTop:=Emit.specialize New<TsrDataLayout>;
  FTop.FEmit:=Emit;
- FTree.Insert(FTop);
+ FDataList.Push_tail(FTop);
 end;
 
 procedure TsrDataLayoutList.SetUserData(pData:Pointer);
@@ -611,22 +614,23 @@ var
 begin
  Assert(p<>nil);
  key:=Default(TsrDataLayoutKey);
- key.parent:=p;
  key.offset:=o;
  key.rtype :=t;
  //
- Result:=FTree.Find(@key);
+ Result:=p.FDataTree.Find(@key);
  if (Result=nil) then
  begin
   Inc(FOrder);
 
   Result:=FTop.FEmit.specialize New<TsrDataLayout>;
-  Result.FID   :=-1;
-  Result.FOrder:=FOrder;
-  Result.FEmit :=FTop.FEmit;
-  Result.key   :=key;
+  Result.FID    :=-1;
+  Result.FOrder :=FOrder;
+  Result.FEmit  :=FTop.FEmit;
+  Result.key    :=key;
+  Result.FParent:=p;
 
-  FTree.Insert(Result);
+  p.FDataTree.Insert(Result);
+  FDataList.Push_tail(Result);
 
   if (pData<>nil) then
    case t of
@@ -645,12 +649,12 @@ end;
 
 Function TsrDataLayoutList.First:TsrDataLayout;
 begin
- Result:=FTree.Min;
+ Result:=FDataList.pHead;
 end;
 
 Function TsrDataLayoutList.Next(node:TsrDataLayout):TsrDataLayout;
 begin
- Result:=FTree.Next(node);
+ Result:=node.pNext;
 end;
 
 function GetResourceSizeDw(r:TsrResourceType):Byte;
@@ -774,73 +778,223 @@ begin
  end;
 end;
 
-procedure TsrDataLayoutList.AllocSourceExtension;
+function TseWriter.Next:Boolean;
 var
- pDebugInfoList:TsrDebugInfoList;
- node:TsrDataLayout;
+ newv:TsrDataLayout;
+ oldv:TsrDataLayout;
 begin
- pDebugInfoList:=FTop.FEmit.GetDebugInfoList;
- node:=First;
- While (node<>nil) do
+ oldv:=node;
+ //
+ newv:=oldv.FDataTree.Min; //down
+ Inc(deep);
+ if (newv=nil) then
  begin
-  pDebugInfoList.OpSource(node.GetString);
-  node:=Next(node);
+  repeat //up
+   if (oldv.FParent=nil) then
+   begin
+    newv:=nil;
+    oldv:=nil;
+   end else
+   begin
+    newv:=oldv.FParent.FDataTree.Next(oldv);
+    oldv:=oldv.FParent;
+   end;
+   Dec(deep);
+  until (oldv=nil) or (newv<>nil);
  end;
  //
- AllocFuncExt;
- AllocImmExt;
+ node:=newv;
+ //
+ Result:=(node<>nil);
 end;
 
-procedure TsrDataLayoutList.AllocFuncExt;
+Function HexStr2(Val:qword):shortstring;
 var
- pDebugInfoList:TsrDebugInfoList;
- pHeap:PsrCodeHeap;
- node:TsrDataLayout;
- block:TsrCodeBlock;
+ count:Byte;
 begin
- pDebugInfoList:=FTop.FEmit.GetDebugInfoList;
+ if (Val<=9) then
+ begin
+  Result:=AnsiChar(Byte(Val)+ord('0'));
+ end else
+ begin
+  count:=BsrQWord(Val);
+  if (count=$FF) then count:=0;
+  count:=(count+4) div 4;
+  Result:='0x'+HexStr(Val,count);
+ end;
+end;
+
+const
+ HexTbl:array[0..15] of char='0123456789ABCDEF';
+
+Function HexLen(P:PByte;len:qword):RawByteString;
+var
+ i:qword;
+begin
+ Result:='';
+ SetLength(Result,len*2);
+ For i:=0 to len-1 do
+ begin
+  Result[i*2+1]:=hextbl[P[i] and $f];
+  Result[i*2+2]:=hextbl[P[i] shr  4];
+ end;
+end;
+
+Procedure TseWriter.Header(const name:RawByteString);
+begin
+ pList.OpSource(Space(deep)+name);
+end;
+
+Procedure TseWriter.StrOpt(const name,Value:RawByteString);
+begin
+ pList.OpSource(Space(deep+1)+name+':'+Value);
+end;
+
+Procedure TseWriter.IntOpt(const name:RawByteString;Value:QWORD);
+begin
+ pList.OpSource(Space(deep+1)+name+':'+IntToStr(Value));
+end;
+
+Procedure TseWriter.HexOpt(const name:RawByteString;Value:QWORD);
+begin
+ pList.OpSource(Space(deep+1)+name+':'+HexStr2(Value));
+end;
+
+Procedure TseWriter.ImmOpt(const name:RawByteString;P:Pointer;len:qword);
+var
+ i,d,m:qword;
+begin
+ d:=len div SizeOf(DWORD);
+ m:=len mod SizeOf(DWORD);
+
+ if (d<>0) then
+ For i:=0 to d-1 do
+ begin
+  pList.OpSource(Space(deep+1)+name+':0x'+HexStr(PDWORD(P)[i],8));
+ end;
+
+ if (m<>0) then
+ begin
+  i:=0;
+  Move(PDWORD(P)[d],i,m);
+  pList.OpSource(Space(deep+1)+name+':0x'+HexStr(i,m*2));
+ end;
+
+ //pList.OpSource(Space(deep+1)+name+':'+HexLen(P,len));
+end;
+
+procedure TsrDataLayoutList.AllocSourceExtension2;
+var
+ Writer:TseWriter;
+ pHeap :PsrCodeHeap;
+ desc  :TsrDescriptor;
+ block :TsrCodeBlock;
+ imm   :TsrDataImm;
+begin
  pHeap:=FTop.FEmit.GetCodeHeap;
- node:=First;
- While (node<>nil) do
- begin
-  if (node.key.rtype=rtFunPtr2) then
-  begin
-   block:=pHeap^.FindByPtr(node.pData);
-   if (block<>nil) then
-   begin
-    pDebugInfoList.OpSource(node.GetFuncString(block.Size));
-   end;
+
+ Writer:=Default(TseWriter);
+ Writer.pList:=FTop.FEmit.GetDebugInfoList;
+ Writer.node:=pRoot;
+
+ repeat
+
+  //start block
+  Writer.Header('#'+Writer.node.GetTypeChar);
+
+  case Writer.node.key.rtype of
+   rtFunPtr2,
+   rtBufPtr2,
+   rtVSharp4,
+   rtSSharp4,
+   rtTSharp4,
+   rtTSharp8:
+    begin
+     //offset
+     if (Writer.node.key.offset<>0) then
+     begin
+      Writer.HexOpt('OFS',Writer.node.key.offset);
+     end;
+    end;
+   else;
   end;
-  node:=Next(node);
- end;
-end;
 
-procedure TsrDataLayoutList.AllocImmExt;
-var
- pDebugInfoList:TsrDebugInfoList;
- node:TsrDataLayout;
- imm:TsrDataImm;
- i,c:PtrUint;
-begin
- pDebugInfoList:=FTop.FEmit.GetDebugInfoList;
- node:=First;
- While (node<>nil) do
- begin
-  if (node.key.rtype=rtImmData) then
-  begin
-   imm:=TsrDataImm(node.pData);
+  case Writer.node.key.rtype of
+   rtVSharp4:
+    begin
+     //Resource data precompiled
+     if (Writer.node.res_data_p) then
+     begin
+      Writer.StrOpt('RINF','1');
 
-   c:=imm.key.FImmSize div SizeOf(DWORD);
+      with PVSharpResource4(Writer.node.pData)^ do
+      begin
+       Writer.IntOpt('DFMT',dfmt);
+       Writer.IntOpt('NFMT',nfmt);
+       Writer.StrOpt('DSEL',_get_dst_sel_str(dst_sel_x,dst_sel_y,dst_sel_z,dst_sel_w));
+      end;
 
-   if (c<>0) then
-   For i:=0 to c-1 do
-   begin
-    pDebugInfoList.OpSource(imm.GetStringDword(i));
-   end;
+     end;
+    end;
+   rtTSharp4,
+   rtTSharp8:
+    begin
+     //Resource data precompiled
+     if (Writer.node.res_data_p) then
+     begin
+      Writer.StrOpt('RINF','1');
 
+      with PTSharpResource4(Writer.node.pData)^ do
+      begin
+       Writer.IntOpt('DFMT',dfmt);
+       Writer.IntOpt('NFMT',nfmt);
+       Writer.StrOpt('DSEL',_get_dst_sel_str(dst_sel_x,dst_sel_y,dst_sel_z,dst_sel_w));
+      end;
+
+     end;
+    end;
+   else;
   end;
-  node:=Next(node);
- end;
+
+  case Writer.node.key.rtype of
+   rtImmData:
+    begin
+     //imm data
+     imm:=TsrDataImm(Writer.node.pData);
+     Assert(imm<>nil);
+     //
+     Writer.HexOpt('LEN',imm.key.FImmSize);
+     Writer.ImmOpt('IMM',imm.key.pData,imm.key.FImmSize);
+    end;
+   rtFunPtr2:
+    begin
+     //func
+     block:=pHeap^.FindByPtr(Writer.node.pData);
+     Assert(block<>nil);
+     //
+     Writer.HexOpt('LEN',block.Size);
+     Writer.ImmOpt('IMM',block.DMem,block.Size);
+    end;
+   else;
+  end;
+
+  Inc(Writer.deep);
+  //
+  desc:=Writer.node.FDescList.pHead;
+  while (desc<>nil) do
+  begin
+   desc.AllocSourceExtension2(Writer);
+   //
+   desc:=desc.pNext;
+  end;
+  //
+  Dec(Writer.deep);
+
+  Writer.Next;
+
+ until (Writer.node=nil);
+
+ //
 end;
 
 //
@@ -1003,11 +1157,11 @@ begin
  end;
 
  //unlink
- FParent.FTree.Delete(Self);
+ FParent.FChainTree.Delete(Self);
  //set
  key.lvl_1.pIndex:=t;
  //link
- FParent.FTree.Insert(Self);
+ FParent.FChainTree.Insert(Self);
 end;
 
 Procedure TsrChain.SetOffset(t:PtrUint);
@@ -1016,11 +1170,11 @@ begin
  if (key.lvl_0.offset=t) then Exit;
 
  //unlink
- FParent.FTree.Delete(Self);
+ FParent.FChainTree.Delete(Self);
  //set
  key.lvl_0.offset:=t;
  //link
- FParent.FTree.Insert(Self);
+ FParent.FChainTree.Insert(Self);
 end;
 
 Procedure TsrChain.UpdateRegType;
@@ -1264,7 +1418,7 @@ begin
   if (chains[i]=nil) then Exit;
   parent:=chains[i].parent;
   if (parent=nil) then Exit;
-  if (parent.key.parent<>nil) then Exit;
+  if (parent.FParent<>nil) then Exit;
  end;
  Result:=True;
 end;

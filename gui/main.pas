@@ -1014,6 +1014,7 @@ begin
    FGameProcess.g_ipc.Update();
   end;
 
+  if (FGameProcess<>nil) then       //recheck, must be free in Update()
   if (FGameProcess.g_ipc<>nil) then //recheck, must be free in Update()
   if (FGameProcess.is_terminated) or
      (FGameProcess.g_ipc.FStop) then

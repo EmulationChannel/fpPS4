@@ -30,6 +30,7 @@ uses
 
 type
  TSprvEmit_alloc=class(TEmitFetch)
+  procedure AllocSourceExtension;
   procedure AllocStage;
   procedure AllocSpirvID(P:PsrRefId);
   procedure AllocBinding;
@@ -46,6 +47,69 @@ type
 
 implementation
 
+procedure TSprvEmit_alloc.AllocSourceExtension;
+var
+ i:Integer;
+ Writer:TseWriter;
+begin
+ DataLayoutList.AllocSourceExtension2;
+
+ Writer:=Default(TseWriter);
+ Writer.pList:=GetDebugInfoList;
+
+ Writer.Header('-C');
+
+ if (FExecutionModel=ExecutionModel.Vertex) then
+ if (VGPR_COMP_CNT>=1) then
+ begin
+  Writer.IntOpt('VGPR_COMP_CNT'   ,VGPR_COMP_CNT);
+  Writer.HexOpt('VGT_STEP_RATE_0' ,VGT_STEP_RATE_0);
+  if (VGPR_COMP_CNT>=2) then
+  begin
+   Writer.HexOpt('VGT_STEP_RATE_1',VGT_STEP_RATE_1);
+  end;
+ end;
+
+ if (FExecutionModel=ExecutionModel.Fragment) then
+ begin
+  Writer.HexOpt('DB_SHADER_CONTROL',DWORD(DB_SHADER_CONTROL));
+  //
+  if (PS_NUM_INTERP<>0) then
+  begin
+   Writer.IntOpt('PS_NUM_INTERP',PS_NUM_INTERP);
+   for i:=0 to PS_NUM_INTERP-1 do
+   begin
+    Writer.HexOpt('PS_INPUT_CNTL',DWORD(FPSInputCntl[i].DATA));
+   end;
+  end;
+  //
+  if (EXPORT_COUNT<>0) then
+  begin
+   Writer.IntOpt('EXPORT_COUNT',EXPORT_COUNT);
+   for i:=0 to EXPORT_COUNT-1 do
+   begin
+    Inc(Writer.deep);
+    //
+    Writer.Header('-EXPORT_COLOR');
+    //
+    Writer.IntOpt('FORMAT'     ,FExportInfo[i].FORMAT);
+    Writer.IntOpt('NUMBER_TYPE',FExportInfo[i].NUMBER_TYPE);
+    Writer.IntOpt('COMP_SWAP'  ,FExportInfo[i].COMP_SWAP);
+    //
+    Dec(Writer.deep);
+   end;
+  end;
+ end;
+
+ if (FExecutionModel=ExecutionModel.GLCompute) then
+ begin
+  Writer.HexOpt('CS_NUM_THREAD_X',CS_NUM_THREAD_X);
+  Writer.HexOpt('CS_NUM_THREAD_Y',CS_NUM_THREAD_Y);
+  Writer.HexOpt('CS_NUM_THREAD_Z',CS_NUM_THREAD_Z);
+ end;
+
+end;
+
 procedure TSprvEmit_alloc.AllocStage;
 begin
  AllocBinding;
@@ -56,10 +120,7 @@ begin
  AllocHeader;
 
  //Source Extension
- DataLayoutList.AllocSourceExtension;
- VertLayoutList.AllocSourceExtension;
- UniformList   .AllocSourceExtension;
- BufferList    .AllocSourceExtension;
+ AllocSourceExtension;
 
  //Decorate Name
  BufferList  .AllocName;

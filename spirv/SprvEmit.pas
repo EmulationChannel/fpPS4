@@ -57,10 +57,11 @@ type
   Procedure   SET_RENDER_TARGETS(R:PRENDER_TARGET;COUNT:Byte);
 
   Procedure   InitCs(RSRC1:TCOMPUTE_PGM_RSRC1;
-                     RSRC2:TCOMPUTE_PGM_RSRC2;
-                     NTX:TCOMPUTE_NUM_THREAD_X;
-                     NTY:TCOMPUTE_NUM_THREAD_Y;
-                     NTZ:TCOMPUTE_NUM_THREAD_Z);
+                     RSRC2:TCOMPUTE_PGM_RSRC2);
+
+  Procedure   SET_NUM_THREADS(NTX:TCOMPUTE_NUM_THREAD_X;
+                              NTY:TCOMPUTE_NUM_THREAD_Y;
+                              NTZ:TCOMPUTE_NUM_THREAD_Z);
 
   Procedure   InitCustomGs();
 
@@ -287,19 +288,23 @@ begin
  //1 step rate 0
  //2 step rate 1
 
- if (RSRC1.VGPR_COMP_CNT>=1) then
+ VGPR_COMP_CNT  :=RSRC1.VGPR_COMP_CNT;
+ VGT_STEP_RATE_0:=STEP_RATE_0;
+ VGT_STEP_RATE_1:=STEP_RATE_1;
+
+ if (VGPR_COMP_CNT>=1) then
  begin
   AddInstance(@RegsStory.VGRP[p],1,STEP_RATE_0);
   p:=p+1;
  end;
 
- if (RSRC1.VGPR_COMP_CNT>=2) then
+ if (VGPR_COMP_CNT>=2) then
  begin
   AddInstance(@RegsStory.VGRP[p],2,STEP_RATE_1);
   p:=p+1;
  end;
 
- if (RSRC1.VGPR_COMP_CNT>=3) then
+ if (VGPR_COMP_CNT>=3) then
  begin
   AddInstance(@RegsStory.VGRP[p],0,1);
  end;
@@ -564,8 +569,16 @@ begin
  AddCapability(Capability.Shader);
 end;
 
+//ps_z_export_en           -> mrtz.R
+//ps_stencil_val_export_en -> mrtz.G bits [0:7]
+//ps_stencil_op_export_en  -> mrtz.G bits [8:15]
+//ps_mask_export_en        -> mrtz.B
+//ps_coverage_export_en    -> mrtz.A
+
 Procedure TSprvEmit.SET_SHADER_CONTROL(const SHADER_CONTROL:TDB_SHADER_CONTROL);
 begin
+ DB_SHADER_CONTROL:=SHADER_CONTROL;
+ //
  case SHADER_CONTROL.CONSERVATIVE_Z_EXPORT of
   1:OutputList.FDepthMode:=foDepthLess;    //EXPORT_LESS_THAN_Z
   2:OutputList.FDepthMode:=foDepthGreater; //EXPORT_GREATER_THAN_Z
@@ -579,13 +592,12 @@ Procedure TSprvEmit.SET_INPUT_CNTL(INPUT_CNTL:PSPI_PS_INPUT_CNTL_0;NUM_INTERP:By
 var
  i:Byte;
 begin
+ PS_NUM_INTERP:=NUM_INTERP;
+ //
  if (NUM_INTERP<>0) then
  for i:=0 to NUM_INTERP-1 do
  begin
-  FPSInputCntl[i].OFFSET     :=(INPUT_CNTL[i].OFFSET and 31);
-  FPSInputCntl[i].USE_DEFAULT:=(INPUT_CNTL[i].OFFSET shr 5)<>0;
-  FPSInputCntl[i].DEFAULT_VAL:=(INPUT_CNTL[i].DEFAULT_VAL);
-  FPSInputCntl[i].FLAT_SHADE :=(INPUT_CNTL[i].FLAT_SHADE)<>0;
+  FPSInputCntl[i].DATA:=INPUT_CNTL[i];
  end;
 end;
 
@@ -593,6 +605,8 @@ Procedure TSprvEmit.SET_RENDER_TARGETS(R:PRENDER_TARGET;COUNT:Byte);
 var
  i:Byte;
 begin
+ EXPORT_COUNT:=COUNT;
+ //
  if (COUNT<>0) then
  for i:=0 to COUNT-1 do
  begin
@@ -603,10 +617,7 @@ begin
 end;
 
 Procedure TSprvEmit.InitCs(RSRC1:TCOMPUTE_PGM_RSRC1;
-                           RSRC2:TCOMPUTE_PGM_RSRC2;
-                           NTX:TCOMPUTE_NUM_THREAD_X;
-                           NTY:TCOMPUTE_NUM_THREAD_Y;
-                           NTZ:TCOMPUTE_NUM_THREAD_Z);
+                           RSRC2:TCOMPUTE_PGM_RSRC2);
 var
  p:Byte;
 begin
@@ -681,14 +692,6 @@ begin
   //(v_thread_id_z) Thread ID in group 2 //gl_LocalInvocationID
  end;
 
- FLocalSize.x:=NTX.NUM_THREAD_FULL+NTX.NUM_THREAD_PARTIAL;
- FLocalSize.y:=NTY.NUM_THREAD_FULL+NTY.NUM_THREAD_PARTIAL;
- FLocalSize.z:=NTZ.NUM_THREAD_FULL+NTZ.NUM_THREAD_PARTIAL;
-
- if (FLocalSize.x=0) then FLocalSize.x:=1;
- if (FLocalSize.y=0) then FLocalSize.y:=1;
- if (FLocalSize.z=0) then FLocalSize.z:=1;
-
  FLDS_SIZE:=RSRC2.LDS_SIZE*128*4;
 
  FillGPR(ConvertCountVGPRS(RSRC1.VGPRS),
@@ -696,6 +699,23 @@ begin
          ConvertCountSGPRS(RSRC1.SGPRS));
 
  AddCapability(Capability.Shader);
+end;
+
+Procedure TSprvEmit.SET_NUM_THREADS(NTX:TCOMPUTE_NUM_THREAD_X;
+                                    NTY:TCOMPUTE_NUM_THREAD_Y;
+                                    NTZ:TCOMPUTE_NUM_THREAD_Z);
+begin
+ CS_NUM_THREAD_X:=DWORD(NTX);
+ CS_NUM_THREAD_Y:=DWORD(NTY);
+ CS_NUM_THREAD_Z:=DWORD(NTZ);
+ //
+ FLocalSize.x:=NTX.NUM_THREAD_FULL+NTX.NUM_THREAD_PARTIAL;
+ FLocalSize.y:=NTY.NUM_THREAD_FULL+NTY.NUM_THREAD_PARTIAL;
+ FLocalSize.z:=NTZ.NUM_THREAD_FULL+NTZ.NUM_THREAD_PARTIAL;
+ //
+ if (FLocalSize.x=0) then FLocalSize.x:=1;
+ if (FLocalSize.y=0) then FLocalSize.y:=1;
+ if (FLocalSize.z=0) then FLocalSize.z:=1;
 end;
 
 Procedure TSprvEmit.InitCustomGs();

@@ -32,8 +32,8 @@ type
    //
    property  pLayout:TsrDataLayout read key;
    procedure Init(p:TsrDataLayout); inline;
-   function  GetString:RawByteString;
    function  GetStorageName:RawByteString;
+   procedure AllocSourceExtension2(var Writer:TseWriter); override;
  end;
 
  ntVertLayout=TsrVertLayout;
@@ -51,7 +51,6 @@ type
   Function  Next(node:TsrVertLayout):TsrVertLayout;
   procedure AllocBinding;
   procedure AllocEntryPoint(EntryPoint:TSpirvOp);
-  procedure AllocSourceExtension;
  end;
 
 implementation
@@ -73,19 +72,6 @@ begin
  FStorage:=StorageClass.Input;
  FBinding:=-1;
  key     :=p;
-end;
-
-function TsrVertLayout.GetString:RawByteString;
-var
- PID:DWORD;
-begin
- PID:=0;
- if (pLayout<>nil) then
- begin
-  PID:=pLayout.FID;
- end;
- Result:='VA;PID='+HexStr(PID,8)+
-           ';BND='+HexStr(FBinding,8);
 end;
 
 function TsrVertLayout.GetStorageName:RawByteString;
@@ -110,6 +96,8 @@ begin
   Result.InitVar();
   //
   FTree.Insert(Result);
+  //
+  p.FDescList.Push_tail(Result);
  end;
 end;
 
@@ -164,22 +152,14 @@ begin
  end;
 end;
 
-procedure TsrVertLayoutList.AllocSourceExtension;
-var
- FDebugInfo:TsrDebugInfoList;
- node:TsrVertLayout;
- pVar:TsrVariable;
+procedure TsrVertLayout.AllocSourceExtension2(var Writer:TseWriter);
 begin
- FDebugInfo:=FEmit.GetDebugInfoList;
- node:=First;
- While (node<>nil) do
+ if (pVar<>nil) and IsUsed then
  begin
-  pVar:=node.pVar;
-  if (pVar<>nil) and node.IsUsed then
-  begin
-   FDebugInfo.OpSource(node.GetString);
-  end;
-  node:=Next(node);
+  //start block
+  Writer.Header('+VTX_ATR');
+  //
+  Writer.IntOpt('BND',FBinding);
  end;
 end;
 

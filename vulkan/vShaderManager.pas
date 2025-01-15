@@ -174,7 +174,6 @@ begin
 
  Result.FDescSetId:=FDescSetId; //set before loading
  Result.LoadFromStream(Stream);
- Result.PreloadShaderFuncs(pUserData);
 
  Insert(Result,FShaderAliases,Length(FShaderAliases));
 end;
@@ -338,10 +337,11 @@ begin
   vShaderStageCs:
   begin
    SprvEmit.InitCs(GPU_REGS.SC_REG^.COMPUTE_PGM_RSRC1,
-                   GPU_REGS.SC_REG^.COMPUTE_PGM_RSRC2,
-                   GPU_REGS.SC_REG^.COMPUTE_NUM_THREAD_X,
-                   GPU_REGS.SC_REG^.COMPUTE_NUM_THREAD_Y,
-                   GPU_REGS.SC_REG^.COMPUTE_NUM_THREAD_Z);
+                   GPU_REGS.SC_REG^.COMPUTE_PGM_RSRC2);
+
+   SprvEmit.SET_NUM_THREADS(GPU_REGS.SC_REG^.COMPUTE_NUM_THREAD_X,
+                            GPU_REGS.SC_REG^.COMPUTE_NUM_THREAD_Y,
+                            GPU_REGS.SC_REG^.COMPUTE_NUM_THREAD_Z);
 
    SprvEmit.SetUserData(GPU_REGS.get_user_data(FStage));
   end;
@@ -390,27 +390,26 @@ end;
 
 function test_func(FShader:TvShaderExt;pUserData:Pointer):Boolean;
 var
- key:TShaderFuncKey;
-
- P:Pointer;
+ L:PvCustomLayout;
+ src,dst:Pointer;
  i:Integer;
 begin
  Result:=True;
- if (Length(FShader.FShaderFuncs)=0) then Exit;
+ if (Length(FShader.FFuncLayouts)=0) then Exit;
 
- key:=Default(TShaderFuncKey);
-
- For i:=0 to High(FShader.FShaderFuncs) do
- if (FShader.FShaderFuncs[i].pData<>nil) then
+ For i:=0 to High(FShader.FFuncLayouts) do
  begin
+  L:=@FShader.FFuncLayouts[i];
 
-  P:=GetSharpByPatch(pUserData,FShader.GetImmData,FShader.FFuncLayouts[i].addr);
+  src:=Pointer(@FShader.FImmData[0])+L^.offset;
 
-  if (P<>nil) then
+  dst:=GetSharpByPatch(pUserData,FShader.GetImmData,L^.addr);
+
+  if (src<>nil) then
+  if (dst<>nil) then
   begin
-   key.pData:=P;
 
-   if (TShaderFuncKey.c(FShader.FShaderFuncs[i],key)<>0) then
+   if (CompareDWord(src^,dst^,L^.size div SizeOf(DWORD))<>0) then
    begin
     Exit(False);
    end;
@@ -450,34 +449,43 @@ begin
  if (FShader.FParams.EXPORT_COUNT<>0) then
  for i:=0 to FShader.FParams.EXPORT_COUNT-1 do
  begin
-  if (FShader.FParams.EXPORT_INFO[i].FORMAT     <>R[i].INFO.FORMAT     ) then Exit(False);
-  if (FShader.FParams.EXPORT_INFO[i].NUMBER_TYPE<>R[i].INFO.NUMBER_TYPE) then Exit(False);
-  if (FShader.FParams.EXPORT_INFO[i].COMP_SWAP  <>R[i].INFO.COMP_SWAP  ) then Exit(False);
+  if (FShader.FParams.EXPORT_COLOR[i].FORMAT     <>R[i].INFO.FORMAT     ) then Exit(False);
+  if (FShader.FParams.EXPORT_COLOR[i].NUMBER_TYPE<>R[i].INFO.NUMBER_TYPE) then Exit(False);
+  if (FShader.FParams.EXPORT_COLOR[i].COMP_SWAP  <>R[i].INFO.COMP_SWAP  ) then Exit(False);
  end;
  //
  Result:=True;
 end;
 
-function test_ps_params(FShader:TvShaderExt;FStage:TvShaderStage;var GPU_REGS:TGPU_REGS):Boolean;
+function test_params(FShader:TvShaderExt;FStage:TvShaderStage;var GPU_REGS:TGPU_REGS):Boolean;
 begin
- if (FStage<>vShaderStagePs) then Exit(True);
 
- if (DWORD(FShader.FParams.SHADER_CONTROL)<>DWORD(GPU_REGS.CX_REG^.DB_SHADER_CONTROL)) then Exit(False);
+ if (FStage=vShaderStagePs) then
+ begin
+  if (DWORD(FShader.FParams.SHADER_CONTROL)<>DWORD(GPU_REGS.CX_REG^.DB_SHADER_CONTROL)) then Exit(False);
 
- if (FShader.FParams.NUM_INTERP<>GPU_REGS.CX_REG^.SPI_PS_IN_CONTROL.NUM_INTERP) then Exit(False);
+  if (FShader.FParams.NUM_INTERP<>GPU_REGS.CX_REG^.SPI_PS_IN_CONTROL.NUM_INTERP) then Exit(False);
 
- if (CompareByte(FShader.FParams.INPUT_CNTL,
-                 GPU_REGS.CX_REG^.SPI_PS_INPUT_CNTL,
-                 SizeOf(TSPI_PS_INPUT_CNTL_0)*FShader.FParams.NUM_INTERP)<>0) then Exit(False);
+  if (CompareByte(FShader.FParams.INPUT_CNTL,
+                  GPU_REGS.CX_REG^.SPI_PS_INPUT_CNTL,
+                  SizeOf(TSPI_PS_INPUT_CNTL_0)*FShader.FParams.NUM_INTERP)<>0) then Exit(False);
 
- if (not CompareExportInfo(FShader,@GPU_REGS.CX_REG^.RENDER_TARGET)) then Exit(False);
+  if (not CompareExportInfo(FShader,@GPU_REGS.CX_REG^.RENDER_TARGET)) then Exit(False);
+ end;
+
+ if (FStage=vShaderStageCs) then
+ begin
+  if (DWORD(FShader.FParams.NUM_THREAD_X)<>DWORD(GPU_REGS.SC_REG^.COMPUTE_NUM_THREAD_X)) then Exit(False);
+  if (DWORD(FShader.FParams.NUM_THREAD_Y)<>DWORD(GPU_REGS.SC_REG^.COMPUTE_NUM_THREAD_Y)) then Exit(False);
+  if (DWORD(FShader.FParams.NUM_THREAD_Z)<>DWORD(GPU_REGS.SC_REG^.COMPUTE_NUM_THREAD_Z)) then Exit(False);
+ end;
 
  Result:=True;
 end;
 
 function test_unif(FShader:TvShaderExt;FDescSetId:Integer;pUserData:Pointer):Boolean;
 var
- ch:TvBufOffsetChecker;
+ ch:TvUnifChecker;
 begin
  if (FShader.FDescSetId<>FDescSetId) then Exit(False);
  ch.FResult:=True;
@@ -546,7 +554,7 @@ begin
 
    if test_func(FShader,pUserData) then
    if test_instance(FShader,FStage,GPU_REGS) then
-   if test_ps_params(FShader,FStage,GPU_REGS) then
+   if test_params(FShader,FStage,GPU_REGS) then
    if test_unif(FShader,FDescSetId,pUserData) then //Checking offsets within a shader
    if test_push_const(FShader,pc_offset,pc_size) then
    begin
@@ -600,23 +608,6 @@ begin
 
   //free spv data
   M.Free;
-
-  case FStage of
-   vShaderStageVs:
-    begin
-     FShader.SetInstance(GPU_REGS.SG_REG^.SPI_SHADER_PGM_RSRC1_VS.VGPR_COMP_CNT,
-                         GPU_REGS.CX_REG^.VGT_INSTANCE_STEP_RATE_0,
-                         GPU_REGS.CX_REG^.VGT_INSTANCE_STEP_RATE_1);
-    end;
-   vShaderStagePs:
-    begin
-     FShader.SET_SHADER_CONTROL(GPU_REGS.CX_REG^.DB_SHADER_CONTROL);
-     FShader.SET_INPUT_CNTL    (GPU_REGS.CX_REG^.SPI_PS_INPUT_CNTL,
-                                GPU_REGS.CX_REG^.SPI_PS_IN_CONTROL.NUM_INTERP);
-     FShader.SET_RENDER_TARGETS(@GPU_REGS.CX_REG^.RENDER_TARGET,GPU_REGS.GET_HI_RT+1);
-    end;
-   else;
-  end;
 
   //
 

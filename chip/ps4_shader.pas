@@ -369,7 +369,7 @@ function  _calc_shader_slot(info:PShaderBinaryInfo):PInputUsageSlot;
 
 /////////
 
-function  _get_dst_sel_ch(b:Byte):Char;
+function  _get_dst_sel_str(x,y,z,w:Byte):RawByteString;
 function  _get_buf_nfmt_str(b:Byte):RawByteString;
 function  _get_buf_dfmt_str(b:Byte):RawByteString;
 function  _get_element_size_str(b:Byte):RawByteString;
@@ -490,18 +490,15 @@ end;
 
 /////////
 
-function _get_dst_sel_ch(b:Byte):Char;
+const
+ dst_sel_char:array[0..7] of AnsiChar='01__RGBA';
+
+function _get_dst_sel_str(x,y,z,w:Byte):RawByteString;
 begin
- Case b of
-  0:Result:='0';
-  1:Result:='1';
-  4:Result:='R';
-  5:Result:='G';
-  6:Result:='B';
-  7:Result:='A';
-  else
-    Result:=#0;
- end;
+ Result:=dst_sel_char[x]+
+         dst_sel_char[y]+
+         dst_sel_char[z]+
+         dst_sel_char[w];
 end;
 
 function _get_buf_nfmt_str(b:Byte):RawByteString;
@@ -910,11 +907,10 @@ begin
  Writeln('cache_swizzle=',PV^.cache_swizzle);
  Writeln('swizzle_en=',PV^.swizzle_en);
  Writeln('num_records=',PV^.num_records);
- Writeln('dst_sel=',
-  _get_dst_sel_ch(PV^.dst_sel_x)+
-  _get_dst_sel_ch(PV^.dst_sel_y)+
-  _get_dst_sel_ch(PV^.dst_sel_z)+
-  _get_dst_sel_ch(PV^.dst_sel_w));
+ Writeln('dst_sel=',_get_dst_sel_str(PV^.dst_sel_x,
+                                     PV^.dst_sel_y,
+                                     PV^.dst_sel_z,
+                                     PV^.dst_sel_w));
 
  Writeln('nfmt=',_get_buf_nfmt_str(PV^.nfmt)); //numeric data type (float, int, ...)
  Writeln('dfmt=',_get_buf_dfmt_str(PV^.dfmt)); //data format
@@ -945,11 +941,10 @@ begin
  Writeln('perf_mod=',_get_perf_mod_str(PT^.perf_mod));
  Writeln('interlaced=',PT^.interlaced);
 
- Writeln('dst_sel=',
-  _get_dst_sel_ch(PT^.dst_sel_x)+
-  _get_dst_sel_ch(PT^.dst_sel_y)+
-  _get_dst_sel_ch(PT^.dst_sel_z)+
-  _get_dst_sel_ch(PT^.dst_sel_w));
+ Writeln('dst_sel=',_get_dst_sel_str(PT^.dst_sel_x,
+                                     PT^.dst_sel_y,
+                                     PT^.dst_sel_z,
+                                     PT^.dst_sel_w));
 
  Writeln('base_level=',PT^.base_level);
  Writeln('last_level=',PT^.last_level);

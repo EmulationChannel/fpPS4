@@ -93,6 +93,10 @@ begin
   grp:=GroupingSharp(src,rtVSharp4);
   PV:=grp.pData;
 
+  //
+  grp.res_data_p:=True;
+  //
+
   info:=Buf_info(grp,
                  dst_sel(PV^.dst_sel_x,
                          PV^.dst_sel_y,
@@ -178,6 +182,10 @@ begin
  grp:=GroupingSharp(@src,rtVSharp4);
  PV:=grp.pData;
 
+ //
+ grp.res_data_p:=True;
+ //
+
  TEmit_vbuf_load(TObject(Self)).buf_load(
   Buf_info(grp,
            dst_sel(PV^.dst_sel_x,
@@ -211,6 +219,10 @@ begin
 
  grp:=GroupingSharp(@src,rtVSharp4);
  PV:=grp.pData;
+
+ //
+ grp.res_data_p:=True;
+ //
 
  TEmit_vbuf_store(TObject(Self)).buf_store(
   Buf_info(grp,
@@ -250,7 +262,8 @@ begin
   Buf_info(grp,
            dst_sel_identity,
            dfmt,
-           PV^.nfmt,
+           //PV^.nfmt,
+           BUF_NUM_FORMAT_FLOAT,
            count,
            FSPI.MUBUF.GLC,
            FSPI.MUBUF.SLC)
@@ -281,7 +294,8 @@ begin
   Buf_info(grp,
            dst_sel_identity,
            dfmt,
-           PV^.nfmt,
+           //PV^.nfmt,
+           BUF_NUM_FORMAT_FLOAT,
            count,
            FSPI.MUBUF.GLC,
            FSPI.MUBUF.SLC)

@@ -19,7 +19,7 @@ uses
  srConfig;
 
 type
- String2=String[2];
+ String3=String[3];
 
  TsrRegUniform=class(TsrNode)
   private
@@ -77,9 +77,10 @@ type
    function  chain_read:DWORD;
    function  chain_write:DWORD;
    function  GetStorageName:RawByteString;
-   function  GetTypeChar:String2;
-   function  GetRw:Char;
-   function  GetString:RawByteString;
+   function  GetFlagsStr:String3;
+   function  GetTypeStr:RawByteString;
+   //
+   procedure AllocSourceExtension2(var Writer:TseWriter); override;
  end;
 
  ntUniform=TsrUniform;
@@ -96,7 +97,6 @@ type
   Function  First:TsrUniform;
   Function  Next(node:TsrUniform):TsrUniform;
   procedure AllocBinding(Var FBinding:Integer);
-  procedure AllocSourceExtension;
  end;
 
 implementation
@@ -264,79 +264,6 @@ begin
    end;
 end;
 
-//TU
-//TS
-//TR
-
-//IU
-//IS
-//IR
-
-//US
-
-//RU
-
-function GetSampledTypeChar(Sampled:Byte):Char;
-begin
- Case Sampled of
-     1:Result:='U'; //VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER | VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
-     2:Result:='S'; //VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER | VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-  else Result:='R'; //runtime texel buffer
- end;
-end;
-
-function TsrUniform.GetTypeChar:String2;
-var
- image_info:TsrTypeImageInfo;
- pChild:TsrType;
-begin
- Result:='';
- if (FType<>nil) then
-   Case FType.dtype of
-    dtTypeImage:
-     begin
-      image_info:=FType.image_info;
-
-      if (image_info.Dim=Dim.Buffer) then
-      begin
-       Result:='T'+GetSampledTypeChar(image_info.Sampled);
-      end else
-      begin
-       Result:='I'+GetSampledTypeChar(image_info.Sampled);
-      end;
-     end;
-    //
-    dtTypeSampler:Result:='US'; //VK_DESCRIPTOR_TYPE_SAMPLER
-    //
-    dtTypeArray,
-    dtTypeRuntimeArray:
-     begin
-      pChild:=pType.GetItem(0).specialize AsType<ntType>; //Image
-
-      if (pChild<>nil) then
-      if (pChild.dtype=dtTypeImage) then
-      begin
-       image_info:=pChild.image_info;
-
-       if (image_info.Dim=Dim.Buffer) then
-       begin
-        Assert(false,'GetTypeChar');
-       end else
-       begin
-        Case FType.dtype of
-         dtTypeArray       :Result:='A'+GetSampledTypeChar(image_info.Sampled);
-         dtTypeRuntimeArray:Result:='R'+GetSampledTypeChar(image_info.Sampled);
-         else;
-        end;
-       end;
-      end;
-
-     end;
-    else
-     Assert(false,'GetTypeChar');
-   end;
-end;
-
 function TsrUniform.chain_read:DWORD;
 var
  node:TsrArrayChain;
@@ -379,36 +306,108 @@ begin
  end;
 end;
 
-function TsrUniform.GetRw:Char;
+function TsrUniform.GetFlagsStr:String3;
+const
+ _R:array[0..1] of AnsiChar='_R';
+ _W:array[0..1] of AnsiChar='_W';
+ _M:array[0..1] of AnsiChar='_M';
 begin
- Result:='0';
- if (chain_read<>0) then
- begin
-  Result:='1';
- end;
- if (chain_write<>0) then
- begin
-  Result:=Char(ord(Result) or ord('2'));
- end;
- if (FMipArray) then
- begin
-  Result:=Char(ord(Result) or ord('4'));
- end;
+ Result:=_R[ord(chain_read <>0)]+
+         _W[ord(chain_write<>0)]+
+         _M[ord(FMipArray     )];
 end;
 
-function TsrUniform.GetString:RawByteString;
+//VTX_ATR -> VERTEX ATTRIBUTE
+//SAMPLER -> VK_DESCRIPTOR_TYPE_SAMPLER
+//SAM_IMG -> VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+//STR_IMG -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+//RNT_IMG
+//UTX_BUF -> VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+//STX_BUF -> VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+//RTX_BUF
+//UNF_BUF -> VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+//STR_BUF -> VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+//PSH_CST -> PUSH CONSTANT
+
+function _GetTypeStr(FType:TsrType):PChar;
+const
+ TEXEL_BUFFER_STR:array[0..2] of PChar=(
+  'RTX_BUF',
+  'UTX_BUF',
+  'STX_BUF'
+ );
+ IMAGE_STR:array[0..2] of PChar=(
+  'RNT_IMG',
+  'SAM_IMG',
+  'STR_IMG'
+ );
 var
- PID:DWORD;
+ image_info:TsrTypeImageInfo;
 begin
- PID:=0;
- if (key.pLayout<>nil) then
+ if (FType<>nil) then
+   Case FType.dtype of
+    dtTypeImage:
+     begin
+      image_info:=FType.image_info;
+      //
+      if (image_info.Dim=Dim.Buffer) then
+      begin
+       Result:=TEXEL_BUFFER_STR[image_info.Sampled];
+      end else
+      begin
+       Result:=IMAGE_STR[image_info.Sampled];
+      end;
+     end;
+    //
+    dtTypeSampler:Result:='SAMPLER';
+    //
+    else;
+   end;
+end;
+
+function TsrUniform.GetTypeStr:RawByteString;
+var
+ pChild:TsrType;
+begin
+ Result:='';
+ if (FType<>nil) then
+   Case FType.dtype of
+    dtTypeImage,
+    dtTypeSampler:
+    begin
+     Result:='+'+_GetTypeStr(FType);
+    end;
+    //
+    dtTypeArray,
+    dtTypeRuntimeArray:
+     begin
+      pChild:=pType.GetItem(0).specialize AsType<ntType>; //Image
+
+      Assert(pChild<>nil,'GetTypeChar#1');
+      Assert(pChild.dtype=dtTypeImage,'GetTypeChar#2');
+
+      Case FType.dtype of
+       dtTypeArray       :Result:='%'+_GetTypeStr(pChild);
+       dtTypeRuntimeArray:Result:='*'+_GetTypeStr(pChild);
+       else;
+      end;
+
+     end;
+    else
+     Assert(false,'GetTypeChar#3');
+   end;
+end;
+
+procedure TsrUniform.AllocSourceExtension2(var Writer:TseWriter);
+begin
+ if (pVar<>nil) and IsUsed then
  begin
-  PID:=key.pLayout.FID;
+  //start block
+  Writer.Header(GetTypeStr);
+  //
+  Writer.IntOpt('BND',FBinding);
+  Writer.StrOpt('FLG',GetFlagsStr);
  end;
- Result:=GetTypeChar+
-         ';PID='+HexStr(PID,8)+
-         ';BND='+HexStr(FBinding,8)+
-         ';MRW='+GetRw;
 end;
 
 procedure TsrUniformList.Init(Emit:TCustomEmit);
@@ -436,6 +435,8 @@ begin
   Result.FReg.Init(Result.FVar);
   //
   FTree.Insert(Result);
+  //
+  s.FDescList.Push_tail(Result);
  end;
 end;
 
@@ -584,25 +585,6 @@ begin
     end;
    end;
 
-  end;
-  node:=Next(node);
- end;
-end;
-
-procedure TsrUniformList.AllocSourceExtension;
-var
- pDebugInfoList:TsrDebugInfoList;
- node:TsrUniform;
- pVar:TsrVariable;
-begin
- pDebugInfoList:=FEmit.GetDebugInfoList;
- node:=First;
- While (node<>nil) do
- begin
-  pVar:=node.pVar;
-  if (pVar<>nil) and node.IsUsed then
-  begin
-   pDebugInfoList.OpSource(node.GetString);
   end;
   node:=Next(node);
  end;

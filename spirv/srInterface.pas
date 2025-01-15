@@ -6,6 +6,7 @@ interface
 
 uses
  ps4_pssl,
+ si_ci_vi_merged_registers,
  spirv,
  srNode,
  srConfig,
@@ -46,11 +47,12 @@ type
  end;
 
  PPSInputCntl=^TPSInputCntl;
- TPSInputCntl=packed record
-  OFFSET     :Byte;
-  USE_DEFAULT:Boolean;
-  DEFAULT_VAL:Byte;
-  FLAT_SHADE :Boolean;
+ TPSInputCntl=object
+  DATA:TSPI_PS_INPUT_CNTL_0;
+  function OFFSET     :Byte;
+  function USE_DEFAULT:Boolean;
+  function DEFAULT_VAL:Tvec4f;
+  function FLAT_SHADE :Boolean;
  end;
 
  TExportInfo=packed record
@@ -62,8 +64,21 @@ type
  TEmitInterface=class(TCustomEmit)
   FExecutionModel    :Word;
   FEarlyFragmentTests:Boolean;
+  //
+  VGPR_COMP_CNT      :Byte;
+  PS_NUM_INTERP      :Byte;
+  EXPORT_COUNT       :Byte;
+  //
+  VGT_STEP_RATE_0    :DWORD;
+  VGT_STEP_RATE_1    :DWORD;
+  DB_SHADER_CONTROL  :TDB_SHADER_CONTROL;
+  CS_NUM_THREAD_X    :DWORD;
+  CS_NUM_THREAD_Y    :DWORD;
+  CS_NUM_THREAD_Z    :DWORD;
+  //
   FPSInputCntl       :array[0..31] of TPSInputCntl;
   FExportInfo        :array[0..7] of TExportInfo;
+  //
   FLocalSize         :TLocalSize;
   FLDS_SIZE          :DWORD;
   FGeometryInfo      :TGeometryInfo;
@@ -198,6 +213,38 @@ type
  end;
 
 implementation
+
+//
+
+function TPSInputCntl.OFFSET:Byte;
+begin
+ Result:=(DATA.OFFSET and 31);
+end;
+
+function TPSInputCntl.USE_DEFAULT:Boolean;
+begin
+ Result:=(DATA.OFFSET shr 5)<>0;
+end;
+
+const
+ C_DEFAULT_VAL:array[0..3] of Tvec4f=(
+  (0.0, 0.0, 0.0, 0.0),
+  (0.0, 0.0, 0.0, 1.0),
+  (1.0, 1.0, 1.0, 0.0),
+  (1.0, 1.0, 1.0, 1.0)
+ );
+
+function TPSInputCntl.DEFAULT_VAL:Tvec4f;
+begin
+ Result:=C_DEFAULT_VAL[DATA.DEFAULT_VAL];
+end;
+
+function TPSInputCntl.FLAT_SHADE:Boolean;
+begin
+ Result:=(DATA.FLAT_SHADE)<>0
+end;
+
+//
 
 function TEmitInterface.Alloc(Size:ptruint):Pointer;
 begin
