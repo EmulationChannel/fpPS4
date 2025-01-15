@@ -33,6 +33,7 @@ type
   procedure emit_V_SIN_COS(OpId:DWORD);
   procedure emit_V_NOT_B32;
   procedure emit_V_RCP_F32;
+  procedure emit_V_FFBH_U32;
   procedure emit_V_FFBL_B32;
   procedure emit_V_BFREV_B32;
  end;
@@ -280,6 +281,28 @@ begin
  Op2(Op.OpFDiv,dtFloat32,dst,one,src);
 end;
 
+procedure TEmit_VOP1.emit_V_FFBH_U32;
+Var
+ dst:PsrRegSlot;
+ src:TsrRegNode;
+ msb:TsrRegNode;
+ pos:TsrRegNode;
+ cnd:TsrRegNode;
+begin
+ dst:=get_vdst8(FSPI.VOP1.VDST);
+ src:=fetch_ssrc9(FSPI.VOP1.SRC0,dtUint32);
+
+ msb:=NewReg(dtUint32);
+ _OpGlsl1(line,GlslOp.FindUMsb,msb,src);
+
+ pos:=OpISubTo(NewImm_i(dtUint32,31),msb);
+
+ cnd:=OpIEqualTo(src,NewImm_i(dtUint32,0));
+
+ //           True,                          False
+ OpSelect(dst,NewImm_q(dtUint32,High(DWORD)),pos,cnd);
+end;
+
 procedure TEmit_VOP1.emit_V_FFBL_B32;
 Var
  dst:PsrRegSlot;
@@ -354,6 +377,7 @@ begin
   V_RCP_F32  : emit_V_RCP_F32;
   V_RCP_IFLAG_F32: emit_V_RCP_F32;
 
+  V_FFBH_U32 : emit_V_FFBH_U32;
   V_FFBL_B32 : emit_V_FFBL_B32;
 
   V_BFREV_B32: emit_V_BFREV_B32;

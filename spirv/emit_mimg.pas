@@ -560,6 +560,7 @@ begin
  t(ImageOperands.Lod         ,'Lod');
  t(ImageOperands.Grad        ,'Grad');
  t(ImageOperands.ConstOffset ,'ConstOffset');
+ t(ImageOperands.Offset      ,'Offset');
  t(ImageOperands.Sample      ,'Sample');
  t(ImageOperands.MinLod      ,'MinLod');
 end;
@@ -799,7 +800,8 @@ begin
  if (imOffset in p.mods) then
  begin
   p.offset:=Gather_packed_offset(p.roffset,GetDimCount(info^.tinfo.Dim));
-  p.img_op:=p.img_op or ImageOperands.ConstOffset;
+  p.img_op:=p.img_op or ImageOperands.{Const}Offset;
+  AddCapability(Capability.ImageGatherExtended); //-> ImageOperands.Offset
  end;
 
  if (imBiasLod in p.mods) then
@@ -863,7 +865,8 @@ begin
    Assert(false,'TODO: imGrad');
   end;
 
-  if ((p.img_op and ImageOperands.ConstOffset)<>0) then
+  if ((p.img_op and ImageOperands.ConstOffset)<>0) or
+     ((p.img_op and ImageOperands.Offset)<>0) then
   begin
    node.AddParam(p.offset);
   end;

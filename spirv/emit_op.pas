@@ -164,6 +164,8 @@ type
   function  OpAndTo(src0:TsrRegNode;src1:QWORD;ppLine:PPspirvOp=nil):TsrRegNode;
   //
   function  OpIsSSignTo(src:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
+  function  OpIEqualTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
+  function  OpINotEqualTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
   function  OpEqualTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
   function  OpNotEqualTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
   //
@@ -1459,6 +1461,18 @@ begin
  Result:=NewReg(dtBool);
  zero  :=NewImm_i(src.dtype,0,_get_line(ppLine));
  _set_line(ppLine,_Op2(_get_line(ppLine),Op.OpSLessThan,Result,src,zero)); //(x<0)
+end;
+
+function TEmitOp.OpIEqualTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
+begin
+ Result:=NewReg(dtBool);
+ _set_line(ppLine,_Op2(_get_line(ppLine),Op.OpIEqual,Result,src0,src1));
+end;
+
+function TEmitOp.OpINotEqualTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;
+begin
+ Result:=NewReg(dtBool);
+ _set_line(ppLine,_Op2(_get_line(ppLine),Op.OpINotEqual,Result,src0,src1));
 end;
 
 function TEmitOp.OpEqualTo(src0,src1:TsrRegNode;ppLine:PPspirvOp=nil):TsrRegNode;

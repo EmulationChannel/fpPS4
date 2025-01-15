@@ -53,6 +53,7 @@ type
   procedure emit_V_BFE_U32;
   procedure emit_V_BFE_I32;
   procedure emit_V_BFI_B32;
+  procedure emit_V_BFM_B32;
   procedure emit_V_MAD_F32;
   procedure emit_V_MAD_LEGACY_F32;
   procedure emit_V_MAD_I32_I24;
@@ -645,6 +646,37 @@ begin
  src[1]:=fetch_ssrc9(FSPI.VOP3a.SRC2,dtUint32);
 
  OpBFIB32(dst,bitmsk,src[0],src[1]);
+end;
+
+procedure TEmit_VOP3.emit_V_BFM_B32; //vdst = ((1<<vsize[4:0]) - 1) << voffset[4:0]
+Var
+ dst:PsrRegSlot;
+ vsize  :TsrRegNode;
+ voffset:TsrRegNode;
+ src    :TsrRegNode;
+begin
+ dst:=get_vdst8(FSPI.VOP3a.VDST);
+
+ Assert(FSPI.VOP3a.OMOD =0,'FSPI.VOP3a.OMOD');
+ Assert(FSPI.VOP3a.ABS  =0,'FSPI.VOP3a.ABS');
+ Assert(FSPI.VOP3a.CLAMP=0,'FSPI.VOP3a.CLAMP');
+ Assert(FSPI.VOP3a.NEG  =0,'FSPI.VOP3a.NEG');
+
+ vsize  :=fetch_ssrc9(FSPI.VOP3a.SRC0,dtUint32);
+ voffset:=fetch_ssrc9(FSPI.VOP3a.SRC1,dtUint32);
+
+ vsize  :=OpAndTo(vsize  ,15); //[0:4]
+ voffset:=OpAndTo(voffset,15); //[0:4]
+
+ vsize  .PrepType(ord(dtUint32));
+ voffset.PrepType(ord(dtUint32));
+
+ src:=OpShlTo (NewImm_q(dtUint32,1),vsize);
+ src:=OpISubTo(vsize,1);
+
+ src:=OpShlTo(src,voffset);
+
+ MakeCopy(dst,src);
 end;
 
 procedure TEmit_VOP3.emit_V_MAD_F32; //vdst = vsrc0.f * vsrc1.f + vadd.f
@@ -1360,6 +1392,8 @@ begin
 
   256+V_MBCNT_LO_U32_B32: emit_V_MBCNT_LO_U32_B32;
   256+V_MBCNT_HI_U32_B32: emit_V_MBCNT_HI_U32_B32;
+
+  256+V_BFM_B32: emit_V_BFM_B32;
 
   //VOP3 only
 

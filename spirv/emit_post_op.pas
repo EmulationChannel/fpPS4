@@ -1926,9 +1926,13 @@ var
 
  count:PtrUint;
 
- ret:TsrConst;
- vec:array[0..2] of TsrConst;
+ cret:TsrConst;
+ cvec:array[0..2] of TsrConst;
 
+ pLine:TSpirvOp;
+ vint6:TsrRegNode;
+
+ rvec:array[0..2] of TsrRegNode;
 begin
  Result:=0;
  dst:=node.pDst.specialize AsType<ntReg>;
@@ -1947,32 +1951,32 @@ begin
   data:=src.AsConst.GetData;
   P:=@data;
 
-  ret:=nil;
+  cret:=nil;
   Case count of
    1:
      begin
-      ret:=ConstList.Fetch_i(dtInt32,int6(P^.x));
+      cret:=ConstList.Fetch_i(dtInt32,int6(P^.x));
      end;
    2:
      begin
-      vec[0]:=ConstList.Fetch_i(dtInt32,int6(P^.x));
-      vec[1]:=ConstList.Fetch_i(dtInt32,int6(P^.y));
+      cvec[0]:=ConstList.Fetch_i(dtInt32,int6(P^.x));
+      cvec[1]:=ConstList.Fetch_i(dtInt32,int6(P^.y));
 
-      ret:=ConstList.FetchVector(dtVec2i,@vec,true);
+      cret:=ConstList.FetchVector(dtVec2i,@cvec,true);
      end;
    3:
      begin
-      vec[0]:=ConstList.Fetch_i(dtInt32,int6(P^.x));
-      vec[1]:=ConstList.Fetch_i(dtInt32,int6(P^.y));
-      vec[2]:=ConstList.Fetch_i(dtInt32,int6(P^.z));
+      cvec[0]:=ConstList.Fetch_i(dtInt32,int6(P^.x));
+      cvec[1]:=ConstList.Fetch_i(dtInt32,int6(P^.y));
+      cvec[2]:=ConstList.Fetch_i(dtInt32,int6(P^.z));
 
-      ret:=ConstList.FetchVector(dtVec3i,@vec,true);
+      cret:=ConstList.FetchVector(dtVec3i,@cvec,true);
      end;
    else
     Assert(False);
   end;
 
-  dst.pWriter:=ret;
+  dst.pWriter:=cret;
 
   node.mark_not_used;
   node.pDst:=nil;
@@ -1980,9 +1984,27 @@ begin
   Inc(Result);
  end else
  begin
-  //TODO: non constant PackOfs
-  Writeln('TODO: non constant PackOfs ',src.pWriter.ntype.ClassName);
-  Assert(false,'TODO: non constant PackOfs');
+  pLine:=src.pLine;
+
+  vint6:=NewImm_i(dtInt32,6);
+  rvec[0]:=NewReg(dtInt32);
+  rvec[1]:=NewReg(dtInt32);
+  rvec[2]:=NewReg(dtInt32);
+
+  pLine:=_Op3(pLine,Op.OpBitFieldSExtract,rvec[0],src,NewImm_i(dtInt32, 0),vint6);
+  pLine:=_Op3(pLine,Op.OpBitFieldSExtract,rvec[1],src,NewImm_i(dtInt32, 8),vint6);
+  pLine:=_Op3(pLine,Op.OpBitFieldSExtract,rvec[2],src,NewImm_i(dtInt32,16),vint6);
+
+  src:=NewReg(dtVec3i);
+  pLine:=OpMakeCon(pLine,src,@rvec);
+
+  dst.dtype  :=dtVec3i;
+  dst.pWriter:=src;
+
+  node.mark_not_used;
+  node.pDst:=nil;
+
+  Inc(Result);
  end;
 end;
 
