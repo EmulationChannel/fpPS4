@@ -642,25 +642,25 @@ const
 
  shader_swizzle_map:array[1..4,SWAP_STD..SWAP_ALT_REV] of TvDstSel=(
   (
-   (r:VK_SWIZZLE_R;g:VK_SWIZZLE_O;b:VK_SWIZZLE_O;a:VK_SWIZZLE_O),
-   (r:VK_SWIZZLE_G;g:VK_SWIZZLE_O;b:VK_SWIZZLE_O;a:VK_SWIZZLE_O),
-   (r:VK_SWIZZLE_B;g:VK_SWIZZLE_O;b:VK_SWIZZLE_O;a:VK_SWIZZLE_O),
-   (r:VK_SWIZZLE_A;g:VK_SWIZZLE_O;b:VK_SWIZZLE_O;a:VK_SWIZZLE_O)
+   (x:VK_SWIZZLE_R;y:VK_SWIZZLE_O;z:VK_SWIZZLE_O;w:VK_SWIZZLE_O),
+   (x:VK_SWIZZLE_G;y:VK_SWIZZLE_O;z:VK_SWIZZLE_O;w:VK_SWIZZLE_O),
+   (x:VK_SWIZZLE_B;y:VK_SWIZZLE_O;z:VK_SWIZZLE_O;w:VK_SWIZZLE_O),
+   (x:VK_SWIZZLE_A;y:VK_SWIZZLE_O;z:VK_SWIZZLE_O;w:VK_SWIZZLE_O)
   ),(
-   (r:VK_SWIZZLE_R;g:VK_SWIZZLE_G;b:VK_SWIZZLE_O;a:VK_SWIZZLE_O),
-   (r:VK_SWIZZLE_R;g:VK_SWIZZLE_A;b:VK_SWIZZLE_O;a:VK_SWIZZLE_O),
-   (r:VK_SWIZZLE_G;g:VK_SWIZZLE_R;b:VK_SWIZZLE_O;a:VK_SWIZZLE_O),
-   (r:VK_SWIZZLE_A;g:VK_SWIZZLE_R;b:VK_SWIZZLE_O;a:VK_SWIZZLE_O)
+   (x:VK_SWIZZLE_R;y:VK_SWIZZLE_G;z:VK_SWIZZLE_O;w:VK_SWIZZLE_O),
+   (x:VK_SWIZZLE_R;y:VK_SWIZZLE_A;z:VK_SWIZZLE_O;w:VK_SWIZZLE_O),
+   (x:VK_SWIZZLE_G;y:VK_SWIZZLE_R;z:VK_SWIZZLE_O;w:VK_SWIZZLE_O),
+   (x:VK_SWIZZLE_A;y:VK_SWIZZLE_R;z:VK_SWIZZLE_O;w:VK_SWIZZLE_O)
   ),(
-   (r:VK_SWIZZLE_R;g:VK_SWIZZLE_G;b:VK_SWIZZLE_B;a:VK_SWIZZLE_O),
-   (r:VK_SWIZZLE_R;g:VK_SWIZZLE_G;b:VK_SWIZZLE_A;a:VK_SWIZZLE_O),
-   (r:VK_SWIZZLE_B;g:VK_SWIZZLE_G;b:VK_SWIZZLE_R;a:VK_SWIZZLE_O),
-   (r:VK_SWIZZLE_A;g:VK_SWIZZLE_G;b:VK_SWIZZLE_R;a:VK_SWIZZLE_O)
+   (x:VK_SWIZZLE_R;y:VK_SWIZZLE_G;z:VK_SWIZZLE_B;w:VK_SWIZZLE_O),
+   (x:VK_SWIZZLE_R;y:VK_SWIZZLE_G;z:VK_SWIZZLE_A;w:VK_SWIZZLE_O),
+   (x:VK_SWIZZLE_B;y:VK_SWIZZLE_G;z:VK_SWIZZLE_R;w:VK_SWIZZLE_O),
+   (x:VK_SWIZZLE_A;y:VK_SWIZZLE_G;z:VK_SWIZZLE_R;w:VK_SWIZZLE_O)
   ),(
-   (r:VK_SWIZZLE_R;g:VK_SWIZZLE_G;b:VK_SWIZZLE_B;a:VK_SWIZZLE_A),
-   (r:VK_SWIZZLE_B;g:VK_SWIZZLE_G;b:VK_SWIZZLE_R;a:VK_SWIZZLE_A),
-   (r:VK_SWIZZLE_A;g:VK_SWIZZLE_B;b:VK_SWIZZLE_G;a:VK_SWIZZLE_R),
-   (r:VK_SWIZZLE_A;g:VK_SWIZZLE_R;b:VK_SWIZZLE_G;a:VK_SWIZZLE_B)
+   (x:VK_SWIZZLE_R;y:VK_SWIZZLE_G;z:VK_SWIZZLE_B;w:VK_SWIZZLE_A),
+   (x:VK_SWIZZLE_B;y:VK_SWIZZLE_G;z:VK_SWIZZLE_R;w:VK_SWIZZLE_A),
+   (x:VK_SWIZZLE_A;y:VK_SWIZZLE_B;z:VK_SWIZZLE_G;w:VK_SWIZZLE_R),
+   (x:VK_SWIZZLE_A;y:VK_SWIZZLE_R;z:VK_SWIZZLE_G;w:VK_SWIZZLE_B)
   )
  );
 
@@ -2274,17 +2274,17 @@ begin
    Assert(false,'Unknow tsharp4 type:0x'+HexStr(PT^._type,1));
  end;
 
- Result.dstSel.r:=_get_dst_sel_swizzle(PT^.dst_sel_x);
- Result.dstSel.g:=_get_dst_sel_swizzle(PT^.dst_sel_y);
- Result.dstSel.b:=_get_dst_sel_swizzle(PT^.dst_sel_z);
- Result.dstSel.a:=_get_dst_sel_swizzle(PT^.dst_sel_w);
+ Result.dstSel.x:=_get_dst_sel_swizzle(PT^.dst_sel_x);
+ Result.dstSel.y:=_get_dst_sel_swizzle(PT^.dst_sel_y);
+ Result.dstSel.z:=_get_dst_sel_swizzle(PT^.dst_sel_z);
+ Result.dstSel.w:=_get_dst_sel_swizzle(PT^.dst_sel_w);
 
  Case Result.cformat of
   VK_FORMAT_R5G6B5_UNORM_PACK16:
    begin
-    t:=Result.dstSel.r;
-    Result.dstSel.r:=Result.dstSel.b;
-    Result.dstSel.b:=t;
+    t:=Result.dstSel.x;
+    Result.dstSel.x:=Result.dstSel.z;
+    Result.dstSel.z:=t;
    end;
   else;
  end;

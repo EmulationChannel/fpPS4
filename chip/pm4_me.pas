@@ -1117,6 +1117,10 @@ begin
      end;
     vbStorage:
      begin
+      //reset dst_sel
+      FView.dstSel:=Default(TvDstSel);
+      //
+
       iv:=ri.FetchView(ctx.Cmd,FView,iu_storage);
 
       Writeln('BindStorage:','0x',HexStr(ri.FHandle,16),' 0x',HexStr(iv.FHandle,16));
@@ -1127,6 +1131,10 @@ begin
      end;
     vbMipStorage:
      begin
+      //reset dst_sel
+      FView.dstSel:=Default(TvDstSel);
+      //
+
       BindMipStorage(ctx,
                      fset,bind,
                      DescriptorGroup,
@@ -1471,6 +1479,8 @@ begin
 
  end;
 
+ //DumpShaderGroup(ctx.rt_info^.ShaderGroup);
+
  RP:=FetchRenderPass(ctx.Cmd,@RP_KEY);
 
  if (RP=nil) then
@@ -1734,6 +1744,8 @@ begin
 
  Prepare_Uniforms(ctx,BP_GRAPHICS,FUniformBuilder);
  ////////
+
+ //DumpShaderGroup(ctx.rt_info^.ShaderGroup);
 
  if not ctx.Cmd.BeginRenderPass(@ctx.Render,GP) then
  begin

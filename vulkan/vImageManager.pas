@@ -538,10 +538,10 @@ begin
   cinfo.image       :=FHandle;
   cinfo.viewType    :=TVkImageViewType(F.vtype);
   cinfo.format      :=F.cformat;
-  cinfo.components.r:=TVkComponentSwizzle(F.dstSel.r);
-  cinfo.components.g:=TVkComponentSwizzle(F.dstSel.g);
-  cinfo.components.b:=TVkComponentSwizzle(F.dstSel.b);
-  cinfo.components.a:=TVkComponentSwizzle(F.dstSel.a);
+  cinfo.components.r:=TVkComponentSwizzle(F.dstSel.x);
+  cinfo.components.g:=TVkComponentSwizzle(F.dstSel.y);
+  cinfo.components.b:=TVkComponentSwizzle(F.dstSel.z);
+  cinfo.components.a:=TVkComponentSwizzle(F.dstSel.w);
 
   cinfo.subresourceRange.aspectMask    :=GetAspectMaskByFormat(F.cformat);
   cinfo.subresourceRange.baseMipLevel  :=F.base_level;

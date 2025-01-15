@@ -105,7 +105,7 @@ type
  end;
 
  TvDstSel=bitpacked record
-  r,g,b,a:0..15; //(0..6)
+  x,y,z,w:0..15; //(0..6)
  end;
 
  TvImageMemoryKey=packed object

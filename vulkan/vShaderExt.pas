@@ -48,7 +48,7 @@ type
   dtPSH_CST  //PUSH CONSTANT
  );
 
- TvDstSel=bitpacked record
+ TrDstSel=bitpacked record
   x,y,z,w:0..15; //(0..7)
  end;
 
@@ -56,7 +56,7 @@ type
   enable:Boolean;
   dfmt  :0..127;
   nfmt  :Byte;
-  dstsel:TvDstSel;
+  dstsel:TrDstSel;
  end;
 
  TvDataLayout=packed record
@@ -725,12 +725,12 @@ begin
  end;
 end;
 
-function StrToDstSel(const s:RawByteString):TvDstSel;
+function StrToDstSel(const s:RawByteString):TrDstSel;
 var
  i:Integer;
  v:Byte;
 begin
- Result:=Default(TvDstSel);
+ Result:=Default(TrDstSel);
  For i:=1 to Length(s) do
  begin
   case UpCase(s[i]) of
