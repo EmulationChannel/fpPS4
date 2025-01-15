@@ -53,10 +53,12 @@ type
  end;
 
  TvResInfo=bitpacked record
-  enable:Boolean;
-  dfmt  :0..127;
-  nfmt  :Byte;
-  dstsel:TrDstSel;
+  enable:Boolean;   //1 -> dfmt,nfmt,dstsel
+  align :Boolean;   //1
+  dfmt   :0..63;    //6
+  nfmt   :0..15;    //4
+  rtype  :0..15;    //4
+  dstsel :TrDstSel; //16
  end;
 
  TvDataLayout=packed record
@@ -767,9 +769,10 @@ begin
   'FLG':L^.flags:=StrToFlags(V);
 
   'RINF':L^.rinfo.enable:=(StrToDWord2(V)<>0);
-  'DFMT':L^.rinfo.dfmt  :=StrToDWord2(V);
-  'NFMT':L^.rinfo.nfmt  :=StrToDWord2(V);
-  'DSEL':L^.rinfo.dstsel:=StrToDstSel(V);
+  'DFMT':L^.rinfo.dfmt   :=StrToDWord2(V);
+  'NFMT':L^.rinfo.nfmt   :=StrToDWord2(V);
+  'TYPE':L^.rinfo.rtype  :=StrToDWord2(V);
+  'DSEL':L^.rinfo.dstsel :=StrToDstSel(V);
 
   'IMM':Insert(StrToDWord2(V),L^.imm,Length(L^.imm));
 
@@ -1836,46 +1839,51 @@ begin
   else;
  end;
 
- if b.addr[0].rinfo.enable then
- begin
-  rinfo:=b.addr[0].rinfo;
-  //
-  Case b.addr[0].rtype of
-   vtVSharp4:
-    with PVSharpResource4(P)^ do
+ rinfo:=b.addr[0].rinfo;
+ //
+ Case b.addr[0].rtype of
+  vtVSharp4:
+   with PVSharpResource4(P)^ do
+   begin
+
+    if rinfo.enable then
+    if (dfmt<>rinfo.dfmt) or
+       (nfmt<>rinfo.dfmt) or
+       (dst_sel_x<>rinfo.dstsel.x) or
+       (dst_sel_y<>rinfo.dstsel.y) or
+       (dst_sel_z<>rinfo.dstsel.z) or
+       (dst_sel_w<>rinfo.dstsel.w) then
     begin
-
-     if (dfmt<>rinfo.dfmt) or
-        (nfmt<>rinfo.dfmt) or
-        (dst_sel_x<>rinfo.dstsel.x) or
-        (dst_sel_y<>rinfo.dstsel.y) or
-        (dst_sel_z<>rinfo.dstsel.z) or
-        (dst_sel_w<>rinfo.dstsel.w) then
-     begin
-      FResult:=False;
-      Exit;
-     end;
-
+     FResult:=False;
+     Exit;
     end;
-   vtTSharp4,
-   vtTSharp8:
-    with PTSharpResource4(P)^ do
+
+   end;
+  vtTSharp4,
+  vtTSharp8:
+   with PTSharpResource4(P)^ do
+   begin
+
+    if rinfo.rtype<>_type then
     begin
-
-     if (dfmt<>rinfo.dfmt) or
-        (nfmt<>rinfo.dfmt) or
-        (dst_sel_x<>rinfo.dstsel.x) or
-        (dst_sel_y<>rinfo.dstsel.y) or
-        (dst_sel_z<>rinfo.dstsel.z) or
-        (dst_sel_w<>rinfo.dstsel.w) then
-     begin
-      FResult:=False;
-      Exit;
-     end;
-
+     FResult:=False;
+     Exit;
     end;
-   else;
-  end;
+
+    if rinfo.enable then
+    if (dfmt<>rinfo.dfmt) or
+       (nfmt<>rinfo.dfmt) or
+       (dst_sel_x<>rinfo.dstsel.x) or
+       (dst_sel_y<>rinfo.dstsel.y) or
+       (dst_sel_z<>rinfo.dstsel.z) or
+       (dst_sel_w<>rinfo.dstsel.w) then
+    begin
+     FResult:=False;
+     Exit;
+    end;
+
+   end;
+  else;
  end;
 
 end;

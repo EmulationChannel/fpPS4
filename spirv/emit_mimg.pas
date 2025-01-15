@@ -455,6 +455,8 @@ end;
 
 function GetImageInfo(PT:PTSharpResource4):TsrImageInfo;
 begin
+ //print_tsharp8(Pointer(PT));
+
  Result:=Default(TsrImageInfo);
  Result.dtype:=GetElemType(PT);
  Result.count:=GetImageElemCount(PT);
@@ -703,6 +705,7 @@ end;
 Function TEmit_MIMG.GatherCoord_u(var offset:DWORD;info:PsrImageInfo):TsrRegNode; //src
 var
  src:array[0..3] of TsrRegNode;
+ slice,face:TsrRegNode;
  i,count:Byte;
 begin
  Result:=nil;
@@ -712,28 +715,38 @@ begin
 
  if (info^.tinfo.Dim=Dim.Cube) then
  begin
-  //x,y,slice,(face_id+slice*8)
+  //(u[, v] … [, array layer])
 
   if (FSPI.MIMG.DA<>0) then //slice
   begin
+   //x,y,slice,(face_id+slice*8)
+
    src[0]:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+0,dtInt32); //x
    src[1]:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+1,dtInt32); //y
-   src[2]:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+3,dtInt32); //TODO: face-slice*8
-   src[3]:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+2,dtInt32); //slice
+   src[2]:=NewImm_i(dtInt32,0);                           //z -> 0
+
+   slice:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+2,dtInt32); //slice
+   slice:=OpIMulTo(slice,8); //slice*8
+
+   face:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+3,dtInt32); //face_id
+
+   src[3]:=OpIAddTo(face,slice); //(face_id+slice*8) -> array layer
   end else
   begin
+   //x,y,(face_id)
+
    src[0]:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+0,dtInt32); //x
    src[1]:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+1,dtInt32); //y
-   src[2]:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+2,dtInt32); //face
+   src[2]:=NewImm_i(dtInt32,0);                           //z -> 0
 
    if (info^.tinfo.Arrayed<>0) then //is array
    begin
     Inc(count);
-    src[3]:=NewImm_i(dtInt32,0);
+    src[3]:=fetch_vsrc8(FSPI.MIMG.VADDR+offset+2,dtInt32); //face_id -> array layer
    end;
   end;
 
-  Result:=OpMakeCub(line,TsrDataType(dtInt32).AsVector(count),@src);
+  Result:=OpMakeVec(line,TsrDataType(dtInt32).AsVector(count),@src);
 
  end else
  begin
@@ -1206,7 +1219,7 @@ begin
      Assert(FSPI.MIMG.UNRM=0,'FSPI.MIMG.UNRM');
 
      info.tinfo.Sampled:=1;
-     Tgrp:=FetchImage(pLayout,info);
+     Tgrp:=FetchImage(pLayout,info,False);
 
      emit_image_sample(Tgrp,@info);
     end;
@@ -1216,7 +1229,7 @@ begin
      Assert(FSPI.MIMG.UNRM=0,'FSPI.MIMG.UNRM');
 
      info.tinfo.Sampled:=1;
-     Tgrp:=FetchImage(pLayout,info);
+     Tgrp:=FetchImage(pLayout,info,False);
 
      emit_image_sample_gather(Tgrp,@info);
     end;
@@ -1224,7 +1237,7 @@ begin
   IMAGE_LOAD..IMAGE_LOAD_MIP_PCK_SGN: //loaded
     begin
      info.tinfo.Sampled:=1;
-     Tgrp:=FetchImage(pLayout,info);
+     Tgrp:=FetchImage(pLayout,info,True);
 
      emit_image_load(Tgrp,@info);
     end;
@@ -1233,7 +1246,7 @@ begin
   IMAGE_STORE_PCK: //stored
     begin
      info.tinfo.Sampled:=2;
-     Tgrp:=FetchImage(pLayout,info);
+     Tgrp:=FetchImage(pLayout,info,True);
 
      emit_image_store(Tgrp,@info);
     end;
@@ -1252,7 +1265,7 @@ begin
   IMAGE_GET_RESINFO: //get info by mip
     begin
      info.tinfo.Sampled:=1;
-     Tgrp:=FetchImage(pLayout,info);
+     Tgrp:=FetchImage(pLayout,info,True);
 
      emit_image_get_resinfo(Tgrp,@info);
     end;
@@ -1260,7 +1273,7 @@ begin
   IMAGE_GET_LOD:
     begin
      info.tinfo.Sampled:=1;
-     Tgrp:=FetchImage(pLayout,info);
+     Tgrp:=FetchImage(pLayout,info,False);
 
      emit_image_get_lod(Tgrp,@info);
     end;

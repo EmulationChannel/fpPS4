@@ -166,7 +166,7 @@ type
    FChainList:TChainList;
    FChainTree:TChainTree;
    //
-   res_data_p:Boolean; //Resource data precompiled (dst_sel,nfmt,dfmt)
+   RINF:Boolean; //Resource data precompiled (dst_sel,nfmt,dfmt)
    //
   class function c(n1,n2:PsrDataLayoutKey):Integer; static;
   function  Order:Integer;
@@ -923,35 +923,36 @@ begin
    rtVSharp4:
     begin
      //Resource data precompiled
-     if (Writer.node.res_data_p) then
-     begin
-      Writer.StrOpt('RINF','1');
 
-      with PVSharpResource4(Writer.node.pData)^ do
+     with PVSharpResource4(Writer.node.pData)^ do
+     begin
+      if (Writer.node.RINF) then
       begin
+       Writer.StrOpt('RINF','1');
        Writer.IntOpt('DFMT',dfmt);
        Writer.IntOpt('NFMT',nfmt);
        Writer.StrOpt('DSEL',_get_dst_sel_str(dst_sel_x,dst_sel_y,dst_sel_z,dst_sel_w));
       end;
-
      end;
+
     end;
    rtTSharp4,
    rtTSharp8:
     begin
      //Resource data precompiled
-     if (Writer.node.res_data_p) then
-     begin
-      Writer.StrOpt('RINF','1');
 
-      with PTSharpResource4(Writer.node.pData)^ do
+     with PTSharpResource4(Writer.node.pData)^ do
+     begin
+      Writer.IntOpt('TYPE',_type);
+      if (Writer.node.RINF) then
       begin
+       Writer.StrOpt('RINF','1');
        Writer.IntOpt('DFMT',dfmt);
        Writer.IntOpt('NFMT',nfmt);
        Writer.StrOpt('DSEL',_get_dst_sel_str(dst_sel_x,dst_sel_y,dst_sel_z,dst_sel_w));
       end;
-
      end;
+
     end;
    else;
   end;

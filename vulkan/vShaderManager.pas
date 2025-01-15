@@ -574,15 +574,15 @@ begin
   begin
    str:='';
    case FStage of
-    vShaderStagePs:str:=DumpPS(GPU_REGS,t.key.FHash);
-    vShaderStageVs:str:=DumpVS(GPU_REGS,t.key.FHash);
-    vShaderStageCs:str:=DumpCS(GPU_REGS,t.key.FHash);
+    vShaderStagePs:str:=DumpPS(GPU_REGS,t.key.FHash,Length(t.FShaderAliases));
+    vShaderStageVs:str:=DumpVS(GPU_REGS,t.key.FHash,Length(t.FShaderAliases));
+    vShaderStageCs:str:=DumpCS(GPU_REGS,t.key.FHash,Length(t.FShaderAliases));
     else
      begin
       Writeln(stderr,'Unhandle stage:',FStage);
      end;
    end;
-   //Writeln(str);
+  // Writeln(str);
   end;
   //
 

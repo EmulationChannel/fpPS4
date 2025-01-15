@@ -559,11 +559,29 @@ begin
   case cinfo.viewType of
    VK_IMAGE_VIEW_TYPE_CUBE:
     begin
-     Assert(cinfo.subresourceRange.layerCount=6,'VK_IMAGE_VIEW_TYPE_CUBE: layerCount must be 6');
+
+     if (usage and ord(VK_IMAGE_USAGE_STORAGE_BIT))=0 then
+     begin
+      Assert(cinfo.subresourceRange.layerCount=6,'VK_IMAGE_VIEW_TYPE_CUBE: layerCount must be 6');
+     end else
+     begin
+      //convert to array
+      cinfo.viewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+     end;
+
     end;
    VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
     begin
-     Assert((cinfo.subresourceRange.layerCount mod 6)=0,'VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: layerCount must be a multiple of 6');
+
+     if (usage and ord(VK_IMAGE_USAGE_STORAGE_BIT))=0 then
+     begin
+      Assert((cinfo.subresourceRange.layerCount mod 6)=0,'VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: layerCount must be a multiple of 6');
+     end else
+     begin
+      //convert to array
+      cinfo.viewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+     end;
+
     end;
    else;
   end;

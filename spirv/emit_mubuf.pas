@@ -94,7 +94,7 @@ begin
   PV:=grp.pData;
 
   //
-  grp.res_data_p:=True;
+  grp.RINF:=True;
   //
 
   info:=Buf_info(grp,
@@ -183,7 +183,7 @@ begin
  PV:=grp.pData;
 
  //
- grp.res_data_p:=True;
+ grp.RINF:=True;
  //
 
  TEmit_vbuf_load(TObject(Self)).buf_load(
@@ -221,7 +221,7 @@ begin
  PV:=grp.pData;
 
  //
- grp.res_data_p:=True;
+ grp.RINF:=True;
  //
 
  TEmit_vbuf_store(TObject(Self)).buf_store(

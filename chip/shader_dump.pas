@@ -24,9 +24,9 @@ Procedure DUMP_BLOCK(F:THandle;REG:WORD;P:Pointer;Size:DWORD);
 
 Function  get_dev_progname:RawByteString;
 
-function  DumpCS(var GPU_REGS:TGPU_REGS;hash:QWORD):RawByteString;
-function  DumpPS(var GPU_REGS:TGPU_REGS;hash:QWORD):RawByteString;
-function  DumpVS(var GPU_REGS:TGPU_REGS;hash:QWORD):RawByteString;
+function  DumpCS(var GPU_REGS:TGPU_REGS;hash,alias:QWORD):RawByteString;
+function  DumpPS(var GPU_REGS:TGPU_REGS;hash,alias:QWORD):RawByteString;
+function  DumpVS(var GPU_REGS:TGPU_REGS;hash,alias:QWORD):RawByteString;
 
 implementation
 
@@ -163,7 +163,7 @@ begin
  end;
 end;
 
-function DumpCS(var GPU_REGS:TGPU_REGS;hash:QWORD):RawByteString;
+function DumpCS(var GPU_REGS:TGPU_REGS;hash,alias:QWORD):RawByteString;
 var
  size:DWORD;
  base:Pointer;
@@ -188,7 +188,7 @@ begin
    hash:=MurmurHash64A(base,size,0);
   end;
 
-  fname:='shader_dump\'+get_dev_progname+'_cs_'+HexStr(hash,16)+'.dump';
+  fname:='shader_dump\'+get_dev_progname+'_cs_'+HexStr(hash,16)+'_'+IntToStr(alias)+'.dump';
   Result:=fname;
 
   if FileExists(fname) then Exit;
@@ -215,7 +215,7 @@ begin
  end;
 end;
 
-function DumpPS(var GPU_REGS:TGPU_REGS;hash:QWORD):RawByteString;
+function DumpPS(var GPU_REGS:TGPU_REGS;hash,alias:QWORD):RawByteString;
 var
  i:Integer;
  size:DWORD;
@@ -240,7 +240,7 @@ begin
    hash:=MurmurHash64A(base,size,0);
   end;
 
-  fname:='shader_dump\'+get_dev_progname+'_ps_'+HexStr(hash,16)+'.dump';
+  fname:='shader_dump\'+get_dev_progname+'_ps_'+HexStr(hash,16)+'_'+IntToStr(alias)+'.dump';
   Result:=fname;
 
   if FileExists(fname) then Exit;
@@ -277,7 +277,7 @@ begin
  end;
 end;
 
-function DumpVS(var GPU_REGS:TGPU_REGS;hash:QWORD):RawByteString;
+function DumpVS(var GPU_REGS:TGPU_REGS;hash,alias:QWORD):RawByteString;
 var
  size:DWORD;
  base:Pointer;
@@ -301,7 +301,7 @@ begin
    hash:=MurmurHash64A(base,size,0);
   end;
 
-  fname:='shader_dump\'+get_dev_progname+'_vs_'+HexStr(hash,16)+'.dump';
+  fname:='shader_dump\'+get_dev_progname+'_vs_'+HexStr(hash,16)+'_'+IntToStr(alias)+'.dump';
   Result:=fname;
 
   if FileExists(fname) then Exit;
