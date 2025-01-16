@@ -302,10 +302,38 @@ type
  PPM4CMDCONSTRAMWRITE=^PM4CMDCONSTRAMWRITE;
  PM4CMDCONSTRAMWRITE=bitpacked record
   header   :PM4_TYPE_3_HEADER;
-  offset   :Word; // < DWord offset in the constant RAM, must
+  offset   :Word; // < DWord offset in the constant RAM, must be 4 byte aligned
   reserved1:Word;
   // This is a variable length packet. So, based on size in header, the layout following this
   data     :record end;
+ end;
+
+ PPM4CMDCONSTRAMDUMP=^PM4CMDCONSTRAMDUMP;
+ PM4CMDCONSTRAMDUMP=bitpacked record
+  header          :PM4_TYPE_3_HEADER;
+  //
+  offset          :bit16; //< Byte offset in the RAM (bits 1-0 must be 0)
+  reserved1       :bit9;
+  cachePolicy     :bit2;  //< Cache policy: 0 : LRU, 1: Stream, 2: Bypass
+  reserved2       :bit3;
+  incrementCs     :bit1;  //< Increment CS counter at end of packet
+  incrementCe     :bit1;  //< Increment CE counter at end of packet
+  //
+  numDwords       :bit15; //< number of DWords to dump
+  reserved3       :bit17;
+  //
+  addr            :QWORD; //< address bits, must be 4 byte aligned
+ end;
+
+ PPM4CMDWAITONCECOUNTER=^PM4CMDWAITONCECOUNTER;
+ PM4CMDWAITONCECOUNTER=bitpacked record
+  header   :PM4_TYPE_3_HEADER;
+  //
+  control  :bit1; //< Conditional Surface Sync for wrapping CE buffers
+  forceSync:bit1;
+  reserved1:bit25;
+  volatile :bit1;
+  reserved2:bit4;
  end;
 
  PPM4CMDWAITONDECOUNTERDIFF=^PM4CMDWAITONDECOUNTERDIFF;

@@ -109,7 +109,10 @@ type
  t_pm4_node_type=(
   ntHint,
   ntLoadConstRam,
+  ntDumpConstRam,
   ntIncrementCE,
+  ntIncrementDE,
+  ntWaitOnCECounter,
   ntWaitOnDECounterDiff,
   ntEventWrite,
   ntEventWriteEop,
@@ -394,7 +397,10 @@ type
   //
   procedure Hint         (P1,P2:PChar;maxsize:Integer);
   procedure LoadConstRam (addr:Pointer;num_dw,offset:Word);
+  procedure DumpConstRam (addr:Pointer;num_dw,offset:Word);
   procedure IncrementCE  ();
+  procedure IncrementDE  ();
+  procedure WaitOnCECounter();
   procedure WaitOnDECounterDiff(diff:DWORD);
   procedure EventWrite   (eventType:Byte);
   procedure EventWriteEop(addr:Pointer;data:QWORD;eventType,dataSel,intSel:Byte);
@@ -904,6 +910,28 @@ begin
  add_node(node);
 end;
 
+procedure t_pm4_stream.DumpConstRam(addr:Pointer;num_dw,offset:Word);
+var
+ node:p_pm4_node_LoadConstRam;
+begin
+ node:=allocator.Alloc(SizeOf(t_pm4_node_LoadConstRam));
+
+ node^.ntype :=ntDumpConstRam;
+ node^.scope :=Default(t_pm4_resource_curr_scope);
+ node^.addr  :=addr;
+ node^.num_dw:=num_dw;
+ node^.offset:=offset;
+
+ insert_buffer_resource(@node^.scope,
+                        R_BUF,
+                        addr,
+                        num_dw*SizeOf(DWORD),
+                        TM_WRITE,
+                        'DumpConstRam');
+
+ add_node(node);
+end;
+
 procedure t_pm4_stream.IncrementCE();
 var
  node:p_pm4_node;
@@ -911,6 +939,30 @@ begin
  node:=allocator.Alloc(SizeOf(t_pm4_node));
 
  node^.ntype:=ntIncrementCE;
+ node^.scope:=Default(t_pm4_resource_curr_scope);
+
+ add_node(node);
+end;
+
+procedure t_pm4_stream.IncrementDE();
+var
+ node:p_pm4_node;
+begin
+ node:=allocator.Alloc(SizeOf(t_pm4_node));
+
+ node^.ntype:=ntIncrementDE;
+ node^.scope:=Default(t_pm4_resource_curr_scope);
+
+ add_node(node);
+end;
+
+procedure t_pm4_stream.WaitOnCECounter();
+var
+ node:p_pm4_node;
+begin
+ node:=allocator.Alloc(SizeOf(t_pm4_node));
+
+ node^.ntype:=ntWaitOnCECounter;
  node^.scope:=Default(t_pm4_resource_curr_scope);
 
  add_node(node);

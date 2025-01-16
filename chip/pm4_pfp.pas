@@ -959,7 +959,17 @@ begin
   src:=base+(Int64(src_dmem)-Int64(buff));
  end;
 
- pctx^.stream[stGfxCcb].LoadConstRam(src,count,Body^.offset);
+ pctx^.stream[stGfxCcb].LoadConstRam(src,count,Body^.offset and (not 3));
+end;
+
+procedure onDumpConstRam(pctx:p_pfp_ctx;Body:PPM4CMDCONSTRAMDUMP);
+begin
+ Assert(pctx^.stream_type=stGfxCcb);
+
+ Assert(Body^.incrementCs=0);
+ Assert(Body^.incrementCe=0);
+
+ pctx^.stream[stGfxCcb].DumpConstRam(Pointer(Body^.addr),Body^.numDwords,Body^.offset and (not 3));
 end;
 
 procedure onIncrementCECounter(pctx:p_pfp_ctx;Body:Pointer);
@@ -967,6 +977,20 @@ begin
  Assert(pctx^.stream_type=stGfxCcb);
 
  pctx^.stream[stGfxCcb].IncrementCE();
+end;
+
+procedure onIncrementDECounter(pctx:p_pfp_ctx;Body:Pointer);
+begin
+ Assert(pctx^.stream_type=stGfxDcb);
+
+ pctx^.stream[stGfxDcb].IncrementDE();
+end;
+
+procedure onWaitOnCECounter(pctx:p_pfp_ctx;Body:PPM4CMDWAITONCECOUNTER);
+begin
+ Assert(pctx^.stream_type=stGfxDcb);
+
+ pctx^.stream[stGfxDcb].WaitOnCECounter();
 end;
 
 procedure onWaitOnDECounterDiff(pctx:p_pfp_ctx;Body:PPM4CMDWAITONDECOUNTERDIFF);
@@ -1008,6 +1032,7 @@ begin
 
       IT_LOAD_CONST_RAM         :onLoadConstRam       (pctx,buff);
       IT_WRITE_CONST_RAM        :onWriteConstRam      (pctx,buff);
+      IT_DUMP_CONST_RAM         :onDumpConstRam       (pctx,buff);
 
       IT_INCREMENT_CE_COUNTER   :onIncrementCECounter (pctx,buff);
       IT_WAIT_ON_DE_COUNTER_DIFF:onWaitOnDECounterDiff(pctx,buff);
@@ -1931,6 +1956,9 @@ begin
 
       IT_SET_BASE                       :onSetBase                    (pctx,buff);
       IT_SET_PREDICATION                :onSetPredication             (pctx,buff);
+
+      IT_INCREMENT_DE_COUNTER           :onIncrementDECounter         (pctx,buff);
+      IT_WAIT_ON_CE_COUNTER             :onWaitOnCECounter            (pctx,buff);
 
       else
        begin
