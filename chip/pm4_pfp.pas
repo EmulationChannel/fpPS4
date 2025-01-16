@@ -932,7 +932,9 @@ begin
  Writeln(' ofs=0x',HexStr(Body^.offset,4));
  }
 
- pctx^.stream[stGfxCcb].LoadConstRam(Pointer(Body^.addr),Body^.numDwords,Body^.offset);
+ pctx^.stream[stGfxCcb].LoadConstRam(Pointer(Body^.addr and (not QWORD(31))),
+                                     Body^.numDwords and (not 7),
+                                     Body^.offset and (not 31));
 end;
 
 procedure onWriteConstRam(pctx:p_pfp_ctx;Body:PPM4CMDCONSTRAMWRITE);
@@ -969,7 +971,9 @@ begin
  Assert(Body^.incrementCs=0);
  Assert(Body^.incrementCe=0);
 
- pctx^.stream[stGfxCcb].DumpConstRam(Pointer(Body^.addr),Body^.numDwords,Body^.offset and (not 3));
+ pctx^.stream[stGfxCcb].DumpConstRam(Pointer(Body^.addr and (not QWORD(3))),
+                                     Body^.numDwords,
+                                     Body^.offset and (not 3));
 end;
 
 procedure onIncrementCECounter(pctx:p_pfp_ctx;Body:Pointer);

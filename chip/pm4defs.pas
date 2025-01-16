@@ -292,7 +292,7 @@ type
  PPM4CMDCONSTRAMLOAD=^PM4CMDCONSTRAMLOAD;
  PM4CMDCONSTRAMLOAD=bitpacked record
   header   :PM4_TYPE_3_HEADER;
-  addr     :QWORD;
+  addr     :QWORD; // < address bits, must be 32 byte aligned
   numDwords:bit15; // < number of DWords to load (bits 2-0 must be 0)
   reserved1:bit17;
   offset   :bit16; // < Byte offset in the RAM, must be 32 byte aligned

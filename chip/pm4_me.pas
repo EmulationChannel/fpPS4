@@ -110,6 +110,9 @@ type
   //
   CONST_RAM:array[0..CONST_RAM_SIZE-1] of Byte; //48KB
   //
+  CE_COUNT:DWORD;
+  DE_COUNT:DWORD;
+  //
   procedure Init(knlist:p_knlist);
   procedure start;
   procedure trigger;
@@ -1239,7 +1242,7 @@ begin
    FData:=dst^.get_user_data(i);
    addr :=Shader.GetPushConstData(FData);
 
-   Assert(addr<>nil,'push const');
+   Assert(addr<>nil,'push const is NULL');
 
    ctx.Cmd.PushConstant(bind_points[Shader.FStage=VK_SHADER_STAGE_COMPUTE_BIT],
                         ord(Shader.FStage),
@@ -2881,6 +2884,68 @@ begin
  Move(addr_dmem^,ctx.me^.CONST_RAM[start],size);
 end;
 
+procedure pm4_DumpConstRam(var ctx:t_me_render_context;node:p_pm4_node_LoadConstRam);
+var
+ addr_dmem:Pointer;
+
+ start:DWORD;
+ __end:DWORD;
+ size :DWORD;
+begin
+ if not get_dmem_ptr(node^.addr,@addr_dmem,nil) then
+ begin
+  Assert(false,'addr:0x'+HexStr(node^.addr)+' not in dmem!');
+ end;
+
+ start:=node^.offset;
+ __end:=start+(node^.num_dw*SizeOf(DWORD));
+
+ if (start>CONST_RAM_SIZE) then
+ begin
+  start:=CONST_RAM_SIZE;
+ end;
+
+ if (__end>CONST_RAM_SIZE) then
+ begin
+  __end:=CONST_RAM_SIZE;
+ end;
+
+ size:=(__end-start);
+
+ Move(ctx.me^.CONST_RAM[start],addr_dmem^,size);
+end;
+
+//
+
+procedure pm4_IncrementCE(var ctx:t_me_render_context;node:p_pm4_node);
+begin
+ Inc(ctx.me^.CE_COUNT);
+end;
+
+procedure pm4_IncrementDE(var ctx:t_me_render_context;node:p_pm4_node);
+begin
+ Inc(ctx.me^.DE_COUNT);
+end;
+
+procedure pm4_WaitOnCECounter(var ctx:t_me_render_context;node:p_pm4_node);
+begin
+ if (ctx.me^.CE_COUNT <= ctx.me^.DE_COUNT) then
+ begin
+  ctx.switch_task;
+ end;
+end;
+
+procedure pm4_WaitOnDECounterDiff(var ctx:t_me_render_context;node:p_pm4_node_WaitOnDECounterDiff);
+var
+ diff:DWORD;
+begin
+ diff:=node^.diff;
+ if ((ctx.me^.DE_COUNT - ctx.me^.CE_COUNT) >= diff) then
+ begin
+  ctx.switch_task;
+ end;
+end;
+
 //
 
 procedure pm4_me_thread(me:p_pm4_me); SysV_ABI_CDecl;
@@ -2964,24 +3029,30 @@ begin
     //if ctx.WaitConfirm then
     begin
      case ctx.node^.ntype of
-      ntHint            :pm4_Hint          (ctx,Pointer(ctx.node));
-      ntDrawIndex2      :pm4_Draw          (ctx,Pointer(ctx.node));
-      ntDrawIndexOffset2:pm4_Draw          (ctx,Pointer(ctx.node));
-      ntDrawIndexAuto   :pm4_Draw          (ctx,Pointer(ctx.node));
-      ntClearDepth      :pm4_Draw          (ctx,Pointer(ctx.node));
-      ntResolve         :pm4_Resolve       (ctx,Pointer(ctx.node));
-      ntFastClear       :pm4_FastClear     (ctx,Pointer(ctx.node));
-      ntDispatchDirect  :pm4_DispatchDirect(ctx,Pointer(ctx.node));
-      ntEventWrite      :pm4_EventWrite    (ctx,Pointer(ctx.node));
-      ntEventWriteEop   :pm4_EventWriteEop (ctx,Pointer(ctx.node));
-      ntSubmitFlipEop   :pm4_SubmitFlipEop (ctx,Pointer(ctx.node));
-      ntReleaseMem      :pm4_ReleaseMem    (ctx,Pointer(ctx.node));
-      ntEventWriteEos   :pm4_EventWriteEos (ctx,Pointer(ctx.node));
-      ntWriteData       :pm4_WriteData     (ctx,Pointer(ctx.node));
-      ntDmaData         :pm4_DmaData       (ctx,Pointer(ctx.node));
-      ntWaitRegMem      :pm4_WaitRegMem    (ctx,Pointer(ctx.node));
+      ntHint               :pm4_Hint               (ctx,Pointer(ctx.node));
+      ntDrawIndex2         :pm4_Draw               (ctx,Pointer(ctx.node));
+      ntDrawIndexOffset2   :pm4_Draw               (ctx,Pointer(ctx.node));
+      ntDrawIndexAuto      :pm4_Draw               (ctx,Pointer(ctx.node));
+      ntClearDepth         :pm4_Draw               (ctx,Pointer(ctx.node));
+      ntResolve            :pm4_Resolve            (ctx,Pointer(ctx.node));
+      ntFastClear          :pm4_FastClear          (ctx,Pointer(ctx.node));
+      ntDispatchDirect     :pm4_DispatchDirect     (ctx,Pointer(ctx.node));
+      ntEventWrite         :pm4_EventWrite         (ctx,Pointer(ctx.node));
+      ntEventWriteEop      :pm4_EventWriteEop      (ctx,Pointer(ctx.node));
+      ntSubmitFlipEop      :pm4_SubmitFlipEop      (ctx,Pointer(ctx.node));
+      ntReleaseMem         :pm4_ReleaseMem         (ctx,Pointer(ctx.node));
+      ntEventWriteEos      :pm4_EventWriteEos      (ctx,Pointer(ctx.node));
+      ntWriteData          :pm4_WriteData          (ctx,Pointer(ctx.node));
+      ntDmaData            :pm4_DmaData            (ctx,Pointer(ctx.node));
+      ntWaitRegMem         :pm4_WaitRegMem         (ctx,Pointer(ctx.node));
 
-      ntLoadConstRam    :pm4_LoadConstRam  (ctx,Pointer(ctx.node));
+      ntLoadConstRam       :pm4_LoadConstRam       (ctx,Pointer(ctx.node));
+      ntDumpConstRam       :pm4_DumpConstRam       (ctx,Pointer(ctx.node));
+
+      ntIncrementCE        :pm4_IncrementCE        (ctx,Pointer(ctx.node));
+      ntIncrementDE        :pm4_IncrementDE        (ctx,Pointer(ctx.node));
+      ntWaitOnCECounter    :pm4_WaitOnCECounter    (ctx,Pointer(ctx.node));
+      ntWaitOnDECounterDiff:pm4_WaitOnDECounterDiff(ctx,Pointer(ctx.node));
 
       else
        begin
