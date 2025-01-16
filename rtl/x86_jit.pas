@@ -14,12 +14,15 @@ uses
  x86_fpdbgdisas;
 
 type
+ t_jit_flags=Set Of (sES,sCS,sSS,sDS,sFS,sGS,sLOCK);
+
  t_jit_lea=packed object
   ARegValue:TRegValues;
   AOffset  :Int64;
   AMemSize :TOperandSize;
-  ASegment :Byte;
-  ALock    :Boolean;
+  AFlags   :t_jit_flags;
+  function ASegment:t_jit_flags; inline;
+  function ALock:Boolean; inline;
  end;
 
  t_vw_mode=(vwZero,vwOne,vwR64,vwM64);
@@ -63,7 +66,7 @@ type
   procedure EmitWord(w:Word); inline;
   procedure EmitInt32(i:Integer); inline;
   procedure EmitInt64(i:Int64); inline;
-  procedure EmitSelector(Segment:ShortInt); inline;
+  procedure EmitSelector(Segments:t_jit_flags); inline;
   procedure EmitREX(rexB,rexX,rexR,rexW:Boolean); inline;
   procedure EmitModRM(Mode,Index,RM:Byte); inline;
   procedure EmitSIB(Scale,Index,Base:Byte); inline;
@@ -161,9 +164,9 @@ type
  p_jit_builder=^t_jit_builder;
  t_jit_builder=object
   Const
-   LOCK:t_jit_lea=(ARegValue:((AType:regNone),(AType:regNone));ALock:True);
-   FS  :t_jit_lea=(ARegValue:((AType:regNone),(AType:regNone));ASegment:4);
-   GS  :t_jit_lea=(ARegValue:((AType:regNone),(AType:regNone));ASegment:5);
+   LOCK:t_jit_lea=(AFlags:[sLOCK]);
+   FS  :t_jit_lea=(AFlags:[sFS]);
+   GS  :t_jit_lea=(AFlags:[sGS]);
 
    ah  :TRegValue=(AType:regGeneralH;ASize:os8;AIndex:0);
    ch  :TRegValue=(AType:regGeneralH;ASize:os8;AIndex:1);
@@ -474,6 +477,18 @@ function classif_offset_se64(AOffset:Int64):TOperandSize;
 
 implementation
 
+function t_jit_lea.ASegment:t_jit_flags; inline;
+begin
+ Result:=AFlags-[sLOCK];
+end;
+
+function t_jit_lea.ALock:Boolean; inline;
+begin
+ Result:=sLOCK in AFlags;
+end;
+
+///
+
 function t_jit_data.c(n1,n2:p_jit_data):Integer;
 begin
  Result:=Integer(n1^.pData>n2^.pData)-Integer(n1^.pData<n2^.pData);
@@ -593,15 +608,6 @@ begin
          ((reg.ARegValue[1].AType in AType) or (reg.ARegValue[1].AType=regNone));
 end;
 
-function is_valid_seg(reg:t_jit_lea):Boolean; inline;
-begin
- case reg.ASegment of
-  0..5:Result:=True
-  else
-       Result:=False;
- end;
-end;
-
 function is_valid_scale(reg:t_jit_lea):Boolean; inline;
 begin
  Result:=is_valid_scale(reg.ARegValue[0]) and (reg.ARegValue[1].AScale<=1)
@@ -638,18 +644,6 @@ begin
   Result.ARegValue[0]:=B.ARegValue[0];
  end;
 
- if is_valid_seg(Result) then
- begin
-  if is_valid_seg(B) then
-  begin
-   Result.ASegment:=B.ASegment;
-  end;
- end else
- if is_valid_seg(B) then
- begin
-  Result.ASegment:=B.ASegment;
- end;
-
  if (Result.AMemSize<>os0) then
  begin
   if (B.AMemSize<>os0) then
@@ -662,7 +656,7 @@ begin
   Result.AMemSize:=B.AMemSize;
  end;
 
- Result.ALock:=Result.ALock or B.ALock;
+ Result.AFlags:=Result.AFlags+B.AFlags;
 
  Result.AOffset:=Result.AOffset+B.AOffset;
 end;
@@ -1011,13 +1005,14 @@ begin
  Inc(ASize,SizeOf(Int64));
 end;
 
-procedure t_jit_instruction.EmitSelector(Segment:ShortInt); inline;
+procedure t_jit_instruction.EmitSelector(Segments:t_jit_flags); inline;
 begin
- case Segment of //Selector
-  4:EmitByte($64); //fs
-  5:EmitByte($65); //gs
-  else;
- end;
+ if (sES in Segments) then EmitByte($26);
+ if (sCS in Segments) then EmitByte($2E);
+ if (sSS in Segments) then EmitByte($36);
+ if (sDS in Segments) then EmitByte($3E);
+ if (sFS in Segments) then EmitByte($64);
+ if (sGS in Segments) then EmitByte($65);
 end;
 
 procedure t_jit_instruction.EmitREX(rexB,rexX,rexR,rexW:Boolean); inline;
