@@ -774,11 +774,34 @@ var
   * of 256.
   }
  s_selbits:array[0..((2048 + (NFDBITS - 1)) div NFDBITS)-1] of fd_mask;
- ibits,obits,selbits:p_fd_mask;
+ ibits,obits:array[0..2] of p_fd_mask;
+ selbits,sbp:p_fd_mask;
  _atv:timeval;
  atv,rtv,ttv,timo:Int64;
  error,lf,ndu:Integer;
  nbufbytes,ncpbytes,ncpubytes,_nfdbits:DWORD;
+
+ function getbits(name:p_fd_set;x:Integer):Integer;
+ begin
+  if (name=nil) then
+  begin
+   ibits[x]:=nil;
+   obits[x]:=nil;
+  end else
+  begin
+   ibits[x]:=sbp + (nbufbytes div 2 div sizeof(fd_mask));
+   obits[x]:=sbp;
+
+   Inc(sbp,ncpbytes div sizeof(fd_mask));
+
+   Result:=copyin(name, ibits[x], ncpubytes);
+
+   if (Result=0) and (ncpbytes<>ncpubytes) then
+   begin
+    FillChar((PByte(ibits[x]) + ncpubytes)^,ncpbytes - ncpubytes,0);
+   end;
+  end;
+ end;
 
  procedure putbits(name:p_fd_set;x:Integer);
  var
@@ -796,25 +819,31 @@ var
 
 begin
  if (nd < 0) then
+ begin
   Exit(EINVAL);
+ end;
 
  td:=curkthread;
  ndu:=nd;
 
  lf:=fd_table.fd_lastfile;
  if (nd > lf + 1) then
+ begin
   nd:=lf + 1;
+ end;
 
  error:=select_check_badfd(fd_in, nd, ndu, abi_nfdbits);
  if (error<>0) then
  begin
   Exit(error);
  end;
+
  error:=select_check_badfd(fd_ou, nd, ndu, abi_nfdbits);
  if (error<>0) then
  begin
   Exit(error);
  end;
+
  error:=select_check_badfd(fd_ex, nd, ndu, abi_nfdbits);
  if (error<>0) then
  begin
@@ -853,8 +882,31 @@ begin
   * Put the output buffers together so that they can be bzeroed
   * together.
   }
+
+ sbp:=selbits;
+
+ error:=getbits(fd_in, 0);
+ if (error<>0) then
+ begin
+  goto done;
+ end;
+
+ error:=getbits(fd_ou, 1);
+ if (error<>0) then
+ begin
+  goto done;
+ end;
+
+ error:=getbits(fd_ex, 2);
+ if (error<>0) then
+ begin
+  goto done;
+ end;
+
  if (nbufbytes<>0) then
-  FillChar(selbits, nbufbytes div 2,0);
+ begin
+  FillChar(selbits^, nbufbytes div 2,0);
+ end;
 
  if (tvp<>nil) then
  begin
@@ -909,13 +961,10 @@ begin
 
 done:
  { select is not restarted after signals... }
- if (error=ERESTART) then
- begin
-  error:=EINTR;
- end;
- if (error=EWOULDBLOCK) then
- begin
-  error:=0;
+ case error of
+  ERESTART   :error:=EINTR;
+  EWOULDBLOCK:error:=0;
+  else;
  end;
 
  if (error=0) then
@@ -1098,6 +1147,8 @@ end;
  * each selinfo.
  }
 function selscan(td:p_kthread;ibits,obits:pp_fd_mask;nfd:Integer):Integer;
+label
+ _continue;
 var
  fp:p_file;
  bit:fd_mask;
@@ -1119,7 +1170,7 @@ begin
    flags:=selflags(ibits, idx, bit);
    if (flags=0) then
    begin
-    continue;
+    goto _continue;
    end;
    error:=getselfd_cap(fd, @fp);
    if (error<>0) then
@@ -1134,6 +1185,7 @@ begin
     Inc(n,selsetbits(ibits, obits, idx, bit, ev));
    end;
    //
+   _continue:
    bit:=bit shl 1;
    Inc(fd);
   end;
