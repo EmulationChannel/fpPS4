@@ -9,17 +9,35 @@ procedure arc4rand(ptr:Pointer;len,reseed:Integer);
 
 implementation
 
+type
+ t_BCryptGenRandom=function(hAlgorithm:Pointer;
+                            pbBuffer:PByte;
+                            cbBuffer:DWORD;
+                            dwFlags:DWORD):DWORD; stdcall;
+
+var
+ Bcrypt:THandle=NilHandle;
+ BCryptGenRandom:t_BCryptGenRandom=nil;
+
 const
  BCRYPT_USE_SYSTEM_PREFERRED_RNG=2;
 
-function  BCryptGenRandom(hAlgorithm:Pointer;
-                          pbBuffer:PByte;
-                          cbBuffer:DWORD;
-                          dwFlags:DWORD):DWORD; stdcall; external 'Bcrypt';
-
 procedure arc4rand(ptr:Pointer;len,reseed:Integer);
 begin
- BCryptGenRandom(nil,ptr,len,BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+ if (BCryptGenRandom=nil) then
+ begin
+  Bcrypt:=LoadLibrary('Bcrypt');
+  Pointer(BCryptGenRandom):=GetProcedureAddress(Bcrypt,'BCryptGenRandom');
+  if (BCryptGenRandom=nil) then
+  begin
+   Ptruint(BCryptGenRandom):=1;
+  end;
+ end;
+
+ if (Ptruint(BCryptGenRandom)<>1) then
+ begin
+  BCryptGenRandom(nil,ptr,len,BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+ end;
 end;
 
 
