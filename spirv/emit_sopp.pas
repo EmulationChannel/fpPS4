@@ -141,6 +141,11 @@ var
 
  src:TsrRegNode;
 begin
+ if (FSPI.SOPP.SIMM=0) then
+ begin
+  Exit; //skip
+ end;
+
  pLabel:=FindLabel(Cursor.prev_adr);
  if (pLabel<>nil) then
  begin
@@ -280,6 +285,11 @@ var
  pLabel:TsrLabel;
  c_adr,b_adr:TSrcAdr;
 begin
+ if (FSPI.SOPP.SIMM=0) then
+ begin
+  Exit; //skip
+ end;
+
  pLabel:=FindLabel(Cursor.prev_adr);
  if (pLabel<>nil) then
  begin

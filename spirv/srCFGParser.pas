@@ -1361,6 +1361,10 @@ var
  node,child,parent:TsrCFGBlock;
  prevLabel:TsrLabelType;
 begin
+ if (FSPI.SOPP.SIMM=0) then
+ begin
+  Exit; //skip
+ end;
 
  c_adr:=FCursor.Adr;
  b_adr:=c_adr;
