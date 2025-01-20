@@ -76,8 +76,15 @@ begin
 end;
 
 procedure md_yield;
+var
+ timo:Int64;
 begin
- NtYieldExecution;
+ timo:=-100*10;
+ sig_sta;
+ NtDelayExecution(True,@timo);
+ sig_cla;
+
+ //NtYieldExecution;
 end;
 
 end.

@@ -25,6 +25,8 @@ const
  MOD_SHUTDOWN=2;
  MOD_QUIESCE =3;
 
+ MAKEDEV_ETERNAL_KLD=0;
+
  SI_ETERNAL   =$0001; { never destroyed }
  SI_ALIAS     =$0002; { carrier of alias name }
  SI_NAMED     =$0004; { make_dev _alias  has been called }
@@ -133,7 +135,7 @@ const
 type
  pp_cdevsw=^p_cdevsw;
  p_cdevsw=^t_cdevsw;
- t_cdevsw=packed record
+ t_cdevsw=packed object //declaration as "object" allows to skip fields when declaring a constant
   d_version     :Integer;
   d_flags       :DWORD;
   d_name        :PChar;

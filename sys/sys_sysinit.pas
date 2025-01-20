@@ -53,6 +53,7 @@ uses
  dev_dmem,
  dev_dipsw,
  dev_rng,
+ dev_random,
  dev_gc,
  dev_dce,
  dev_hid;
@@ -92,6 +93,7 @@ begin
  dmemdev_init();
  dipsw_init();
  rng_init();
+ random_init();
  gc_initialize();
  dce_initialize();
  hid_init();

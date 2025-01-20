@@ -1074,20 +1074,9 @@ const
   d_version     :D_VERSION;
   d_flags       :0;
   d_name        :'gc';
-  d_open        :nil;
-  d_fdopen      :nil;
-  d_close       :nil;
-  d_read        :nil;
-  d_write       :nil;
   d_ioctl       :@gc_ioctl;
-  d_poll        :nil;
   d_mmap        :@gc_mmap;
-  d_strategy    :nil;
-  d_dump        :nil;
-  d_kqfilter    :nil;
-  d_purge       :nil;
   d_mmap_single :@gc_mmap_single;
-  d_mmap_single2:nil;
  );
 
 {

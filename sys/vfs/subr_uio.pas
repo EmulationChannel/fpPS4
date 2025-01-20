@@ -61,7 +61,7 @@ begin
  end;
  save:=curthread_pflags_set(newflags);
 
- while (n > 0) and (uio^.uio_resid<>0) do
+ while (n > 0) and (uio^.uio_resid > 0) do
  begin
   iov:=uio^.uio_iov;
   cnt:=iov^.iov_len;

@@ -712,7 +712,7 @@ begin
   end;
  end;
 
- while (uio^.uio_resid<>0) do
+ while (uio^.uio_resid>0) do
  begin
   {
    * normal pipe buffer receive
@@ -1218,7 +1218,7 @@ begin
 
  orig_resid:=uio^.uio_resid;
 
- while (uio^.uio_resid<>0) do
+ while (uio^.uio_resid>0) do
  begin
   pipelock(wpipe, 0);
   if (wpipe^.pipe_state and PIPE_EOF)<>0 then

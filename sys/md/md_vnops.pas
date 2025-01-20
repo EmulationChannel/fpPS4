@@ -2446,7 +2446,7 @@ begin
   sx_xlock(@de^.ufs_md_lock);
  end;
 
- while (uio^.uio_iovcnt<>0) or (uio^.uio_resid<>0) do
+ while (uio^.uio_iovcnt>0) or (uio^.uio_resid>0) do
  begin
   iov:=uio^.uio_iov;
 

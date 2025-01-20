@@ -267,7 +267,7 @@ begin
 
  if (Result=0) then
  begin
-  if (uio.uio_resid<>0) then
+  if (uio.uio_resid>0) then
   begin
    Result:=ENOEXEC;
   end;

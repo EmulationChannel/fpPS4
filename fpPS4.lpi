@@ -1562,6 +1562,10 @@
         <Filename Value="sys\kern\kern_pipe.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="sys\dev\dev_random.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

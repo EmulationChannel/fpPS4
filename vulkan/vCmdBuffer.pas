@@ -1435,8 +1435,8 @@ begin
     vkMemoryBarrier(FCmdbuf,
                     VK_ACCESS_DB,                             //srcAccessMask
                     VK_ACCESS_ANY,                            //dstAccessMask
-    	            VK_STAGE_DB,                              //srcStageMask
-    	            ord(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)); //dstStageMask
+                    VK_STAGE_DB,                              //srcStageMask
+                    ord(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)); //dstStageMask
 
    end;
   FLUSH_AND_INV_CB_META: //CMASK
@@ -1452,7 +1452,7 @@ begin
     	            ord(VK_PIPELINE_STAGE_TRANSFER_BIT));               //dstStageMask
 
    end;
-  FLUSH_AND_INV_CB_PIXEL_DATA:
+  FLUSH_AND_INV_CB_PIXEL_DATA: //CB
    begin
     Inc(cmd_count);
 
@@ -1462,7 +1462,7 @@ begin
                     VK_ACCESS_PS,                                       //srcAccessMask
                     ord(VK_ACCESS_TRANSFER_WRITE_BIT),                  //dstAccessMask
     	            ord(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT), //srcStageMask
-    	            ord(VK_PIPELINE_STAGE_TRANSFER_BIT));               //dstStageMask
+                    ord(VK_PIPELINE_STAGE_TRANSFER_BIT));               //dstStageMask
 
    end;
   CACHE_FLUSH_AND_INV_EVENT: //CB,DB
@@ -1472,8 +1472,8 @@ begin
     vkMemoryBarrier(FCmdbuf,
                     VK_ACCESS_PS or VK_ACCESS_DB,                                      //srcAccessMask
                     VK_ACCESS_ANY,                                                     //dstAccessMask
-    	            VK_STAGE_DB or ord(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT), //srcStageMask
-    	            ord(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));                          //dstStageMask
+                    VK_STAGE_DB or ord(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT), //srcStageMask
+                    ord(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));                          //dstStageMask
    end;
   else
    Assert(false,'WriteEvent.eventType');

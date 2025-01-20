@@ -574,20 +574,8 @@ const
   d_version     :D_VERSION;
   d_flags       :D_TRACKCLOSE;
   d_name        :'hid';
-  d_open        :nil;
-  d_fdopen      :nil;
-  d_close       :nil;
   d_read        :@hidRead;
-  d_write       :nil;
   d_ioctl       :@hidIoctl;
-  d_poll        :nil;
-  d_mmap        :nil;
-  d_strategy    :nil;
-  d_dump        :nil;
-  d_kqfilter    :nil;
-  d_purge       :nil;
-  d_mmap_single :nil;
-  d_mmap_single2:nil;
  );
 
 procedure hid_init();

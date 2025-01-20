@@ -335,18 +335,8 @@ const
   d_flags       :0;
   d_name        :'dmem';
   d_open        :@dmem_open;
-  d_fdopen      :nil;
-  d_close       :nil;
-  d_read        :nil;
-  d_write       :nil;
   d_ioctl       :@dmem_ioctl;
-  d_poll        :nil;
   d_mmap        :@dmem_mmap;
-  d_strategy    :nil;
-  d_dump        :nil;
-  d_kqfilter    :nil;
-  d_purge       :nil;
-  d_mmap_single :nil;
   d_mmap_single2:@dmem_mmap_single2;
  );
 

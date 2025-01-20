@@ -1246,20 +1246,10 @@ const
   d_version     :D_VERSION;
   d_flags       :0;
   d_name        :'dce';
-  d_open        :nil;
-  d_fdopen      :nil;
-  d_close       :nil;
-  d_read        :nil;
-  d_write       :nil;
   d_ioctl       :@dce_ioctl;
-  d_poll        :nil;
   d_mmap        :@dce_mmap;
-  d_strategy    :nil;
-  d_dump        :nil;
   d_kqfilter    :@dce_kqfilter;
-  d_purge       :nil;
   d_mmap_single :@dce_mmap_single;
-  d_mmap_single2:nil;
  );
 
 function filt_display_attach(kn:p_knote):Integer;
