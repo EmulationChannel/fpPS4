@@ -108,17 +108,18 @@ begin
   with ColorRef[RefCount] do
   begin
    attachment:=VK_ATTACHMENT_UNUSED;
-   layout:=VK_IMAGE_LAYOUT_UNDEFINED;
+   layout:=VK_IMAGE_LAYOUT_GENERAL;
   end;
  end;
 
  Inc(RefCount);
 
+ //add on unused also
+ Dependency.srcStageMask :=Dependency.srcStageMask or ord(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+ Dependency.dstStageMask :=Dependency.dstStageMask or ord(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
  if (id<>VK_ATTACHMENT_UNUSED) then
  begin
-  Dependency.srcStageMask :=Dependency.srcStageMask or ord(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-  Dependency.dstStageMask :=Dependency.dstStageMask or ord(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-
   am:=GetColorAccessAttachMask(IMAGE_USAGE);
 
   Dependency.srcAccessMask:=Dependency.srcAccessMask or am;
@@ -201,7 +202,7 @@ begin
    storeOp:=VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
    initialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-   finalLayout  :=VK_IMAGE_LAYOUT_UNDEFINED;
+   finalLayout  :=VK_IMAGE_LAYOUT_GENERAL;
   end;
  end;
 

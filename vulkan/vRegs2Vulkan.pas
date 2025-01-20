@@ -1650,14 +1650,25 @@ begin
  //VK_EXT_depth_clip_control:TVkPipelineViewportDepthClipControlCreateInfoEXT
  Result.ClipSpace:=ord(PA_CL_CLIP_CNTL.DX_CLIP_SPACE_DEF=0); //[-1..1]
 
- //VK_EXT_depth_clip_enable:TVkPipelineRasterizationDepthClipStateCreateInfoEXT
- Result.DepthClip:=ord(PA_CL_CLIP_CNTL.CLIP_DISABLE=0);
+ if (UC_REG^.VGT_PRIMITIVE_TYPE.PRIM_TYPE=DI_PT_RECTLIST) then
+ begin
+  Result.DepthClip:=VK_FALSE;
 
- depthClampDisable:=PA_CL_CLIP_CNTL.ZCLIP_NEAR_DISABLE or PA_CL_CLIP_CNTL.ZCLIP_FAR_DISABLE;
+  depthClampDisable:=ord(True);
+
+  Result.State.cullMode:=ord(VK_CULL_MODE_NONE);
+ end else
+ begin
+  //VK_EXT_depth_clip_enable:TVkPipelineRasterizationDepthClipStateCreateInfoEXT
+  Result.DepthClip:=ord(PA_CL_CLIP_CNTL.CLIP_DISABLE=0);
+
+  depthClampDisable:=PA_CL_CLIP_CNTL.ZCLIP_NEAR_DISABLE or PA_CL_CLIP_CNTL.ZCLIP_FAR_DISABLE;
+
+  Result.State.cullMode:=get_cull_mode(SU_SC_MODE_CNTL);
+ end;
 
  Result.State.depthClampEnable       :=ord(not Boolean(depthClampDisable));
  Result.State.polygonMode            :=get_polygon_mode(SU_SC_MODE_CNTL);
- Result.State.cullMode               :=get_cull_mode   (SU_SC_MODE_CNTL);
  Result.State.frontFace              :=TVkFrontFace    (SU_SC_MODE_CNTL.FACE); //1:1
  Result.State.lineWidth              :=(CX_REG^.PA_SU_LINE_CNTL.WIDTH/8);
 
@@ -2092,6 +2103,10 @@ begin
     IMG_DATA_FORMAT_FMASK8_S2_F2:Result:=VK_FORMAT_R8_UINT;
     IMG_DATA_FORMAT_FMASK8_S4_F2:Result:=VK_FORMAT_R8_UINT;
     IMG_DATA_FORMAT_FMASK8_S4_F4:Result:=VK_FORMAT_R8_UINT;
+
+    IMG_DATA_FORMAT_1_5_5_5     :Result:=VK_FORMAT_A1R5G5B5_UNORM_PACK16;
+    IMG_DATA_FORMAT_5_5_5_1     :Result:=VK_FORMAT_R5G5B5A1_UNORM_PACK16;
+
     else;
    end;
 
