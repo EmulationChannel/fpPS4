@@ -13,6 +13,7 @@ uses
 
 function reloc_non_plt(obj:p_lib_info;flags:DWORD):Integer;
 function reloc_jmpslots(obj:p_lib_info;flags:DWORD):Integer;
+function reloc_hle(obj:p_lib_info):Integer;
 function relocate_one_object(obj:p_lib_info;jmpslots,export_only:Boolean):Integer;
 function check_copy_relocations(obj:p_lib_info):Integer;
 function dynlib_unlink_imported_symbols_each(root,obj:p_lib_info):Integer;
@@ -482,6 +483,99 @@ begin
  Result:=0;
 end;
 
+function reloc_hle(obj:p_lib_info):Integer;
+var
+ i,count,ST_TYPE,err:Integer;
+
+ hle_import_table:p_hle_import_entry;
+ h_entry         :p_sym_hash_entry;
+
+ req   :t_SymLook;
+ native:Pointer;
+ data  :Pointer;
+ where :Pointer;
+begin
+ Result:=0;
+
+ count:=obj^.hle_import_count;
+ hle_import_table:=obj^.hle_import_table;
+
+ if (count<>0) and (hle_import_table<>nil) then
+ begin
+  For i:=0 to count-1 do
+  if not check_relo_bits(obj,i) then
+  begin
+   h_entry:=hle_import_table[i].h_entry;
+
+   ST_TYPE:=ELF64_ST_TYPE(h_entry^.sym.st_info);
+
+   Case ST_TYPE of
+    STT_NOTYPE,
+    STT_FUN,
+    STT_SCE:
+       begin
+
+        req:=Default(t_SymLook);
+
+        req.symbol :=nil;
+        req.nid    :=h_entry^.nid;
+        req.flags  :=0;
+        req.obj    :=obj;
+        req.modname:=get_mod_name_by_id(obj,h_entry^.mod_id);
+        req.libname:=get_lib_name_by_id(obj,h_entry^.lib_id);
+
+        err:=symlook_default(@req, obj);
+
+        if (err=0) then
+        begin
+
+         if (req.native_out<>nil) then
+         begin
+          //[HLE -> HLE] mode
+          native:=req.native_out;
+          //
+          Assert(native<>nil,'native_out');
+         end else
+         begin
+          //[HLE -> JIT] mode
+
+          where:=hle_import_table[i].import_place_addr;
+          //
+          Assert(where<>nil,'import_place_addr');
+          //
+          data :=req.defobj_out^.relocbase + req.sym_out^.st_value;
+
+          Result:=copyout(@data,where,SizeOf(Pointer));
+          if (Result<>0) then
+          begin
+           Writeln(StdErr,'reloc_hle:','copyout() failed. where=0x',HexStr(where));
+           Exit(4);
+          end;
+
+          native:=hle_import_table[i].jit_host_addr;
+          //
+          Assert(native<>nil,'jit_host_addr');
+         end;
+
+         where:=h_entry^.native;
+         //
+         Assert(where<>nil,'h_entry^.native');
+
+         //save native ptr
+         PPointer(where)^:=native;
+
+         set_relo_bits(obj,i);
+        end; //(err=0)
+
+       end;
+    else;
+   end; //case
+
+  end;
+ end;
+
+end;
+
 function relocate_one_object(obj:p_lib_info;jmpslots,export_only:Boolean):Integer; public;
 begin
  Writeln(' relocate:',dynlib_basename(obj^.lib_path));
@@ -495,12 +589,21 @@ begin
 
  if jmpslots then
  begin
-  Result:=reloc_jmpslots(obj,ord(export_only)*$200);
-  if (Result<>0) then
+  //
+  if (obj^.rtld_flags.internal<>0) then
   begin
-   Writeln(StdErr,'relocate_one_object:','reloc_jmplots() failed. obj=',dynlib_basename(obj^.lib_path),' rv=',Result);
-   Exit;
+   Result:=reloc_hle(obj);
+  end else
+  begin
+   Result:=reloc_jmpslots(obj,ord(export_only)*$200);
+   if (Result<>0) then
+   begin
+    Writeln(StdErr,'relocate_one_object:','reloc_jmplots() failed. obj=',dynlib_basename(obj^.lib_path),' rv=',Result);
+    Exit;
+   end;
+   reloc_hle(obj);
   end;
+  //
  end;
 end;
 
@@ -709,7 +812,7 @@ begin
    begin
     where:=Pointer(obj^.relocbase) + entry^.r_offset;
 
-    data:=i or QWORD($effffffe00000000);
+    data:=i or UNRESOLVE_MAGIC_ADDR;
 
     Result:=copyout(@data,where,SizeOf(Pointer));
     if (Result<>0) then

@@ -30,12 +30,14 @@ type
   obj       :p_lib_info;
   defobj_out:p_lib_info;
   sym_out   :p_elf64_sym;
+  native_out:Pointer; //HLE
  end;
 
 function test_unresolve_symbol(td:p_kthread;addr:Pointer):Boolean;
 
 function do_dlsym(obj:p_lib_info;symbol,libname:pchar;flags:DWORD):Pointer;
 function name_dlsym(name,symbol:pchar;addrp:ppointer):Integer;
+function symlook_default(req:p_SymLook;refobj:p_lib_info):Integer;
 function find_symdef(symnum:QWORD;
                      refobj:p_lib_info;
                      var defobj_out:p_lib_info;
@@ -51,8 +53,8 @@ uses
  systm,
  kern_rtld,
  elf_nid_utils,
- kern_stub,
- vm_patch_link,
+ //kern_stub,
+ //vm_patch_link,
  subr_backtrace,
  ps4libdoc;
 
@@ -109,8 +111,9 @@ begin
 
  _next:
 
- req^.sym_out:=symp;
+ req^.sym_out   :=symp;
  req^.defobj_out:=obj;
+ req^.native_out:=h_entry^.native; //HLE
 
  //needed_filtees/needed_aux_filtees->symlook_needed not used
 
@@ -122,11 +125,12 @@ label
  _symlook_obj;
 var
  modname:pchar;
- req1:t_SymLook;
- elm:p_Objlist_Entry;
- def:p_elf64_sym;
- defobj:p_lib_info;
- str:pchar;
+ req1   :t_SymLook;
+ elm    :p_Objlist_Entry;
+ def    :p_elf64_sym;
+ defobj :p_lib_info;
+ native :Pointer; //HLE
+ str    :pchar;
 begin
  Result:=0;
 
@@ -148,6 +152,7 @@ begin
 
  def   :=nil;
  defobj:=nil;
+ native:=nil;
 
  elm:=TAILQ_FIRST(@objlist);
 
@@ -167,6 +172,7 @@ begin
      begin
       def   :=req1.sym_out;
       defobj:=req1.defobj_out;
+      native:=req1.native_out; //HLE
       if (ELF64_ST_BIND(def^.st_info)<>STB_WEAK) then Break;
      end;
     end;
@@ -186,6 +192,7 @@ begin
  begin
   req^.sym_out   :=def;
   req^.defobj_out:=defobj;
+  req^.native_out:=native; //HLE
   Exit(0);
  end;
 
@@ -212,6 +219,7 @@ begin
    begin
     req^.sym_out   :=req1.sym_out;
     req^.defobj_out:=req1.defobj_out;
+    req^.native_out:=req1.native_out; //HLE
     Assert(req^.defobj_out<>nil,'req->defobj_out is NULL #1');
    end;
   end;
@@ -236,6 +244,7 @@ begin
    begin
     req^.sym_out   :=req1.sym_out;
     req^.defobj_out:=req1.defobj_out;
+    req^.native_out:=req1.native_out; //HLE
     Assert(req^.defobj_out<>nil,'req->defobj_out is NULL #2');
    end;
   end;
@@ -283,6 +292,7 @@ begin
    begin
     req^.sym_out   :=req1.sym_out;
     req^.defobj_out:=req1.defobj_out;
+    req^.native_out:=req1.native_out; //HLE
     Assert(req^.defobj_out<>nil,'req->defobj_out is NULL #2');
    end;
   end;
@@ -326,7 +336,7 @@ begin
  end;
 
  req.symbol:=symbol;
- req.obj :=obj;
+ req.obj   :=obj;
 
  donelist:=Default(t_DoneList);
  donelist_init(donelist);
@@ -394,6 +404,7 @@ begin
   dynlibs_unlock;
 end;
 
+{
 procedure jit_save_to_sys_save(td:p_kthread); external;
 
 type
@@ -423,6 +434,7 @@ const
                                           nid     :0;
                                           libname :nil;
                                           libfrom :nil);
+}
 
 procedure unresolve_symbol_print(nid:QWORD;libname,modname,libfrom:PChar);
 var
@@ -446,6 +458,7 @@ begin
  Assert(false);
 end;
 
+{
 procedure unresolve_symbol(data:p_jmpq64_trampoline);
 var
  td:p_kthread;
@@ -484,6 +497,7 @@ begin
 
  vm_add_patch_link(refobj^.rel_data^.obj,where,SizeOf(Pointer),pt_unresolve,stub);
 end;
+}
 
 {
 function get_rip_jmp(td:p_kthread;addr:Pointer):Pointer;
@@ -534,7 +548,7 @@ begin
  sym_addr:=QWORD(addr);
  if (sym_addr=0) then Exit;
 
- if ((sym_addr shr 32)<>$EFFFFFFE) then Exit;
+ if ((sym_addr and UNRESOLVE_MAGIC_MASK)<>UNRESOLVE_MAGIC_ADDR) then Exit;
 
  req:=Default(t_SymLook);
 
@@ -612,8 +626,8 @@ var
 
  mod_id,lib_id:WORD;
 
- ptr:Pointer;
- stub:p_stub_chunk;
+ //ptr:Pointer;
+ //stub:p_stub_chunk;
 begin
  Result:=nil;
 
@@ -628,7 +642,7 @@ begin
   end;
  end;
 
- def:=nil;
+ def       :=nil;
  defobj_out:=nil;
 
  count:=refobj^.rel_data^.symtab_size div SizeOf(elf64_sym);

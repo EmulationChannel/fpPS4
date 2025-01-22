@@ -439,11 +439,14 @@ begin
     Exit;
    end;
 
+   pushfq(os64);
+   {
    //swap
    xchgq(rbp,rax);
    //load flags to al,ah
    seto(al);
    lahf;
+   }
 
    if (classif_offset_u64(mask)=os64) then
    begin
@@ -467,11 +470,14 @@ begin
   begin
    //insertq xmm0,xmm1
 
+   pushfq(os64);
+   {
    //swap
    xchgq(rbp,rax);
    //load flags to al,ah
    seto(al);
    lahf;
+   }
 
    //PEXTRQ r/m64, xmm2, imm8
    pextrq (ctx,m,xmm_b,1);
@@ -534,6 +540,8 @@ begin
   //PINSRQ xmm1, r/m64, imm8
   pinsrq(ctx,xmm_a,a,0);
 
+  popfq(os64);
+  {
   //store flags from al,ah
   addi(al,127);
   sahf;
@@ -542,6 +550,7 @@ begin
 
   //restore rbp
   movq(rbp,rsp);
+  }
 
   //restore jit_frame
   movq(r13,[GS +Integer(teb_thread)]);

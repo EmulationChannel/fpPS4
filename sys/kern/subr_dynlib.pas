@@ -16,15 +16,33 @@ uses
  kern_sx;
 
 type
- TLIBRARY=object
-  lib:Pointer;
-  function set_symb (nid:QWORD;info:Byte;value:Pointer;mod_id:Word=0):Boolean;
-  function set_proc (nid:QWORD;value:Pointer;mod_id:Word=0):Boolean;
-  function set_data (nid:QWORD;value:Pointer;mod_id:Word=0):Boolean;
-  function set_weak (nid:QWORD;value:Pointer;mod_id:Word=0):Boolean;
+ TLIBRARY=packed object
+  libptr:Pointer; //p_Lib_Entry
+  mod_id:Word;
+  function set_symb (nid:QWORD;info:Byte;value:Pointer):Boolean;
+  function set_proc (nid:QWORD;value:Pointer):Boolean;
+  function set_data (nid:QWORD;value:Pointer):Boolean;
+  function set_weak (nid:QWORD;value:Pointer):Boolean;
   function get_value(nid:QWORD):Pointer;
  end;
 
+ TMODULE=packed object
+  libptr:Pointer; //p_lib_info
+  import:Word;
+  mod_id:Word;
+  function add_lib(lib_name:pchar):TLIBRARY;
+ end;
+
+ TGUEST_STACK=object
+  p_rsp:PPointer;
+  o_rsp:Pointer;
+  function  alloca(size:QWORD):Pointer;
+  procedure epilog;
+ end;
+
+function prolog:TGUEST_STACK;
+
+type
  p_rel_data=^t_rel_data;
  t_rel_data=record
   obj        :Pointer;
@@ -87,6 +105,9 @@ type
   relro_addr:Pointer;
   relro_size:QWORD;
 
+  hle_import_table:Pointer; //p_hle_import_entry
+  hle_import_count:Integer; //hle_import_table count
+
   relocbase :Pointer;
   entry_addr:Pointer;
 
@@ -128,7 +149,7 @@ type
    is_system    :0..1;
    dag_inited   :0..1;
    jmpslots_done:0..1;
-   internal     :0..1;
+   internal     :0..1; //HLE
   end;
 
   dldags    :TAILQ_HEAD; //Objlist_Entry
@@ -145,7 +166,7 @@ type
   procedure init_rel_data;
   function  add_str(str:pchar):QWORD;
   function  add_lib(lib_name:pchar;import:Word=0):TLIBRARY;
-  function  add_mod(mod_name:pchar;import:Word=0):WORD;
+  function  add_mod(mod_name:pchar;import:Word=0):TMODULE;
  end;
 
  p_Objlist_Entry=^Objlist_Entry;
@@ -174,8 +195,19 @@ type
   nid   :QWORD;
   mod_id:WORD;
   lib_id:WORD;
-  native:Pointer;
+  native:Pointer; //HLE
   sym   :elf64_sym;
+ end;
+
+ //sum_entry^.native^ -> native
+ //sum_entry^.native^ [-> jit_guest_addr] -> jit_host_addr -> JIT -> import_place_addr^
+
+ p_hle_import_entry=^t_hle_import_entry;
+ t_hle_import_entry=record
+  h_entry          :p_sym_hash_entry;
+  jit_guest_addr   :Pointer;
+  jit_host_addr    :Pointer;
+  import_place_addr:PPointer;
  end;
 
  p_Lib_Entry=^Lib_Entry;
@@ -185,8 +217,8 @@ type
   attr  :WORD;
   import:WORD;
   count :Integer;
-  hamt  :THAMT;
-  syms  :TAILQ_HEAD;
+  hamt  :THAMT;      //p_sym_hash_entry
+  syms  :TAILQ_HEAD; //p_sym_hash_entry
  end;
 
  t_DoneList=record
@@ -355,6 +387,10 @@ function  dynlib_load_needed_shared_objects():Integer;
 function  copy_proc_param(pout:pSceProcParam):Integer;
 function  copy_libc_param(pout:pSceLibcParam):Integer;
 
+const
+ UNRESOLVE_MAGIC_MASK:QWORD=QWORD($FFFFFFFF00000000);
+ UNRESOLVE_MAGIC_ADDR:QWORD=QWORD($EFFFFFFE00000000);
+
 var
  dynlibs_info:t_dynlibs_info;
 
@@ -388,8 +424,9 @@ uses
  kern_authinfo,
  kern_namedobj,
  elf_nid_utils,
- kern_jit,
- kern_jit_ctx;
+ kern_jit_ctx,
+ kern_jit_asm,
+ kern_jit_dynamic;
 
 //
 
@@ -455,7 +492,7 @@ var
  lib_entry:p_Lib_Entry;
  v:TLibraryValue;
 begin
- Result.lib:=nil;
+ Result:=Default(TLIBRARY);
 
  v:=Default(TLibraryValue);
 
@@ -476,10 +513,11 @@ begin
 
  TAILQ_INSERT_TAIL(@lib_table,lib_entry,@lib_entry^.link);
 
- Result.lib:=lib_entry;
+ Result.libptr:=lib_entry;
+ Result.mod_id:=0; //export (default)
 end;
 
-function t_lib_info.add_mod(mod_name:pchar;import:Word=0):WORD;
+function t_lib_info.add_mod(mod_name:pchar;import:Word=0):TMODULE;
 label
  rep;
 var
@@ -505,16 +543,24 @@ begin
 
  TAILQ_INSERT_TAIL(@mod_table,mod_entry,@mod_entry^.link);
 
- Result:=mod_entry^.dval.id;
+ Result.libptr:=@Self;
+ Result.import:=import;
+ Result.mod_id:=mod_entry^.dval.id;
 end;
 
-function TLIBRARY.set_symb(nid:QWORD;info:Byte;value:Pointer;mod_id:Word=0):Boolean;
+function TMODULE.add_lib(lib_name:pchar):TLIBRARY;
+begin
+ Result:=p_lib_info(libptr)^.add_lib(lib_name,import);
+ Result.mod_id:=mod_id;
+end;
+
+function TLIBRARY.set_symb(nid:QWORD;info:Byte;value:Pointer):Boolean;
 var
  lib_entry:p_Lib_Entry;
  h_entry:p_sym_hash_entry;
  data:PPointer;
 begin
- lib_entry:=lib;
+ lib_entry:=libptr;
  //
  h_entry:=AllocMem(SizeOf(t_sym_hash_entry));
  //
@@ -551,19 +597,19 @@ begin
  end;
 end;
 
-function TLIBRARY.set_proc(nid:QWORD;value:Pointer;mod_id:Word=0):Boolean;
+function TLIBRARY.set_proc(nid:QWORD;value:Pointer):Boolean;
 begin
- Result:=set_symb(nid,(STB_GLOBAL shl 4) or STT_FUN,value,mod_id);
+ Result:=set_symb(nid,(STB_GLOBAL shl 4) or STT_FUN,value);
 end;
 
-function TLIBRARY.set_data(nid:QWORD;value:Pointer;mod_id:Word=0):Boolean;
+function TLIBRARY.set_data(nid:QWORD;value:Pointer):Boolean;
 begin
- Result:=set_symb(nid,(STB_GLOBAL shl 4) or STT_OBJECT,value,mod_id);
+ Result:=set_symb(nid,(STB_GLOBAL shl 4) or STT_OBJECT,value);
 end;
 
-function TLIBRARY.set_weak(nid:QWORD;value:Pointer;mod_id:Word=0):Boolean;
+function TLIBRARY.set_weak(nid:QWORD;value:Pointer):Boolean;
 begin
- Result:=set_symb(nid,(STB_WEAK shl 4) or STT_FUN,value,mod_id);
+ Result:=set_symb(nid,(STB_WEAK shl 4) or STT_FUN,value);
 end;
 
 function TLIBRARY.get_value(nid:QWORD):Pointer;
@@ -572,7 +618,7 @@ var
  h_entry:p_sym_hash_entry;
  data:PPointer;
 begin
- lib_entry:=lib;
+ lib_entry:=libptr;
  //
  if (Lib_Entry^.hamt=nil) then Exit(nil);
  data:=HAMT_search64(Lib_Entry^.hamt,nid);
@@ -581,6 +627,28 @@ begin
  if (h_entry=nil) then Exit(nil);
  Result:=h_entry^.native;
 end;
+
+//
+function prolog:TGUEST_STACK;
+var
+ frame:p_jit_frame;
+begin
+ frame:=@curkthread^.td_frame.tf_r13;
+ Result.p_rsp:=@frame^.tf_rsp;
+ Result.o_rsp:=Pointer(frame^.tf_rsp);
+end;
+
+function TGUEST_STACK.alloca(size:QWORD):Pointer;
+begin
+ Result:=p_rsp^+size;
+ p_rsp^:=Result;
+end;
+
+procedure TGUEST_STACK.epilog;
+begin
+ p_rsp^:=o_rsp;
+end;
+//
 
 procedure _free_obj(data:pointer);
 begin
@@ -1098,6 +1166,8 @@ begin
   FreeMem(obj^.relo_bits);
   obj^.relo_bits:=nil
  end;
+
+ FreeMem(obj^.hle_import_table); //HLE
 
  Lib_Entry:=TAILQ_FIRST(@obj^.lib_table);
  while (Lib_Entry<>nil) do
@@ -1703,7 +1773,9 @@ begin
   count:=0;
  end else
  begin
-  count:=(obj^.rel_data^.pltrela_size div sizeof(elf64_rela))+(obj^.rel_data^.rela_size div sizeof(elf64_rela));
+  count:=(obj^.rel_data^.pltrela_size div sizeof(elf64_rela)) +
+         (obj^.rel_data^.rela_size div sizeof(elf64_rela)) +
+         (obj^.hle_import_count);
  end;
 
  if (count=0) then
@@ -2453,7 +2525,7 @@ begin
 
   For i:=0 to count-1 do
   begin
-   kaddr:=i or QWORD($effffffe00000000);
+   kaddr:=i or UNRESOLVE_MAGIC_ADDR;
 
    addr:=Pointer(obj^.relocbase) + entry^.r_offset;
 
@@ -2818,30 +2890,41 @@ end;
 function map_prx_internal(name:pchar;obj:p_lib_info):Integer;
 var
  Lib_Entry:p_Lib_Entry;
+ h_entry:p_sym_hash_entry;
+ hle_import_table:p_hle_import_entry;
+ hle_import_base :PPointer;
  map:vm_map_t;
  vaddr_lo:QWORD;
  vaddr_hi:QWORD;
- data :Pointer;
- count:Integer;
- error:Integer;
+ data    :Pointer;
+ export_count:Integer;
+ import_count:Integer;
+ i,error:Integer;
 begin
  Result:=0;
- count:=0;
+
+ export_count:=0;
+ import_count:=0;
 
  //get sym count
- lib_entry:=TAILQ_FIRST(@obj^.lib_table);
- while (lib_entry<>nil) do
+ Lib_Entry:=TAILQ_FIRST(@obj^.lib_table);
+ while (Lib_Entry<>nil) do
  begin
   if (Lib_Entry^.import=0) then //export
   begin
-   count:=count+Lib_Entry^.count;
+   export_count:=export_count+Lib_Entry^.count;
+  end else
+  begin
+   import_count:=import_count+Lib_Entry^.count;
   end;
-  lib_entry:=TAILQ_NEXT(lib_entry,@lib_entry^.link)
+  Lib_Entry:=TAILQ_NEXT(Lib_Entry,@Lib_Entry^.link)
  end;
 
- //jit addr space = count*16
- obj^.text_size:=AlignUp(count*16,PAGE_SIZE);
- obj^.data_size:=PAGE_SIZE;
+ //jit export space = (export_count*8) + (import_count*2*8)
+ obj^.text_size:=AlignUp((export_count*8) + (import_count*2*8),PAGE_SIZE);
+ //jit import space = sceModuleParam + import_count*8
+ obj^.data_size:=AlignUp(Sizeof(TsceModuleParam)+import_count*8,PAGE_SIZE);
+ //sum
  obj^.map_size :=obj^.text_size+obj^.data_size;
 
  //alloc addr
@@ -2883,6 +2966,38 @@ begin
  pSceModuleParam(data)^:=obj^.module_param^;
  obj^.module_param:=data;
 
+ hle_import_base:=data+sizeOf(TsceModuleParam); //HLE
+
+ obj^.hle_import_count:=import_count;
+
+ //alloc hle import table
+ if (import_count<>0) then
+ begin
+  hle_import_table:=AllocMem(import_count*SizeOf(t_hle_import_entry));
+  obj^.hle_import_table:=hle_import_table;
+
+  i:=0;
+  Lib_Entry:=TAILQ_FIRST(@obj^.lib_table);
+  while (Lib_Entry<>nil) do
+  begin
+   if (Lib_Entry^.import<>0) then //import
+   begin
+    h_entry:=TAILQ_FIRST(@Lib_Entry^.syms);
+    while (h_entry<>nil) do
+    begin
+     hle_import_table[i].h_entry          :=h_entry;
+     hle_import_table[i].jit_guest_addr   :=nil; //jit build
+     hle_import_table[i].jit_host_addr    :=nil; //jit dynamic cache
+     hle_import_table[i].import_place_addr:=@hle_import_base[i];
+     Inc(i);
+     //
+     h_entry:=TAILQ_NEXT(h_entry,@h_entry^.link)
+    end;
+   end;
+   Lib_Entry:=TAILQ_NEXT(Lib_Entry,@Lib_Entry^.link)
+  end;
+ end;
+
  //protect text,data
  vm_map_lock(map);
 
@@ -2923,12 +3038,11 @@ const
   SDK_version:$000000001;///$010010001;
  );
 
-function preload_prx_internal(name:pchar;flag:ptruint):p_lib_info;
+function preload_prx_internal(name,orig_path:pchar;flag:ptruint):p_lib_info;
 label
  _error;
 var
  entry:p_int_file;
- path:pchar;
  err:Integer;
 begin
  Result:=nil;
@@ -2950,15 +3064,9 @@ begin
      Result^.module_param:=@internal_module_param;
     end;
 
-    //fix name
-    path:=dynlib_basename(Result^.lib_path);
-    if (path=nil) then
-    begin
-     path:=entry^.name;
-    end;
+    //set path
+    obj_set_lib_path(Result,orig_path);
 
-    //reg name
-    obj_set_lib_path(Result,path);
     object_add_name(Result,dynlib_basename(Result^.lib_path));
 
     alloc_tls(Result);
@@ -2981,6 +3089,7 @@ begin
      goto _error;
     end;
 
+    init_relo_bits(Result);
     //reg lib
     dynlibs_add_obj(Result);
     //
@@ -2990,7 +3099,7 @@ begin
     Result^.rtld_flags.tls_done :=1;
     Result^.loaded:=1;
 
-    Writeln(' preload_prx_internal:',path);
+    Writeln(' preload_prx_internal:',name);
 
     //
     Exit;
@@ -3001,14 +3110,19 @@ begin
 
 end;
 
+procedure pick(var ctx:t_jit_context2;preload:Pointer); external name 'kern_jit_pick';
+
 procedure pick_obj_internal(obj:p_lib_info);
 var
  ctx:t_jit_context2;
 
  Lib_Entry:p_Lib_Entry;
  h_entry:p_sym_hash_entry;
- symp:p_elf64_sym;
- ST_TYPE:Integer;
+ i,hle_count,ST_TYPE:Integer;
+
+ hle_import_table:p_hle_import_entry;
+
+ node:p_jit_entry_point;
 begin
  Writeln('pick_obj_internal:',obj^.lib_path);
 
@@ -3019,6 +3133,7 @@ begin
  ctx.map____end:=ctx.text_start+obj^.map_size;
  ctx.modes:=[cmInternal];
 
+ //load exports
  lib_entry:=TAILQ_FIRST(@obj^.lib_table);
  while (lib_entry<>nil) do
  begin
@@ -3027,17 +3142,14 @@ begin
    h_entry:=TAILQ_FIRST(@Lib_Entry^.syms);
    while (h_entry<>nil) do
    begin
-
-    symp:=@h_entry^.sym;
-
-    ST_TYPE:=ELF64_ST_TYPE(symp^.st_info);
+    ST_TYPE:=ELF64_ST_TYPE(h_entry^.sym.st_info);
 
     Case ST_TYPE of
      STT_NOTYPE,
      STT_FUN,
      STT_SCE:
         begin
-         ctx.add_export_point(h_entry^.native,@symp^.st_value);
+         ctx.add_export_point(h_entry^.native,@h_entry^.sym.st_value);
         end;
      else;
     end; //case
@@ -3047,8 +3159,68 @@ begin
   end;
   lib_entry:=TAILQ_NEXT(lib_entry,@lib_entry^.link)
  end;
+ //load exports
 
- kern_jit.pick(ctx,nil);
+ //load imports
+ hle_count:=obj^.hle_import_count;
+ hle_import_table:=obj^.hle_import_table;
+
+ if (hle_count<>0) and (hle_import_table<>nil) then
+ begin
+  For i:=0 to hle_count-1 do
+  begin
+   h_entry:=hle_import_table[i].h_entry;
+
+   ST_TYPE:=ELF64_ST_TYPE(h_entry^.sym.st_info);
+
+   Case ST_TYPE of
+    STT_NOTYPE,
+    STT_FUN,
+    STT_SCE:
+       begin
+        ctx.add_import_point(hle_import_table[i].import_place_addr,@hle_import_table[i].jit_guest_addr);
+       end;
+    else;
+   end; //case
+
+  end;
+ end;
+ //load imports
+
+ pick(ctx,nil);
+
+ //load imports dynamic cache
+ if (hle_count<>0) and (hle_import_table<>nil) then
+ begin
+  For i:=0 to hle_count-1 do
+  begin
+   h_entry:=hle_import_table[i].h_entry;
+
+   ST_TYPE:=ELF64_ST_TYPE(h_entry^.sym.st_info);
+
+   Case ST_TYPE of
+    STT_NOTYPE,
+    STT_FUN,
+    STT_SCE:
+       begin
+        //
+        Assert(hle_import_table[i].jit_guest_addr<>nil,'jit_guest_addr');
+
+        node:=fetch_entry(hle_import_table[i].jit_guest_addr);
+        Assert(node<>nil,'fetch_entry');
+        //
+        hle_import_table[i].jit_host_addr:=node^.dst;
+        //
+        node^.dec_ref('fetch_entry');
+        //
+       end;
+    else;
+   end; //case
+
+  end;
+ end;
+ //load imports dynamic cache
+
 end;
 
 procedure pick_obj(obj:p_lib_info);
@@ -3121,7 +3293,7 @@ begin
   lib_entry:=TAILQ_NEXT(lib_entry,@lib_entry^.link)
  end;
 
- kern_jit.pick(ctx,nil);
+ pick(ctx,nil);
 end;
 
 function preload_prx_modules(path:pchar;flags:DWORD;var err:Integer):p_lib_info;
@@ -3152,7 +3324,7 @@ begin
  fname:=pbase;
  fname:=ChangeFileExt(fname,'.prx');
 
- Result:=preload_prx_internal(pchar(fname),IF_PRELOAD);
+ Result:=preload_prx_internal(pchar(fname),path,IF_PRELOAD);
  if (Result<>nil) then goto _do_pick;
 
  //try original
@@ -3208,7 +3380,7 @@ begin
  fname:=pbase;
  fname:=ChangeFileExt(fname,'.prx');
 
- Result:=preload_prx_internal(pchar(fname),IF_POSTLOAD);
+ Result:=preload_prx_internal(pchar(fname),path,IF_POSTLOAD);
  if (Result<>nil) then goto _do_pick;
 
  Writeln(StdErr,' prx_module_not_found:',dynlib_basename(path));

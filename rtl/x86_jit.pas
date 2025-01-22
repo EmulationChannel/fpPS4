@@ -331,6 +331,7 @@ type
   function  movp(reg:TRegValue;P:Pointer):t_jit_i_link;
   function  leaj(reg:TRegValue;mem:t_jit_leas;_label_id:t_jit_i_link):t_jit_i_link;
   function  leap(reg:TRegValue):t_jit_i_link;
+  function  leap(reg:TRegValue;_label_id:t_jit_i_link):t_jit_i_link;
   //
   Procedure jmp(reg:TRegValue);
   Procedure jmp(mem:t_jit_leas);
@@ -351,7 +352,7 @@ type
   Function  CopyChunks(var rec:t_jit_copy_ptr):Boolean;
   Function  CopyData  (var rec:t_jit_copy_ptr):Boolean;
   Function  CopyPlt   (var rec:t_jit_copy_ptr):Boolean;
-  Function  SaveTo(ptr:PByte;size:Integer):Integer;
+  Function  SaveTo    (ptr:PByte;size:Integer):Integer;
   //
   procedure _RM     (const desc:t_op_type;reg:TRegValue;mem:t_jit_leas);
   procedure _RMI    (const desc:t_op_type;reg:TRegValue;mem:t_jit_leas;imm:Int64);
@@ -1260,8 +1261,8 @@ function t_jit_builder._get_base_offset(AType:t_jit_link_type):Integer;
 begin
  Result:=0;
  case AType of
-  lnkData:Result:=AInstructionSize;
-  lnkPlt :Result:=AInstructionSize+GetDataSize;
+  lnkData:Result:=GetInstructionsSize;
+  lnkPlt :Result:=GetInstructionsSize+GetDataSize;
   else;
  end;
 end;
@@ -1394,7 +1395,7 @@ begin
  case op of
   OPSc_o..OPSc_nle:;
   else
-   Assert(false);
+   Assert(false,'Unknow jcc op');
  end;
 
  if (size=os8) then
@@ -1558,6 +1559,29 @@ begin
  LinkLabel(Result.ALink);
 end;
 
+function t_jit_builder.leap(reg:TRegValue;_label_id:t_jit_i_link):t_jit_i_link;
+var
+ plt:Pointer;
+ jt:p_jit_instruction;
+begin
+ //
+ jt :=_label_id.ALink;
+ plt:=jt^.ALink.ALink;
+ //
+
+ leaq(reg,[rip+$7FFFFFFF]);
+
+ jt:=last_instruction;
+
+ jt^.ALink.AType:=lnkPlt;
+ jt^.ALink.ALink:=plt;
+
+ Result.ALink:=jt;
+ Result.AType:=lnkLabelBefore;
+
+ LinkLabel(Result.ALink);
+end;
+
 Procedure t_jit_builder.jmp(reg:TRegValue);
 const
  desc:t_op_type=(op:$FF;index:4);
@@ -1600,46 +1624,76 @@ begin
  _O($0F0B);
 end;
 
+Procedure _gen_nop(P:Pointer;length:DWORD);
+begin
+ while (length<>0) do
+ begin
+  case length of
+   1: begin PByte (P)[0]:=$90;                                                   Break; end;
+   2: begin PWord (P)[0]:=$9066;                                                 Break; end;
+   3: begin PWord (P)[0]:=$1F0F;             PByte(P)[2]:=$00;                   Break; end;
+   4: begin PDWORD(P)[0]:=$00401F0F;                                             Break; end;
+   5: begin PDWORD(P)[0]:=$00441F0F;         PByte(P)[4]:=$00;                   Break; end;
+   6: begin PDWORD(P)[0]:=$441F0F66;         PWord(P)[2]:=$00;                   Break; end;
+   7: begin PDWORD(P)[0]:=$00801F0F;         PWord(P)[2]:=$00; PByte(P)[6]:=$00; Break; end;
+   8: begin PQWORD(P)[0]:=$0000000000841F0F;                                     Break; end;
+   9: begin PQWORD(P)[0]:=$00000000841F0F66; PByte(P)[8]:=$00;                   Break; end;
+   else
+      begin
+       PQWORD(P)[0]:=$0000000000841F0F; //8
+       Inc(P     ,8);
+       Dec(length,8);
+      end;
+  end;
+ end;
+end;
+
 Procedure t_jit_builder.nop(length:DWORD);
 var
- i:DWORD;
-
  ji:t_jit_instruction;
 begin
  if (length=0) then Exit;
 
  ji:=default_jit_instruction;
 
- i:=length div 9;
- while (i<>0) do
+ while (length<>0) do
  begin
-
-  ji.EmitInt64($00000000841F0F66);
-  ji.EmitByte ($00);
-
-  Dec(i);
+  case length of
+   1: begin ji.EmitByte ($90);                                                   Break; end;
+   2: begin ji.EmitWord ($9066);                                                 Break; end;
+   3: begin ji.EmitWord ($1F0F);             ji.EmitByte($00);                   Break; end;
+   4: begin ji.EmitInt32($00401F0F);                                             Break; end;
+   5: begin ji.EmitInt32($00441F0F);         ji.EmitByte($00);                   Break; end;
+   6: begin ji.EmitInt32($441F0F66);         ji.EmitWord($00);                   Break; end;
+   7: begin ji.EmitInt32($00801F0F);         ji.EmitWord($00); ji.EmitByte($00); Break; end;
+   8: begin ji.EmitInt64($0000000000841F0F);                                     Break; end;
+   9: begin ji.EmitInt64($00000000841F0F66); ji.EmitByte($00);                   Break; end;
+   10..15:
+      begin
+       ji.EmitInt64($0000000000841F0F); //8
+       Dec(length,8);
+      end;
+   else
+      begin
+       ji.EmitInt64($0000000000841F0F); //8
+       ji.EmitInt64($0000000000841F0F); //8
+       Dec(length,16);
+       //flush
+       _add(ji);
+       ji:=default_jit_instruction;
+      end;
+  end;
  end;
 
- i:=length mod 9;
-
- case i of
-  1: ji.EmitByte($90);
-  2: ji.EmitWord($9066);
-  3: begin ji.EmitWord($1F0F);      ji.EmitByte($00); end;
-  4: ji.EmitInt32($00401F0F);
-  5: begin ji.EmitInt32($00441F0F); ji.EmitByte($00); end;
-  6: begin ji.EmitInt32($441F0F66); ji.EmitWord($00); end;
-  7: begin ji.EmitInt32($00801F0F); ji.EmitWord($00); ji.EmitByte($00); end;
-  8: ji.EmitInt64($0000000000841F0F);
-  else;
+ if (ji.ASize<>0) then
+ begin
+  _add(ji);
  end;
-
- _add(ji);
 end;
 
 Function t_jit_builder.GetInstructionsSize:Integer;
 begin
- Result:=AInstructionSize;
+ Result:=(AInstructionSize+7) and (not 7);
 end;
 
 Function t_jit_builder.GetDataSize:Integer;
@@ -1654,12 +1708,12 @@ end;
 
 Function t_jit_builder.GetPltStart:Integer;
 begin
- Result:=AInstructionSize+GetDataSize;
+ Result:=GetInstructionsSize+GetDataSize;
 end;
 
 Function t_jit_builder.GetMemSize:Integer;
 begin
- Result:=AInstructionSize+GetDataSize+GetPltSize;
+ Result:=GetInstructionsSize+GetDataSize+GetPltSize;
 end;
 
 Procedure t_jit_builder.RebuldChunkList;
@@ -1708,7 +1762,9 @@ end;
 procedure _set_data(node:p_jit_instruction;d:Integer); inline;
 begin
  With node^ do
+ begin
   Move(d,node^.AData[ALink.AOffset],ASize);
+ end;
 end;
 
 Procedure LinkLabel(node:p_jit_instruction);
@@ -1893,10 +1949,12 @@ begin
   while (node_code<>nil) do
   begin
    s:=node_code^.ASize;
+   //
    if ((rec.pos+s)>rec.size) then
    begin
     Exit(False);
    end;
+   //
    Move(node_code^.AData,rec.ptr^,s);
    Inc(rec.pos,s);
    Inc(rec.ptr,s);
@@ -1906,6 +1964,23 @@ begin
   //
   chunk:=TAILQ_NEXT(chunk,@chunk^.entry);
  end;
+
+ //padding
+ s:=GetInstructionsSize-AInstructionSize;
+ if (s<>0) then
+ begin
+  //
+  if ((rec.pos+s)>rec.size) then
+  begin
+   Exit(False);
+  end;
+  //
+  _gen_nop(rec.ptr,s);
+  Inc(rec.pos,s);
+  Inc(rec.ptr,s);
+  //
+ end;
+
 end;
 
 Function t_jit_builder.CopyData(var rec:t_jit_copy_ptr):Boolean;

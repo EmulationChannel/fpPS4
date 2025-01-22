@@ -713,7 +713,7 @@ var
 begin
  if (alignment=0) then Exit(addr);
  tmp:=addr+PtrUInt(alignment-1);
- Result:=tmp-(tmp mod alignment)
+ Result:=tmp-(tmp mod alignment);
 end;
 
 function AlignUp(addr:Pointer;alignment:PtrUInt):Pointer; inline;

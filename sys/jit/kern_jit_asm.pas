@@ -437,6 +437,8 @@ label
 asm
  //load cache
  pushf
+ push %rbp
+
  movq  (%r15),%rbp //plt^
 
  cmpq  t_jplt_cache_asm.src(%rbp),%r14
@@ -452,11 +454,12 @@ asm
  //get dst
  movq t_jplt_cache_asm.dst(%rbp),%r14
 
+ pop %rbp
  popf
 
  //restore rbp
- movq %rsp,%rbp
- leaq 8(%rbp),%rbp
+ //movq %rsp,%rbp
+ //leaq 8(%rbp),%rbp
 
  //interrupt
  jmp %gs:teb.jit_trp
@@ -465,11 +468,12 @@ asm
 
  _exit:
 
+ pop %rbp
  popf
 
  //restore rbp
- movq %rsp,%rbp
- leaq 8(%rbp),%rbp
+ //movq %rsp,%rbp
+ //leaq 8(%rbp),%rbp
 
  jmp jit_jmp_dispatch
  //marker

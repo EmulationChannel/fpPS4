@@ -77,12 +77,21 @@ type
     dst   :PPointer;
    end;
 
+   p_import_point=^t_import_point;
+   t_import_point=object
+    next :p_import_point;
+    guest:PPointer;
+    dst  :PPointer;
+   end;
+
   var
    forward_set:t_forward_set;
    label_set  :t_label_set;
    entry_list :p_entry_point;
    entry_set  :t_entry_point_set;
+
    export_list:p_export_point;
+   import_list:p_import_point;
 
    obj:Pointer;
 
@@ -110,6 +119,7 @@ type
   function  is_text_addr(addr:QWORD):Boolean;
   function  is_map_addr (addr:QWORD):Boolean;
   procedure add_export_point (native:Pointer;dst:PPointer);
+  procedure add_import_point (guest,dst:PPointer);
   procedure add_forward_link (node:p_forward_point;label_id:t_jit_i_link);
   function  add_forward_point(ptype:t_point_type;label_id:t_jit_i_link;dst:Pointer):p_forward_point;
   function  add_forward_point(ptype:t_point_type;dst:Pointer):p_forward_point;
@@ -360,6 +370,18 @@ begin
  node^.dst   :=dst;
  node^.next  :=export_list;
  export_list :=node;
+end;
+
+procedure t_jit_context2.add_import_point(guest,dst:PPointer);
+var
+ node:p_import_point;
+begin
+ if (guest=nil) or (dst=nil) then Exit;
+ node:=builder.Alloc(Sizeof(t_import_point));
+ node^.guest:=guest;
+ node^.dst  :=dst;
+ node^.next :=import_list;
+ import_list:=node;
 end;
 
 procedure t_jit_context2.add_forward_link(node:p_forward_point;label_id:t_jit_i_link);
@@ -1137,6 +1159,7 @@ begin
    if save_r_tmp0 then
    begin
     //use rbp
+    push(rbp);
     adr:=new_reg_size(rbp,adr.ASize);
    end;
 
@@ -1237,6 +1260,7 @@ begin
       end else
       begin
        //use rbp
+       push(rbp);
        new2:=new_reg_size(rbp,adr.ASize);
       end;
      end;
@@ -1260,7 +1284,8 @@ begin
       end else
       begin
        //restore rbp
-       movq(rbp,rsp);
+       pop(rbp);
+       //movq(rbp,rsp);
       end;
      end;
 
@@ -1276,7 +1301,8 @@ begin
    if save_r_tmp0 then
    begin
     //restore rbp
-    movq(rbp,rsp);
+    pop(rbp);
+    //movq(rbp,rsp);
    end;
 
    //is_preserved
@@ -1650,7 +1676,7 @@ begin
   if (not_use_r_tmp0 in hint) and
      (not_use_r_tmp1 in hint) then
   begin
-   rbits:=rbp;
+   rbits:=r13;
   end else
   if (not_use_r_tmp0 in hint) then
   begin
@@ -1667,10 +1693,11 @@ begin
   shlx(dst,dst,rbits); //shlx %rbp,%r14,%r14
   shrx(dst,dst,rbits); //shrx %rbp,%r14,%r14
 
-  if (rbits.AIndex=rbp.AIndex) then
+  if (rbits.AIndex=r13.AIndex) then
   begin
-   //restore rbp
-   movq(rbp,rsp);
+   //restore jit_frame
+   movq(r13,[GS +Integer(teb_thread)]);
+   leaq(r13,[r13+jit_frame_offset   ]);
   end;
  end;
 end;

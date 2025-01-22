@@ -195,6 +195,7 @@ uses
  vm_pmap,
  md_map,
  vm_tracking_map,
+ subr_dynlib,
  kern_dlsym;
 
 //
@@ -673,7 +674,7 @@ begin
  begin
   //switch to internal
 
-  if ((QWORD(addr) shr 32)=$EFFFFFFE) then
+  if ((QWORD(addr) and UNRESOLVE_MAGIC_MASK)=UNRESOLVE_MAGIC_ADDR) then
   begin
    if exist_jit_host(from,@td^.td_frame.tf_rip) then
    begin
@@ -751,7 +752,7 @@ begin
  Result:=node^.dst;
 
  //
- node^.dec_ref('fetch_entry')
+ node^.dec_ref('fetch_entry');
 end;
 
 function t_jcode_chunk.c(n1,n2:p_jcode_chunk):Integer;
