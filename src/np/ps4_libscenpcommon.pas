@@ -393,9 +393,9 @@ end;
 type
  pnp_mem=^np_mem;
  np_mem=packed record
-  len:qword;
+  len   :qword;
   unknow:qword;
-  ptr:Pointer;
+  ptr   :Pointer;
  end;
 
 var
@@ -506,16 +506,26 @@ end;
 function ps4_sceNpMutexLock(mutex:PScePthreadMutex):Integer;
 begin
  Result:=ps4_scePthreadMutexLock(mutex);
+ Result:=(Result shr $1F) and Result;
 end;
 
 function ps4_sceNpMutexUnlock(mutex:PScePthreadMutex):Integer;
 begin
  Result:=ps4_scePthreadMutexUnlock(mutex);
+ Result:=(Result shr $1F) and Result;
 end;
 
 function ps4_sceNpMutexTryLock(mutex:PScePthreadMutex):Integer;
 begin
  Result:=ps4_scePthreadMutexTryLock(mutex);
+ if (Result<>Integer($80020010)) then
+ begin
+  Result:=(Result shr $1F) and Result;
+ end else
+ begin
+  Result:=Integer($8055800f);
+ end;
+ Result:=(Result shr $1F) and Result;
 end;
 
 function ps4_sceNpMutexDestroy(mutex:PScePthreadMutex):Integer;
@@ -595,8 +605,11 @@ begin
  end;
 end;
 
+//
+
 type
- pSceKernelEventFlag=PPointer;
+ SceKernelEventFlag =Pointer;
+ pSceKernelEventFlag=^SceKernelEventFlag;
  pSceKernelEventFlagOptParam=Pointer;
 
 var
@@ -607,6 +620,9 @@ var
                                        pOptParam:pSceKernelEventFlagOptParam
                                       ):Integer;
 
+ ps4_sceKernelCloseEventFlag :function(ef:SceKernelEventFlag):Integer;
+ ps4_sceKernelDeleteEventFlag:function(ef:SceKernelEventFlag):Integer;
+
 function ps4_sceNpCreateEventFlag(ef:pSceKernelEventFlag;
                                   pName:PChar;
                                   attr:DWORD;
@@ -616,6 +632,20 @@ begin
  Result:=ps4_sceKernelCreateEventFlag(ef,pName,attr,initPattern,nil);
  Result:=(Result shr $1F) and Result; // Looks like bool, but True when Result<0
 end;
+
+function ps4_sceNpCloseEventFlag(ef:SceKernelEventFlag):Integer;
+begin
+ Result:=ps4_sceKernelCloseEventFlag(ef);
+ Result:=(Result shr $1F) and Result;
+end;
+
+function ps4_sceNpDeleteEventFlag(ef:SceKernelEventFlag):Integer;
+begin
+ Result:=ps4_sceKernelDeleteEventFlag(ef);
+ Result:=(Result shr $1F) and Result;
+end;
+
+//
 
 function ExecuteGuest_mallocFunc(addr:Pointer;size:size_t;userdata:Pointer):Pointer; external name 'ExecuteGuest';
 
@@ -659,12 +689,48 @@ type
  end;
 
 var
- global_evf_cbs  :p_obj_cbs;
- global_mutex_cbs:p_obj_cbs;
+ global_evf_cbs  :p_obj_cbs; init_evf_cbs  :t_obj_cbs; //ps4__ZN3sce2np9EventFlagD2Ev/ps4__ZN3sce2np9EventFlagD0Ev
+ global_mutex_cbs:p_obj_cbs; init_mutex_cbs:t_obj_cbs;
+
+//sce::np::EventFlag::~EventFlag(EventFlag *this)
+procedure ps4__ZN3sce2np9EventFlagD2Ev(this:p_EventFlag);
+begin
+ global_evf_cbs^:=init_evf_cbs;
+ //
+ this^.cbs:=global_evf_cbs;
+ if (this^.evtype=2) then
+ begin
+  ps4_sceNpCloseEventFlag(this^.evf);
+ end else
+ if (this^.evtype=1) then
+ begin
+  ps4_sceNpDeleteEventFlag(this^.evf);
+ end;
+end;
+
+//sce::np::EventFlag::~EventFlag(EventFlag *this,SceNpAllocator *allocator)
+procedure ps4__ZN3sce2np9EventFlagD0Ev(this:p_EventFlag;allocator:Pointer);
+begin
+ global_evf_cbs^:=init_evf_cbs;
+ //
+ this^.cbs   :=global_evf_cbs;
+ if (this^.evtype=2) then
+ begin
+  ps4_sceNpCloseEventFlag(this^.evf);
+ end else
+ if (this^.evtype=1) then
+ begin
+  ps4_sceNpDeleteEventFlag(this^.evf);
+ end;
+ Assert(false,' Object::operator.delete');
+ //Object::operator.delete((Object *)this,allocator);
+end;
 
 //sce::np::EventFlag::EventFlag(EventFlag *this)
 procedure ps4__ZN3sce2np9EventFlagC1Ev(this:p_EventFlag);
 begin
+ global_evf_cbs^:=init_evf_cbs;
+ //
  this^.cbs   :=global_evf_cbs;
  this^.evf   :=nil;
  this^.evtype:=0;
@@ -689,6 +755,8 @@ end;
 //sce::np::Mutex::Mutex(Mutex *this)
 procedure ps4__ZN3sce2np5MutexC1Ev(this:p_Mutex);
 begin
+ global_mutex_cbs^:=init_mutex_cbs;
+ //
  this^.cbs  :=global_mutex_cbs;
  this^.mutex:=nil;
  this^.init :=0;
@@ -739,6 +807,8 @@ begin
  lib.set_proc($C15767EFC1CA737D,@ps4_sceNpHeapDestroy);
  //
  lib.set_proc($EA3156A407EA01C7,@ps4_sceNpCreateEventFlag);
+ lib.set_proc($FA79A7F99D27583A,@ps4_sceNpCloseEventFlag);
+ lib.set_proc($B239C87850AE4C3D,@ps4_sceNpDeleteEventFlag);
  //
  lib.set_proc($D2CC8D921240355C,@ps4__ZN3sce2np6ObjectnwEmR14SceNpAllocator);
  //
@@ -748,8 +818,13 @@ begin
  lib.set_proc($3B502F950537DE92,@ps4__ZN3sce2np5MutexC1Ev);
  lib.set_proc($69334E97D101E15E,@ps4__ZN3sce2np5Mutex4InitEPKcj);
  //
- lib.add_data(@global_evf_cbs  ,SizeOf(t_obj_cbs));
- lib.add_data(@global_mutex_cbs,SizeOf(t_obj_cbs));
+ lib.add_data(@global_evf_cbs    ,SizeOf(t_obj_cbs));
+ lib.add_func(@init_evf_cbs.clear,@ps4__ZN3sce2np9EventFlagD2Ev);
+ lib.add_func(@init_evf_cbs.free ,@ps4__ZN3sce2np9EventFlagD0Ev);
+ //
+ lib.add_data(@global_mutex_cbs  ,SizeOf(t_obj_cbs));
+ init_mutex_cbs.clear:=Pointer(1);
+ init_mutex_cbs.free :=Pointer(2);
  //
 
  //import
@@ -758,6 +833,8 @@ begin
  lib:=module.add_lib('libkernel');
 
  lib.set_proc($0691686E8509A195,@ps4_sceKernelCreateEventFlag);
+ lib.set_proc($B3DFD16B1BA4BB34,@ps4_sceKernelCloseEventFlag);
+ lib.set_proc($F26AA5F4E7109DDE,@ps4_sceKernelDeleteEventFlag);
 
  lib.set_proc($98BF0D0C7F3A8902,@ps4_sceKernelMapNamedFlexibleMemory);
 

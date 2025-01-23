@@ -655,7 +655,10 @@ begin
  Result:=Byte(QWORD(addr) shr 4) xor Byte(QWORD(addr) shr 12);
 end;
 
-procedure ExecuteStop; external;
+procedure ExecuteStop; assembler; nostackframe; public;
+asm
+ //Return JIT->HLE
+end;
 
 const
  EXECUTE_MAGIC_ADDR:QWORD=QWORD($FFFFFFFFFCAFEDAD);

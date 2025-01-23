@@ -693,7 +693,7 @@ end;
 
 function TGUEST_STACK.alloca(size:QWORD):Pointer;
 begin
- Result:=p_rsp^+size;
+ Result:=p_rsp^-size;
  p_rsp^:=Result;
 end;
 

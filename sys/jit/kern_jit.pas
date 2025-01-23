@@ -1140,12 +1140,15 @@ begin
      //////////push([r13+Integer(@p_jit_frame(nil)^.tf_rbp),os64]);
 
      //movq  %rsp,%rbp
-     //////////movq(r14,[r13+Integer(@p_jit_frame(nil)^.tf_rsp)]); //<-rsp
+     movq(r14,[r13+Integer(@p_jit_frame(nil)^.tf_rsp)]); //<-rsp
      //////////movq([r13+Integer(@p_jit_frame(nil)^.tf_rbp)],r14); //->rbp
 
      //prolog (debugger)
      push(rbp);
      movq(rbp,rsp);
+
+     leaq(rsp,[rsp-$8]); //shift guard
+
      //alloc host stack
      leaq(rsp,[rsp-$50]);
 
@@ -1252,6 +1255,8 @@ begin
      movq(r14,[r13+Integer(@p_jit_frame(nil)^.tf_rsp)]); //<-rsp
      movq([r13+Integer(@p_jit_frame(nil)^.tf_rbp)],r14); //->rbp
 
+     leaq(r14,[r14-$8]); //shift guard
+
      //alloc guest rsp
      leaq(r14,[r14-$50]);
      movq([r13+Integer(@p_jit_frame(nil)^.tf_rsp)],r14); //rsp
@@ -1281,16 +1286,6 @@ begin
   end;
 
  end;
-end;
-
-procedure ExecuteStop; SysV_ABI_CDecl; assembler; nostackframe; public;
-asm
- //restore rbp,rsp
-
- //load r14,r15,r13
- movq jit_frame.tf_r14(%r13),%r14
- movq jit_frame.tf_r15(%r13),%r15
- movq jit_frame.tf_r13(%r13),%r13
 end;
 
 //rdi -> addr
@@ -1343,7 +1338,14 @@ asm
 
  movq %r15, jit_frame.tf_rsp(%r13) //mov rsp,r15
 
- jmp %r14
+ call %r14
+
+ //restore rbp,rsp
+
+ //load r14,r15,r13
+ movq jit_frame.tf_r14(%r13),%r14
+ movq jit_frame.tf_r15(%r13),%r15
+ movq jit_frame.tf_r13(%r13),%r13
 end;
 
 function is_push_op(Opcode:TOpcode):Boolean; inline;
