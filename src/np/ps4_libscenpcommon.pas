@@ -16,7 +16,7 @@ Const
 type
  pSceNpTitleId=^SceNpTitleId;
  SceNpTitleId=packed record
-  id:array[0..SCE_NP_TITLE_ID_LEN] of Char;
+  id     :array[0..SCE_NP_TITLE_ID_LEN] of Char;
   padding:array[0..2] of Byte;
  end;
 
@@ -33,7 +33,7 @@ const
 type
  pSceNpClientId=^SceNpClientId;
  SceNpClientId=packed record
-  id:array[0..SCE_NP_CLIENT_ID_MAX_LEN] of Char;
+  id     :array[0..SCE_NP_CLIENT_ID_MAX_LEN] of Char;
   padding:array[0..6] of Byte;
  end;
 
@@ -43,7 +43,7 @@ const
 type
  pSceNpClientSecret=^SceNpClientSecret;
  SceNpClientSecret=packed record
-  secret:array[0..SCE_NP_CLIENT_SECRET_MAX_LEN] of Char;
+  secret :array[0..SCE_NP_CLIENT_SECRET_MAX_LEN] of Char;
   padding:array[0..6] of Byte;
  end;
 
@@ -56,7 +56,7 @@ const
 type
  pSceNpAuthorizationCode=^SceNpAuthorizationCode;
  SceNpAuthorizationCode=packed record
-  code:array[0..SCE_NP_AUTHORIZATION_CODE_MAX_LEN] of Char;
+  code   :array[0..SCE_NP_AUTHORIZATION_CODE_MAX_LEN] of Char;
   padding:array[0..6] of Byte;
  end;
 
@@ -66,7 +66,7 @@ const
 type
  pSceNpIdToken=^SceNpIdToken;
  SceNpIdToken=packed record
-  token:array[0..SCE_NP_ID_TOKEN_MAX_LEN] of Char;
+  token  :array[0..SCE_NP_ID_TOKEN_MAX_LEN] of Char;
   padding:array[0..6] of Byte;
  end;
 
@@ -121,7 +121,7 @@ type
 
  pSceNpUnifiedEntitlementLabel=^SceNpUnifiedEntitlementLabel;
  SceNpUnifiedEntitlementLabel=packed record
-  data:array[0..SCE_NP_UNIFIED_ENTITLEMENT_LABEL_SIZE] of Char;
+  data   :array[0..SCE_NP_UNIFIED_ENTITLEMENT_LABEL_SIZE] of Char;
   padding:array[0..2] of Byte;
  end;
 
@@ -135,8 +135,8 @@ type
  pSceNpPeerAddressA=^SceNpPeerAddressA;
  SceNpPeerAddressA=packed record
   accountId:SceNpAccountId;
-  platform:SceNpPlatformType;
-  padding:array[0..3] of Byte;
+  platform :SceNpPlatformType;
+  padding  :array[0..3] of Byte;
  end;
 
 const
@@ -145,7 +145,7 @@ const
 type
  pSceNpLanguageCode=^SceNpLanguageCode;
  SceNpLanguageCode=packed record
-  code:array[0..SCE_NP_LANGUAGE_CODE_MAX_LEN] of AnsiChar;
+  code   :array[0..SCE_NP_LANGUAGE_CODE_MAX_LEN] of AnsiChar;
   padding:array[0..9] of Byte;
  end;
 
@@ -156,8 +156,8 @@ type
  // Np country code (ISO 3166-1 two-letter system)
  pSceNpCountryCode=^SceNpCountryCode;
  SceNpCountryCode=packed record
-  data:array[0..SCE_NP_COUNTRY_CODE_LENGTH-1] of AnsiChar;
-  term:AnsiChar;
+  data   :array[0..SCE_NP_COUNTRY_CODE_LENGTH-1] of AnsiChar;
+  term   :AnsiChar;
   padding:array[0..1] of AnsiChar;
  end;
 
@@ -171,8 +171,8 @@ type
 
  SceNpAgeRestriction=packed record
   countryCode:SceNpCountryCode;
-  age:Shortint;
-  padding:array[0..2] of Byte;
+  age        :Shortint;
+  padding    :array[0..2] of Byte;
  end;
 
 const
@@ -181,11 +181,11 @@ const
 type
  pSceNpContentRestriction=^SceNpContentRestriction;
  SceNpContentRestriction=packed record
-  size:QWORD;
+  size                 :QWORD;
   defaultAgeRestriction:Byte;
-  padding:array[0..2] of Byte;
-  ageRestrictionCount:Integer;
-  ageRestriction:SceNpAgeRestriction;
+  padding              :array[0..2] of Byte;
+  ageRestrictionCount  :Integer;
+  ageRestriction       :SceNpAgeRestriction;
  end;
 
  pSceNpParentalControlInfo=^SceNpParentalControlInfo;
@@ -210,9 +210,9 @@ const
 type
  pSceNpCheckPlusParameter=^SceNpCheckPlusParameter;
  SceNpCheckPlusParameter=packed record
-  size:QWORD;
-  userId:SceUserServiceUserId;
-  padding:array[0..3] of Byte;
+  size    :QWORD;
+  userId  :SceUserServiceUserId;
+  padding :array[0..3] of Byte;
   features:QWORD;
   reserved:array[0..31] of Byte;
  end;
@@ -220,7 +220,7 @@ type
  pSceNpCheckPlusResult=^SceNpCheckPlusResult;
  SceNpCheckPlusResult=packed record
   authorized:Boolean;
-  reserved:array[0..31] of Byte;
+  reserved  :array[0..31] of Byte;
  end;
 
  SceNpPlusEventType=Integer;
@@ -231,9 +231,9 @@ const
 type
  pSceNpNotifyPlusFeatureParameter=^SceNpNotifyPlusFeatureParameter;
  SceNpNotifyPlusFeatureParameter=packed record
-  size:QWORD;
-  userId:SceUserServiceUserId;
-  padding:Integer;
+  size    :QWORD;
+  userId  :SceUserServiceUserId;
+  padding :Integer;
   features:QWORD;
   reserved:array[0..31] of Byte;
  end;
@@ -248,10 +248,10 @@ const
 type
  pSceNpCreateAsyncRequestParameter=^SceNpCreateAsyncRequestParameter;
  SceNpCreateAsyncRequestParameter=packed record
-  size:qword;
+  size           :qword;
   cpuAffinityMask:qword; //SceKernelCpumask
-  threadPriority:Integer;
-  padding:Integer;
+  threadPriority :Integer;
+  padding        :Integer;
  end;
 
 const
@@ -261,15 +261,15 @@ const
 type
  pSceNpSessionId=^SceNpSessionId;
  SceNpSessionId=packed record
-  data:array[0..SCE_NP_SESSION_ID_MAX_SIZE-1] of Char;
-  term:Char;
+  data   :array[0..SCE_NP_SESSION_ID_MAX_SIZE-1] of Char;
+  term   :Char;
   padding:array[0..1] of Char;
  end;
 
  pSceNpInvitationId=^SceNpInvitationId;
  SceNpInvitationId=packed record
-  data:array[0..SCE_NP_INVITATION_ID_MAX_SIZE-1] of Char;
-  term:Char;
+  data   :array[0..SCE_NP_INVITATION_ID_MAX_SIZE-1] of Char;
+  term   :Char;
   padding:array[0..2] of Char;
  end;
 
@@ -471,7 +471,6 @@ var
 
  ps4_scePthreadMutexInit       :function(pMutex:PScePthreadMutex;pAttr:p_pthread_mutex_attr;str:PChar):Integer;
  ps4_scePthreadMutexLock       :function(pMutex:PScePthreadMutex):Integer;
- ps4_scePthreadMutexTimedlock  :function(pMutex:PScePthreadMutex;usec:DWORD):Integer;
  ps4_scePthreadMutexTrylock    :function(pMutex:PScePthreadMutex):Integer;
  ps4_scePthreadMutexUnlock     :function(pMutex:PScePthreadMutex):Integer;
  ps4_scePthreadMutexDestroy    :function(pMutex:PScePthreadMutex):Integer;
@@ -524,7 +523,26 @@ begin
  Result:=ps4_scePthreadMutexDestroy(mutex);
 end;
 
-{
+type
+ pSceLibcMspace=Pointer;
+
+ pSceLibcMallocManagedSize=^SceLibcMallocManagedSize;
+ SceLibcMallocManagedSize=packed record
+  size             :word;  //1
+  version          :word;  //40
+  reserved1        :dword;
+  maxSystemSize    :QWORD;
+  currentSystemSize:QWORD;
+  maxInuseSize     :QWORD;
+  currentInuseSize :QWORD;
+ end;
+
+var
+ ps4_sceLibcMspaceCreate     :function(name:PChar;base:Pointer;capacity:size_t;flag:Integer):pSceLibcMspace;
+ ps4_sceLibcMspaceDestroy    :function(msp:pSceLibcMspace):Integer;
+ ps4_sceLibcMspaceMalloc     :function(msp:pSceLibcMspace;size:size_t):Pointer;
+ ps4_sceLibcMspaceMallocStats:function(msp:pSceLibcMspace;mmsize:pSceLibcMallocManagedSize):Integer;
+
 function ps4_sceNpHeapInit(heap:pSceNpHeap;base:Pointer;capacity:size_t;name:PChar):Integer;
 var
  m:Pointer;
@@ -577,6 +595,7 @@ begin
  end;
 end;
 
+{
 function ps4_sceNpCreateEventFlag(ef:pSceKernelEventFlag;
                                   pName:PChar;
                                   attr:DWORD;
@@ -588,12 +607,14 @@ begin
 end;
 }
 
+function ExecuteGuest_mallocFunc(addr:Pointer;size:size_t;userdata:Pointer):Pointer; external name 'ExecuteGuest';
+
 //void * sce::np::Object::operator_new(size_t size,SceNpAllocator *mem)
 function ps4__ZN3sce2np6ObjectnwEmR14SceNpAllocator(size:size_t;mem:pSceNpAllocator):Pointer;
 var
  npObj:PSceNpObject;
 begin
- npObj:=mem^.mallocFunc(size+$10,mem^.userdata);
+ npObj:=ExecuteGuest_mallocFunc(mem^.mallocFunc,size+$10,mem^.userdata);
  if npObj<>nil then
  begin
   npObj^.mem:=mem;
@@ -626,11 +647,13 @@ begin
  lib.set_proc($869D24560BB9171C,@ps4_sceNpMutexTryLock); // sceNpLwMutexTryLock
  lib.set_proc($E33C5EBE082D62B4,@ps4_sceNpMutexDestroy); // sceNpLwMutexDestroy
  //
- //lib.set_proc($07EC86217D7E0532,@ps4_sceNpHeapInit);
- //lib.set_proc($9305B9A9D75FF8BA,@ps4__sceNpHeapMalloc);
- //lib.set_proc($DA3747A0FA52F96D,@ps4_sceNpHeapGetStat);
- //lib.set_proc($C15767EFC1CA737D,@ps4_sceNpHeapDestroy);
+ lib.set_proc($07EC86217D7E0532,@ps4_sceNpHeapInit);
+ lib.set_proc($9305B9A9D75FF8BA,@ps4__sceNpHeapMalloc);
+ lib.set_proc($DA3747A0FA52F96D,@ps4_sceNpHeapGetStat);
+ lib.set_proc($C15767EFC1CA737D,@ps4_sceNpHeapDestroy);
+ //
  //lib.set_proc($EA3156A407EA01C7,@ps4_sceNpCreateEventFlag);
+ //
  lib.set_proc($D2CC8D921240355C,@ps4__ZN3sce2np6ObjectnwEmR14SceNpAllocator);
 
  //import
@@ -647,9 +670,16 @@ begin
  lib.set_proc($726A3544862F6BDA,@ps4_scePthreadMutexInit);
  lib.set_proc($D8E7F47FEDE68611,@ps4_scePthreadMutexDestroy);
  lib.set_proc($F542B5BCB6507EDE,@ps4_scePthreadMutexLock);
- lib.set_proc($21A7C8D8FC5C3E74,@ps4_scePthreadMutexTimedlock);
  lib.set_proc($B67DD5943D211BAD,@ps4_scePthreadMutexUnlock);
  lib.set_proc($BA9A15AF330715E1,@ps4_scePthreadMutexTrylock);
+
+ module:=Result^.add_mod('libSceLibcInternal',1);
+ lib:=module.add_lib('libSceLibcInternal');
+
+ lib.set_proc($FE19F5B5C547AB94,@ps4_sceLibcMspaceCreate);
+ lib.set_proc($5BA4A25528820ED2,@ps4_sceLibcMspaceDestroy);
+ lib.set_proc($3898E6FD03881E52,@ps4_sceLibcMspaceMalloc);
+ lib.set_proc($99F1DD25322F86EA,@ps4_sceLibcMspaceMallocStats);
 end;
 
 var

@@ -1181,53 +1181,6 @@ begin
  end;
 end;
 
-//rdi -> addr
-//rsi -> rdi
-//rdx -> rsi
-//rcx -> rdx
-//r8  -> rcx
-//r9  -> r8
-
-procedure ExecuteGuest; SysV_ABI_CDecl; assembler; nostackframe; public;
-asm
- //save r13
- movq %r13,%gs:teb.jitcall
-
- //load curkthread,jit_ctx
- movq %gs:teb.thread,%r13
- leaq jit_frame_offset(%r13),%r13
-
- //load r14,r15
- movq %r14,jit_frame.tf_r14(%r13)
- movq %r15,jit_frame.tf_r15(%r13)
-
- //load r13
- movq %gs:teb.jitcall,%r14
- movq %r14,jit_frame.tf_r13(%r13)
-
- //alloc rbp,rsp
-
- //load addr
- movq %rdi,%r14
-
- //move params
- movq %rsi,%rdi
- movq %rdx,%rsi
- movq %rcx,%rdx
- movq %r8 ,%rcx
- movq %r9 ,%r8
-
- //call
- call %r14
-
- //restore rbp,rsp
-
- //load r14,r15,r13
- movq jit_frame.tf_r14(%r13),%r14
- movq jit_frame.tf_r15(%r13),%r15
- movq jit_frame.tf_r13(%r13),%r13
-end;
-
 procedure op_native2jit(var ctx:t_jit_context2;mode:t_convert_mode);
 var
  i:Integer;
@@ -1328,6 +1281,56 @@ begin
   end;
 
  end;
+end;
+
+//rdi -> addr
+//rsi -> rdi
+//rdx -> rsi
+//rcx -> rdx
+//r8  -> rcx
+//r9  -> r8
+
+procedure ExecuteGuest; SysV_ABI_CDecl; assembler; nostackframe; public;
+asm
+ //save r13
+ movq %r13,%gs:teb.jitcall
+
+ //load curkthread,jit_ctx
+ movq %gs:teb.thread               ,%r13 //curkthread
+ leaq kthread.td_frame.tf_r13(%r13),%r13 //jit_frame
+
+ //load r14,r15
+ movq %r14,jit_frame.tf_r14(%r13)
+ movq %r15,jit_frame.tf_r15(%r13)
+
+ //load r13
+ movq %gs:teb.jitcall,%r14
+ movq %r14,jit_frame.tf_r13(%r13)
+
+ //alloc rbp,rsp
+
+ //load addr
+ movq %rdi,%r14
+
+ //move params
+ movq %rsi,%rdi
+ movq %rdx,%rsi
+ movq %rcx,%rdx
+ movq %r8 ,%rcx
+ movq %r9 ,%r8
+
+ //call
+ xorq %r15,%r15
+ call jit_jmp_dispatch //in:r14(addr) r15(plt) out:r14(addr)
+
+ call %r14
+
+ //restore rbp,rsp
+
+ //load r14,r15,r13
+ movq jit_frame.tf_r14(%r13),%r14
+ movq jit_frame.tf_r15(%r13),%r15
+ movq jit_frame.tf_r13(%r13),%r13
 end;
 
 function is_push_op(Opcode:TOpcode):Boolean; inline;
