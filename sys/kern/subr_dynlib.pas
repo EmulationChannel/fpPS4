@@ -19,10 +19,12 @@ type
  TLIBRARY=packed object
   libptr:Pointer; //p_Lib_Entry
   mod_id:Word;
-  function set_symb (nid:QWORD;info:Byte;value:Pointer):Boolean;
-  function set_proc (nid:QWORD;value:Pointer):Boolean;
-  function set_data (nid:QWORD;value:Pointer):Boolean;
+  function set_symb (nid:QWORD;info:Byte;value:Pointer;size:QWORD):Boolean;
+  function set_proc (nid:QWORD;value:Pointer):Boolean;            //publish procedure export:[JIT->HLE] or import:[JIT->value^]
+  function set_data (nid:QWORD;value:Pointer;size:QWORD):Boolean; //publish data      export:[JIT->HLE]
   function set_weak (nid:QWORD;value:Pointer):Boolean;
+  function add_data (value:PPointer;size:QWORD):Boolean;          //alloc local data [guest->value^]
+  function add_func (value:PPointer;code:Pointer):Boolean;        //alloc JIT addr   [guest->value^]
   function get_value(nid:QWORD):Pointer;
  end;
 
@@ -554,7 +556,7 @@ begin
  Result.mod_id:=mod_id;
 end;
 
-function TLIBRARY.set_symb(nid:QWORD;info:Byte;value:Pointer):Boolean;
+function TLIBRARY.set_symb(nid:QWORD;info:Byte;value:Pointer;size:QWORD):Boolean;
 var
  lib_entry:p_Lib_Entry;
  h_entry:p_sym_hash_entry;
@@ -570,6 +572,7 @@ begin
  //
  h_entry^.sym.st_info :=info;
  h_entry^.sym.st_value:=0; //jit build
+ h_entry^.sym.st_size :=size;
  //
  h_entry^.native:=value;
 
@@ -599,17 +602,67 @@ end;
 
 function TLIBRARY.set_proc(nid:QWORD;value:Pointer):Boolean;
 begin
- Result:=set_symb(nid,(STB_GLOBAL shl 4) or STT_FUN,value);
+ Result:=set_symb(nid,(STB_GLOBAL shl 4) or STT_FUN,value,0);
 end;
 
-function TLIBRARY.set_data(nid:QWORD;value:Pointer):Boolean;
+function TLIBRARY.set_data(nid:QWORD;value:Pointer;size:QWORD):Boolean;
 begin
- Result:=set_symb(nid,(STB_GLOBAL shl 4) or STT_OBJECT,value);
+ Result:=set_symb(nid,(STB_GLOBAL shl 4) or STT_OBJECT,value,size);
 end;
 
 function TLIBRARY.set_weak(nid:QWORD;value:Pointer):Boolean;
 begin
- Result:=set_symb(nid,(STB_WEAK shl 4) or STT_FUN,value);
+ Result:=set_symb(nid,(STB_WEAK shl 4) or STT_FUN,value,0);
+end;
+
+function TLIBRARY.add_data(value:PPointer;size:QWORD):Boolean;
+var
+ lib_entry:p_Lib_Entry;
+ h_entry:p_sym_hash_entry;
+ data:PPointer;
+begin
+ lib_entry:=libptr;
+ //
+ h_entry:=AllocMem(SizeOf(t_sym_hash_entry));
+ //
+ h_entry^.nid   :=0;
+ h_entry^.mod_id:=mod_id; //export -> mod_id=0
+ h_entry^.lib_id:=lib_entry^.dval.id;
+ //
+ h_entry^.sym.st_info :=(STB_LOCAL shl 4) or STT_OBJECT;
+ h_entry^.sym.st_value:=0; //preload build
+ h_entry^.sym.st_size :=size;
+ //
+ h_entry^.native:=value;
+
+ TAILQ_INSERT_TAIL(@Lib_Entry^.syms,h_entry,@h_entry^.link);
+ Inc(Lib_Entry^.count);
+ Result:=True;
+end;
+
+function TLIBRARY.add_func(value:PPointer;code:Pointer):Boolean;
+var
+ lib_entry:p_Lib_Entry;
+ h_entry:p_sym_hash_entry;
+ data:PPointer;
+begin
+ lib_entry:=libptr;
+ //
+ h_entry:=AllocMem(SizeOf(t_sym_hash_entry));
+ //
+ h_entry^.nid   :=0;
+ h_entry^.mod_id:=mod_id; //export -> mod_id=0
+ h_entry^.lib_id:=lib_entry^.dval.id;
+ //
+ h_entry^.sym.st_info :=(STB_LOCAL shl 4) or STT_FUN;
+ h_entry^.sym.st_value:=PtrUint(code);
+ h_entry^.sym.st_size :=0;
+ //
+ h_entry^.native:=value;
+
+ TAILQ_INSERT_TAIL(@Lib_Entry^.syms,h_entry,@h_entry^.link);
+ Inc(Lib_Entry^.count);
+ Result:=True;
 end;
 
 function TLIBRARY.get_value(nid:QWORD):Pointer;
@@ -2890,40 +2943,84 @@ end;
 function map_prx_internal(name:pchar;obj:p_lib_info):Integer;
 var
  Lib_Entry:p_Lib_Entry;
- h_entry:p_sym_hash_entry;
+ h_entry  :p_sym_hash_entry;
  hle_import_table:p_hle_import_entry;
  hle_import_base :PPointer;
+ hle_local_data  :Pointer;
  map:vm_map_t;
- vaddr_lo:QWORD;
- vaddr_hi:QWORD;
- data    :Pointer;
+ vaddr_lo    :QWORD;
+ vaddr_hi    :QWORD;
+ data        :Pointer;
  export_count:Integer;
  import_count:Integer;
+ local_size  :QWORD;
+ s           :QWORD;
  i,error:Integer;
 begin
  Result:=0;
 
  export_count:=0;
  import_count:=0;
+ local_size  :=0;
 
  //get sym count
  Lib_Entry:=TAILQ_FIRST(@obj^.lib_table);
  while (Lib_Entry<>nil) do
  begin
-  if (Lib_Entry^.import=0) then //export
+  //
+  h_entry:=TAILQ_FIRST(@Lib_Entry^.syms);
+  while (h_entry<>nil) do
   begin
-   export_count:=export_count+Lib_Entry^.count;
-  end else
-  begin
-   import_count:=import_count+Lib_Entry^.count;
+   //
+   if (ELF64_ST_BIND(h_entry^.sym.st_info)=STB_LOCAL) then
+   begin
+    //local
+    Case ELF64_ST_TYPE(h_entry^.sym.st_info) of
+     STT_NOTYPE,
+     STT_FUN,
+     STT_SCE:
+        begin
+         export_count:=export_count+1;
+        end;
+     STT_OBJECT:
+        begin
+         local_size:=local_size+h_entry^.sym.st_size;
+        end;
+     else;
+    end; //case
+    //local
+   end else
+   if (ELF64_ST_BIND(h_entry^.sym.st_info)=STB_GLOBAL) then
+   begin
+    //global
+    Case ELF64_ST_TYPE(h_entry^.sym.st_info) of
+     STT_NOTYPE,
+     STT_FUN,
+     STT_SCE:
+        begin
+         if (Lib_Entry^.import=0) then //export
+         begin
+          export_count:=export_count+1;
+         end else
+         begin
+          import_count:=import_count+1;
+         end;
+        end;
+     else;
+    end; //case
+    //global
+   end;
+   //
+   h_entry:=TAILQ_NEXT(h_entry,@h_entry^.link)
   end;
+  //
   Lib_Entry:=TAILQ_NEXT(Lib_Entry,@Lib_Entry^.link)
  end;
 
  //jit export space = (export_count*8) + (import_count*2*8)
  obj^.text_size:=AlignUp((export_count*8) + (import_count*2*8),PAGE_SIZE);
- //jit import space = sceModuleParam + import_count*8
- obj^.data_size:=AlignUp(Sizeof(TsceModuleParam)+import_count*8,PAGE_SIZE);
+ //jit import space = sceModuleParam + local_size + import_count*8
+ obj^.data_size:=AlignUp(Sizeof(TsceModuleParam)+local_size+import_count*8,PAGE_SIZE);
  //sum
  obj^.map_size :=obj^.text_size+obj^.data_size;
 
@@ -2966,37 +3063,80 @@ begin
  pSceModuleParam(data)^:=obj^.module_param^;
  obj^.module_param:=data;
 
- hle_import_base:=data+sizeOf(TsceModuleParam); //HLE
+ //per lib global data
+ hle_local_data :=data+sizeOf(TsceModuleParam); //HLE
+
+ //per lib import table
+ hle_import_base:=hle_local_data+local_size; //HLE
 
  obj^.hle_import_count:=import_count;
 
- //alloc hle import table
- if (import_count<>0) then
+ //alloc hle import table / per lib global data
+ if (import_count<>0) or (local_size<>0) then
  begin
-  hle_import_table:=AllocMem(import_count*SizeOf(t_hle_import_entry));
-  obj^.hle_import_table:=hle_import_table;
+
+  if (import_count<>0) then
+  begin
+   hle_import_table:=AllocMem(import_count*SizeOf(t_hle_import_entry));
+   obj^.hle_import_table:=hle_import_table;
+  end;
 
   i:=0;
+  s:=0;
   Lib_Entry:=TAILQ_FIRST(@obj^.lib_table);
   while (Lib_Entry<>nil) do
   begin
-   if (Lib_Entry^.import<>0) then //import
+   //
+   h_entry:=TAILQ_FIRST(@Lib_Entry^.syms);
+   while (h_entry<>nil) do
    begin
-    h_entry:=TAILQ_FIRST(@Lib_Entry^.syms);
-    while (h_entry<>nil) do
+    //
+    if (ELF64_ST_BIND(h_entry^.sym.st_info)=STB_LOCAL) then
     begin
-     hle_import_table[i].h_entry          :=h_entry;
-     hle_import_table[i].jit_guest_addr   :=nil; //jit build
-     hle_import_table[i].jit_host_addr    :=nil; //jit dynamic cache
-     hle_import_table[i].import_place_addr:=@hle_import_base[i];
-     Inc(i);
-     //
-     h_entry:=TAILQ_NEXT(h_entry,@h_entry^.link)
+     //local
+     Case ELF64_ST_TYPE(h_entry^.sym.st_info) of
+      STT_OBJECT:
+         begin
+          PPointer(h_entry^.native)^:=(hle_local_data+s);
+          s:=s+h_entry^.sym.st_size;
+         end;
+      else;
+     end; //case
+     //local
+    end else
+    if (ELF64_ST_BIND(h_entry^.sym.st_info)=STB_GLOBAL) then
+    begin
+     //global
+     Case ELF64_ST_TYPE(h_entry^.sym.st_info) of
+      STT_NOTYPE,
+      STT_FUN,
+      STT_SCE:
+         begin
+          if (Lib_Entry^.import=0) then //export
+          begin
+           //
+          end else
+          begin
+           //
+           hle_import_table[i].h_entry          :=h_entry;
+           hle_import_table[i].jit_guest_addr   :=nil; //jit build
+           hle_import_table[i].jit_host_addr    :=nil; //jit dynamic cache
+           hle_import_table[i].import_place_addr:=@hle_import_base[i];
+           Inc(i);
+           //
+          end;
+         end;
+      else;
+     end; //case
+     //global
     end;
+    //
+    h_entry:=TAILQ_NEXT(h_entry,@h_entry^.link)
    end;
+   //
    Lib_Entry:=TAILQ_NEXT(Lib_Entry,@Lib_Entry^.link)
   end;
- end;
+ end; //(import_count<>0)
 
  //protect text,data
  vm_map_lock(map);
@@ -3118,7 +3258,7 @@ var
 
  Lib_Entry:p_Lib_Entry;
  h_entry:p_sym_hash_entry;
- i,hle_count,ST_TYPE:Integer;
+ i,hle_count:Integer;
 
  hle_import_table:p_hle_import_entry;
 
@@ -3142,17 +3282,35 @@ begin
    h_entry:=TAILQ_FIRST(@Lib_Entry^.syms);
    while (h_entry<>nil) do
    begin
-    ST_TYPE:=ELF64_ST_TYPE(h_entry^.sym.st_info);
 
-    Case ST_TYPE of
-     STT_NOTYPE,
-     STT_FUN,
-     STT_SCE:
-        begin
-         ctx.add_export_point(h_entry^.native,@h_entry^.sym.st_value);
-        end;
-     else;
-    end; //case
+    if (ELF64_ST_BIND(h_entry^.sym.st_info)=STB_LOCAL) then
+    begin
+     //local
+     Case ELF64_ST_TYPE(h_entry^.sym.st_info) of
+      STT_NOTYPE,
+      STT_FUN,
+      STT_SCE:
+         begin
+          ctx.add_export_point(Pointer(h_entry^.sym.st_value),h_entry^.native);
+         end;
+      else;
+     end; //case
+     //local
+    end else
+    if (ELF64_ST_BIND(h_entry^.sym.st_info)=STB_GLOBAL) then
+    begin
+     //global
+     Case ELF64_ST_TYPE(h_entry^.sym.st_info) of
+      STT_NOTYPE,
+      STT_FUN,
+      STT_SCE:
+         begin
+          ctx.add_export_point(h_entry^.native,@h_entry^.sym.st_value);
+         end;
+      else;
+     end; //case
+     //global
+    end;
 
     h_entry:=TAILQ_NEXT(h_entry,@h_entry^.link)
    end;
@@ -3171,17 +3329,16 @@ begin
   begin
    h_entry:=hle_import_table[i].h_entry;
 
-   ST_TYPE:=ELF64_ST_TYPE(h_entry^.sym.st_info);
-
-   Case ST_TYPE of
-    STT_NOTYPE,
-    STT_FUN,
-    STT_SCE:
-       begin
-        ctx.add_import_point(hle_import_table[i].import_place_addr,@hle_import_table[i].jit_guest_addr);
-       end;
-    else;
-   end; //case
+   if (ELF64_ST_BIND(h_entry^.sym.st_info)=STB_GLOBAL) then
+    Case ELF64_ST_TYPE(h_entry^.sym.st_info) of
+     STT_NOTYPE,
+     STT_FUN,
+     STT_SCE:
+        begin
+         ctx.add_import_point(hle_import_table[i].import_place_addr,@hle_import_table[i].jit_guest_addr);
+        end;
+     else;
+    end; //case
 
   end;
  end;
@@ -3196,26 +3353,25 @@ begin
   begin
    h_entry:=hle_import_table[i].h_entry;
 
-   ST_TYPE:=ELF64_ST_TYPE(h_entry^.sym.st_info);
+   if (ELF64_ST_BIND(h_entry^.sym.st_info)=STB_GLOBAL) then
+    Case ELF64_ST_TYPE(h_entry^.sym.st_info) of
+     STT_NOTYPE,
+     STT_FUN,
+     STT_SCE:
+        begin
+         //
+         Assert(hle_import_table[i].jit_guest_addr<>nil,'jit_guest_addr');
 
-   Case ST_TYPE of
-    STT_NOTYPE,
-    STT_FUN,
-    STT_SCE:
-       begin
-        //
-        Assert(hle_import_table[i].jit_guest_addr<>nil,'jit_guest_addr');
-
-        node:=fetch_entry(hle_import_table[i].jit_guest_addr);
-        Assert(node<>nil,'fetch_entry');
-        //
-        hle_import_table[i].jit_host_addr:=node^.dst;
-        //
-        node^.dec_ref('fetch_entry');
-        //
-       end;
-    else;
-   end; //case
+         node:=fetch_entry(hle_import_table[i].jit_guest_addr);
+         Assert(node<>nil,'fetch_entry');
+         //
+         hle_import_table[i].jit_host_addr:=node^.dst;
+         //
+         node^.dec_ref('fetch_entry');
+         //
+        end;
+     else;
+    end; //case
 
   end;
  end;

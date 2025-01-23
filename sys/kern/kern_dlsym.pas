@@ -659,6 +659,7 @@ begin
  str:=obj_get_str(refobj,ref^.st_name);
 
  ST_BIND:=ELF64_ST_BIND(ref^.st_info);
+
  if (ST_BIND=STB_LOCAL) then
  begin
   def   :=ref;

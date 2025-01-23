@@ -655,6 +655,11 @@ begin
  Result:=Byte(QWORD(addr) shr 4) xor Byte(QWORD(addr) shr 12);
 end;
 
+procedure ExecuteStop; external;
+
+const
+ EXECUTE_MAGIC_ADDR:QWORD=QWORD($FFFFFFFFFCAFEDAD);
+
 function jmp_dispatcher(addr:Pointer;plt:p_jit_plt;from:Pointer):Pointer; public;
 label
  _start;
@@ -674,6 +679,10 @@ begin
  begin
   //switch to internal
 
+  if (QWORD(addr)=EXECUTE_MAGIC_ADDR) then
+  begin
+   Exit(@ExecuteStop);
+  end else
   if ((QWORD(addr) and UNRESOLVE_MAGIC_MASK)=UNRESOLVE_MAGIC_ADDR) then
   begin
    if exist_jit_host(from,@td^.td_frame.tf_rip) then

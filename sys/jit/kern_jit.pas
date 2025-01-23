@@ -1283,12 +1283,25 @@ begin
  end;
 end;
 
+procedure ExecuteStop; SysV_ABI_CDecl; assembler; nostackframe; public;
+asm
+ //restore rbp,rsp
+
+ //load r14,r15,r13
+ movq jit_frame.tf_r14(%r13),%r14
+ movq jit_frame.tf_r15(%r13),%r15
+ movq jit_frame.tf_r13(%r13),%r13
+end;
+
 //rdi -> addr
 //rsi -> rdi
 //rdx -> rsi
 //rcx -> rdx
 //r8  -> rcx
 //r9  -> r8
+
+// EXECUTE_MAGIC_ADDR $FFFFFFFFFCAFEDAD
+// $0xFCAFEDAD = -55579219
 
 procedure ExecuteGuest; SysV_ABI_CDecl; assembler; nostackframe; public;
 asm
@@ -1323,14 +1336,14 @@ asm
  xorq %r15,%r15
  call jit_jmp_dispatch //in:r14(addr) r15(plt) out:r14(addr)
 
- call %r14
+ movq jit_frame.tf_rsp(%r13), %r15 //mov r15,rsp
+ leaq -8(%r15), %r15               //lea r15,[r15-8]
 
- //restore rbp,rsp
+ movq $-55579219,(%r15)            //mov [r15],magic (sign extend)
 
- //load r14,r15,r13
- movq jit_frame.tf_r14(%r13),%r14
- movq jit_frame.tf_r15(%r13),%r15
- movq jit_frame.tf_r13(%r13),%r13
+ movq %r15, jit_frame.tf_rsp(%r13) //mov rsp,r15
+
+ jmp %r14
 end;
 
 function is_push_op(Opcode:TOpcode):Boolean; inline;
