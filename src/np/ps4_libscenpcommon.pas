@@ -398,6 +398,13 @@ type
   ptr:Pointer;
  end;
 
+var
+ ps4_sceKernelMapNamedFlexibleMemory:function(
+  virtualAddrDest:PPointer;
+  length:QWORD;
+  prots,flags:Integer;
+  name:PChar):Integer;
+
 function ps4_sceNpAllocateKernelMemoryWithAlignment(
           len:qword;
           name:Pchar;
@@ -419,8 +426,7 @@ begin
  end;
  mem_out^.len:=pad_len+len;
 
- Assert(False);
- //Result:=ps4_sceKernelMapNamedFlexibleMemory(@mem_out^.ptr,mem_out^.len,3,0,name);
+ Result:=ps4_sceKernelMapNamedFlexibleMemory(@mem_out^.ptr,mem_out^.len,3,0,name);
 
  if (ptr_out<>nil) and (Result>-1) then
  begin
@@ -442,8 +448,7 @@ begin
  mem_out^.unknow:=0;
  mem_out^.len:=len;
 
- Assert(False);
- //Result:=ps4_sceKernelMapNamedFlexibleMemory(@mem_out^.ptr,mem_out^.len,3,0,name);
+ Result:=ps4_sceKernelMapNamedFlexibleMemory(@mem_out^.ptr,mem_out^.len,3,0,name);
 
  if (ptr_out<>nil) and (Result>-1) then
  begin
@@ -451,20 +456,52 @@ begin
  end;
 end;
 
-{
+const
+ SCE_PTHREAD_MUTEX_RECURSIVE = 2; // Recursive mutex
+
+type
+ PScePthreadMutex=Pointer;
+ p_pthread_mutex_attr=^pthread_mutex_attr;
+ pthread_mutex_attr=Pointer;
+
+var
+ ps4_scePthreadMutexattrInit   :function(pAttr:p_pthread_mutex_attr):Integer;
+ ps4_scePthreadMutexattrDestroy:function(pAttr:p_pthread_mutex_attr):Integer;
+ ps4_scePthreadMutexattrSettype:function(pAttr:p_pthread_mutex_attr;t:Integer):Integer;
+
+ ps4_scePthreadMutexInit       :function(pMutex:PScePthreadMutex;pAttr:p_pthread_mutex_attr;str:PChar):Integer;
+ ps4_scePthreadMutexLock       :function(pMutex:PScePthreadMutex):Integer;
+ ps4_scePthreadMutexTimedlock  :function(pMutex:PScePthreadMutex;usec:DWORD):Integer;
+ ps4_scePthreadMutexTrylock    :function(pMutex:PScePthreadMutex):Integer;
+ ps4_scePthreadMutexUnlock     :function(pMutex:PScePthreadMutex):Integer;
+ ps4_scePthreadMutexDestroy    :function(pMutex:PScePthreadMutex):Integer;
+
 function ps4_sceNpMutexInit(mutex:PScePthreadMutex;name:PChar;isRecursive:Boolean):Integer;
 var
- attr:pthread_mutex_attr;
+ ga:TGUEST_STACK;
+ attr:p_pthread_mutex_attr;
 begin
- Result:=ps4_scePthreadMutexattrInit(@attr);
- if Result=0 then
+ ga:=prolog;
+
+ attr:=ga.alloca(SizeOf(Pointer));
+ attr^:=nil;
+
+ Result:=ps4_scePthreadMutexattrInit(attr);
+
+ if (Result=0) then
  begin
   if isRecursive then
-   Result:=ps4_scePthreadMutexattrSettype(@attr,SCE_PTHREAD_MUTEX_RECURSIVE);
-  if Result=0 then
-   Result:=ps4_scePthreadMutexInit(mutex,@attr,name);
-  ps4_scePthreadMutexattrDestroy(@attr);
+  begin
+   Result:=ps4_scePthreadMutexattrSettype(attr,SCE_PTHREAD_MUTEX_RECURSIVE);
+  end;
+  if (Result=0) then
+  begin
+   Result:=ps4_scePthreadMutexInit(mutex,attr,name);
+  end;
+  ps4_scePthreadMutexattrDestroy(attr);
  end;
+
+ ga.epilog;
 end;
 
 function ps4_sceNpMutexLock(mutex:PScePthreadMutex):Integer;
@@ -487,6 +524,7 @@ begin
  Result:=ps4_scePthreadMutexDestroy(mutex);
 end;
 
+{
 function ps4_sceNpHeapInit(heap:pSceNpHeap;base:Pointer;capacity:size_t;name:PChar):Integer;
 var
  m:Pointer;
@@ -567,6 +605,7 @@ end;
 function Load_libSceNpCommon(name:pchar):p_lib_info;
 var
  lib:TLIBRARY;
+ module:TMODULE;
 begin
  Result:=obj_new_int('libSceNpCommon');
 
@@ -575,17 +614,17 @@ begin
  lib.set_proc($763F8EE5A0F66B44,@ps4_sceNpCmpOnlineId);
  lib.set_proc($80C958E9E7B0AFF7,@ps4_sceNpAllocateKernelMemoryWithAlignment);
  lib.set_proc($3163CE92ACD8B2CD,@ps4_sceNpAllocateKernelMemoryNoAlignment);
- //lib.set_proc($B84C1A83FD1864F7,@ps4_sceNpMutexInit);
- //lib.set_proc($AFD05EB7EB3A7CA7,@ps4_sceNpMutexLock);
- //lib.set_proc($A19C9BF64B6E0A90,@ps4_sceNpMutexUnlock);
- //lib.set_proc($0EEB259A8A90FA79,@ps4_sceNpMutexTryLock);
- //lib.set_proc($950D7506930CE0B5,@ps4_sceNpMutexDestroy);
+ lib.set_proc($B84C1A83FD1864F7,@ps4_sceNpMutexInit);
+ lib.set_proc($AFD05EB7EB3A7CA7,@ps4_sceNpMutexLock);
+ lib.set_proc($A19C9BF64B6E0A90,@ps4_sceNpMutexUnlock);
+ lib.set_proc($0EEB259A8A90FA79,@ps4_sceNpMutexTryLock);
+ lib.set_proc($950D7506930CE0B5,@ps4_sceNpMutexDestroy);
  // These sceNpLwMutexXxx have the same interface & functionally as sceNpMutexXxx
- //lib.set_proc($D4289723F33210AB,@ps4_sceNpMutexInit);    // sceNpLwMutexInit
- //lib.set_proc($D7C8FEAA4E9D4709,@ps4_sceNpMutexLock);    // sceNpLwMutexLock
- //lib.set_proc($0901B6A32C75FE73,@ps4_sceNpMutexUnlock);  // sceNpLwMutexUnlock
- //lib.set_proc($869D24560BB9171C,@ps4_sceNpMutexTryLock); // sceNpLwMutexTryLock
- //lib.set_proc($E33C5EBE082D62B4,@ps4_sceNpMutexDestroy); // sceNpLwMutexDestroy
+ lib.set_proc($D4289723F33210AB,@ps4_sceNpMutexInit);    // sceNpLwMutexInit
+ lib.set_proc($D7C8FEAA4E9D4709,@ps4_sceNpMutexLock);    // sceNpLwMutexLock
+ lib.set_proc($0901B6A32C75FE73,@ps4_sceNpMutexUnlock);  // sceNpLwMutexUnlock
+ lib.set_proc($869D24560BB9171C,@ps4_sceNpMutexTryLock); // sceNpLwMutexTryLock
+ lib.set_proc($E33C5EBE082D62B4,@ps4_sceNpMutexDestroy); // sceNpLwMutexDestroy
  //
  //lib.set_proc($07EC86217D7E0532,@ps4_sceNpHeapInit);
  //lib.set_proc($9305B9A9D75FF8BA,@ps4__sceNpHeapMalloc);
@@ -593,6 +632,24 @@ begin
  //lib.set_proc($C15767EFC1CA737D,@ps4_sceNpHeapDestroy);
  //lib.set_proc($EA3156A407EA01C7,@ps4_sceNpCreateEventFlag);
  lib.set_proc($D2CC8D921240355C,@ps4__ZN3sce2np6ObjectnwEmR14SceNpAllocator);
+
+ //import
+
+ module:=Result^.add_mod('libkernel',1);
+ lib:=module.add_lib('libkernel');
+
+ lib.set_proc($98BF0D0C7F3A8902,@ps4_sceKernelMapNamedFlexibleMemory);
+
+ lib.set_proc($17C6D41F0006DBCE,@ps4_scePthreadMutexattrInit);
+ lib.set_proc($B2658492D8B2C86D,@ps4_scePthreadMutexattrDestroy);
+ lib.set_proc($88CA7C42913E5CEE,@ps4_scePthreadMutexattrSettype);
+
+ lib.set_proc($726A3544862F6BDA,@ps4_scePthreadMutexInit);
+ lib.set_proc($D8E7F47FEDE68611,@ps4_scePthreadMutexDestroy);
+ lib.set_proc($F542B5BCB6507EDE,@ps4_scePthreadMutexLock);
+ lib.set_proc($21A7C8D8FC5C3E74,@ps4_scePthreadMutexTimedlock);
+ lib.set_proc($B67DD5943D211BAD,@ps4_scePthreadMutexUnlock);
+ lib.set_proc($BA9A15AF330715E1,@ps4_scePthreadMutexTrylock);
 end;
 
 var
