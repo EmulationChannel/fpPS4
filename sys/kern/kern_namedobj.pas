@@ -117,11 +117,12 @@ begin
 
  obj^.desc.free:=@namedobj_free;
  obj^.objt:=Word(objt) or NAMED_OBJT;
- obj^.name:=name;
+ obj^.name:=_name;
  obj^.objp:=objp;
 
  namedobj_add(obj);
 
+ key:=0;
  if not id_name_new(@named_table,obj,@key) then
  begin
   namedobj_free(obj);
@@ -131,6 +132,8 @@ begin
  id_release(obj);
 
  td^.td_retval[0]:=key;
+
+ Writeln('namedobj_create("',_name,'"):',key);
 
  Result:=0;
 end;
