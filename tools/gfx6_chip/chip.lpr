@@ -3,12 +3,34 @@ uses
 
  gset,
  gmap,
- Classes,SysUtils;
+ Classes,
+ SysUtils;
 
 type
  TRawStrCompare=class
   class function c(var a,b:RawByteString):boolean; static;
  end;
+
+ TSeries=object
+  __SI    :Boolean; //Southern Islands  1
+  __SI__CI:Boolean;
+  __SI__VI:Boolean;
+  __VI    :Boolean; //Volcanic Islands  2
+  __CI__VI:Boolean;
+  __CI    :Boolean; //Caribbean Islands 3
+  function  get_prio:Integer;
+  Procedure Apply(var name:RawByteString);
+  function  print_name(const name:RawByteString):RawByteString;
+ end;
+
+ TConstOffset=class
+  Name  :RawByteString;
+  Value :RawByteString;
+  Series:TSeries;
+  function print_name:RawByteString;
+ end;
+
+ TMapConstOffset=specialize TMap<RawByteString,TConstOffset,TRawStrCompare>;
 
  TMapStr=specialize TMap<RawByteString,RawByteString,TRawStrCompare>;
  TSetStr=specialize TSet<RawByteString,TRawStrCompare>;
@@ -124,11 +146,15 @@ begin
  end;
 end;
 
-Procedure CutEnd(var Value:RawByteString;const S:RawByteString);
+function CutEnd(var Value:RawByteString;const S:RawByteString):Boolean;
 begin
  if Copy(Value,Length(Value)-Length(S)+1,Length(S))=S then
  begin
   Delete(Value,Length(Value)-Length(S)+1,Length(S));
+  Result:=True;
+ end else
+ begin
+  Result:=False;
  end;
 end;
 
@@ -151,12 +177,8 @@ begin
 end;
 
 Var
- RMNV_offsets:TMapStr;
- RMVN_offsets:TMapStr;
- RMNV_default:TMapStr;
- RMVN_default:TMapStr;
-
- Excl_default:TSetStr;
+ RMNV_offsets:TMapConstOffset;
+ RMVN_offsets:TMapConstOffset;
 
 const
  MIN_OFFSET=$2000; // $20AD;
@@ -246,17 +268,155 @@ begin
  end;
 end;
 
+function TSeries.get_prio:Integer;
+begin
+ if __SI     then
+ begin
+  Result:=1;
+ end else
+ if __SI__CI then
+ begin
+  Result:=5;
+ end else
+ if __SI__VI then
+ begin
+  Result:=2;
+ end else
+ if __VI     then
+ begin
+  Result:=3;
+ end else
+ if __CI__VI then
+ begin
+  Result:=4;
+ end else
+ if __CI     then
+ begin
+  Result:=-1;
+ end else
+ begin
+  Result:=0;
+ end;
+end;
+
+Procedure TSeries.Apply(var name:RawByteString);
+begin
+ __SI__CI:=CutEnd(Name,'__SI__CI');
+ __SI__VI:=CutEnd(Name,'__SI__VI');
+ __CI__VI:=CutEnd(Name,'__CI__VI');
+ __SI    :=CutEnd(Name,'__SI');
+ __VI    :=CutEnd(Name,'__VI');
+ __CI    :=CutEnd(Name,'__CI');
+end;
+
+function TSeries.print_name(const name:RawByteString):RawByteString;
+begin
+ Result:=Name;
+  if __SI     then Result:=Result+'__SI'    ;
+  if __SI__CI then Result:=Result+'__SI__CI';
+  if __SI__VI then Result:=Result+'__SI__VI';
+  if __VI     then Result:=Result+'__VI'    ;
+  if __CI__VI then Result:=Result+'__CI__VI';
+  if __CI     then Result:=Result+'__CI'    ;
+end;
+
+function NewConstOffset(const Name,Value:RawByteString):TConstOffset;
+begin
+ Result:=TConstOffset.Create;
+ //
+ Result.Name :=Name;
+ Result.Value:=Value;
+ Result.Series.Apply(Result.Name);
+end;
+
+function TConstOffset.print_name:RawByteString;
+begin
+ Result:=Series.print_name(name);
+end;
+
+function NormalizeName(const Name:RawByteString):RawByteString;
+begin
+ Result:=Name;
+ CutEnd(Result,'__SI__CI');
+ CutEnd(Result,'__SI__VI');
+ CutEnd(Result,'__CI__VI');
+ CutEnd(Result,'__SI');
+ CutEnd(Result,'__VI');
+ CutEnd(Result,'__CI');
+end;
+
+function prior_double(const n1:TConstOffset;n2:RawByteString):Byte;
+var
+ tmp:TSeries;
+begin
+ tmp:=Default(TSeries);
+ tmp.Apply(n2);
+
+ if BeginIs(n1.name,'mmDCP0_') then
+ begin
+  Result:=0;
+ end else
+ if BeginIs(n2,'mmDCP0_') then
+ begin
+  Result:=1;
+ end else
+
+ if BeginIs(n1.name,'mmCRTC0_') then
+ begin
+  Result:=0;
+ end else
+ if BeginIs(n2,'mmCRTC0_') then
+ begin
+  Result:=1;
+ end else
+
+ if (n1.name='mmSQ_DS_0') then
+ begin
+  Result:=0;
+ end else
+ if (n2='mmSQ_DS_0') then
+ begin
+  Result:=1;
+ end else
+
+ if BeginIs(n1.name,'mmCP_RB0_') then
+ begin
+  Result:=0;
+ end else
+ if BeginIs(n2,'mmCP_RB0_') then
+ begin
+  Result:=1;
+ end else
+
+ if (n1.Series.get_prio>tmp.get_prio) then
+ begin
+  Result:=0;
+ end else
+ if (n1.Series.get_prio<tmp.get_prio) then
+ begin
+  Result:=1;
+ end else
+ begin
+  Result:=2;
+ end;
+
+end;
+
 Procedure load_offsets(const fname:RawByteString);
+label
+ _new_values,
+ _double;
 var
  L:TStringList;
  i,v:Integer;
  S,Name,Value:RawByteString;
  maxlen:Integer;
- It:TMapStr.TIterator;
+ It:TMapConstOffset.TIterator;
+ ConstOffset:TConstOffset;
  F:THandle;
 begin
- RMNV_offsets:=TMapStr.Create;
- RMVN_offsets:=TMapStr.Create;
+ RMNV_offsets:=TMapConstOffset.Create;
+ RMVN_offsets:=TMapConstOffset.Create;
  maxlen:=0;
  L:=TStringList.Create;
  L.LoadFromFile(fname);
@@ -271,49 +431,12 @@ begin
      begin
       Name:=FetchAny(S,[' ',#9],[]);
 
-      if (not EndIs(Name,'__SI')) and
-         (not EndIs(Name,'__SI__CI')) and
-         (not EndIs(Name,'__CI')) and
-
-         //((not EndIs(Name,'__VI')) or EndIs(Name,'__CI__VI')) and
-
-         (not BeginIs(Name,'mmDBG')) and
-         (not BeginIs(Name,'mmCP_ME_')) and
-         (not BeginIs(Name,'mmCP_RB_')) and
-         (not BeginIs(Name,'mmCP_RING')) and
-         (not BeginIs(Name,'mmSQ_THREAD_TRACE_WORD_')) and
-
-         (
-           BeginIs(Name,'mmCB_') or
-           BeginIs(Name,'mmCOMPUTE_') or
-           BeginIs(Name,'mmCPC_') or
-           BeginIs(Name,'mmCPF_') or
-           BeginIs(Name,'mmCPG_') or
-           BeginIs(Name,'mmCP_') or
-           BeginIs(Name,'mmDB_') or
-           BeginIs(Name,'mmGDS_') or
-           BeginIs(Name,'mmGRBM_') or
-           BeginIs(Name,'mmIA_') or
-           BeginIs(Name,'mmPA_') or
-           BeginIs(Name,'mmSPI_') or
-           BeginIs(Name,'mmSQ_BUF_') or
-           BeginIs(Name,'mmSQ_IMG_') or
-           BeginIs(Name,'mmSQ_THREAD_') or
-           BeginIs(Name,'mmSQ_PERFCOUNTER') or
-           BeginIs(Name,'mmSX_') or
-           BeginIs(Name,'mmTA_') or
-           BeginIs(Name,'mmTCA_') or
-           BeginIs(Name,'mmTCC_') or
-           BeginIs(Name,'mmTCP_') or
-           BeginIs(Name,'mmTD_') or
-           BeginIs(Name,'mmVGT_') or
-           BeginIs(Name,'mmWD_')
-          ) then
+      if (BeginIs(Name,'mm')) then
+      if (not EndIs(Name,'__CI')) then
 
        if (FetchAny(S,[' ',#9],[])='=') then
        begin
-        CutEnd(Name,'__CI__VI');
-        CutEnd(Name,'__VI');
+
         Value:=FetchAny(S,[' ',#9,';'],[]);
         if BeginIs(Value,'0x') then
         begin
@@ -325,24 +448,62 @@ begin
 
         if is_valid_offset(v) then
         begin
-         it:=RMNV_offsets.Find(Name);
+         it:=RMNV_offsets.Find(NormalizeName(Name)); //name->value
          if Assigned(It) then
          begin
-          if (It.Value<>Value) then
-           Writeln('Double:',Name,'=',Value,'<>',It.Value);
+          if (It.Value.Value<>Value) then
+          begin
+           Goto _double;
+          end;
           FreeAndNil(It);
          end else
          begin
-          it:=RMVN_offsets.Find(Value);
+          it:=RMVN_offsets.Find(Value); //value->name
           if Assigned(It) then
           begin
-           if (It.Value<>Name) then
-            Writeln('Double:',Name,'=',Value,'<>',It.Value);
-           FreeAndNil(It);
+           if (It.Value.Name<>Name) then
+           begin
+            _double:
+
+            ConstOffset:=It.Value;
+            FreeAndNil(It);
+
+            case prior_double(ConstOffset,Name) of
+             0:
+               begin
+                Writeln('Double1:',Name,'=',Value,'<>',ConstOffset.print_name);
+                //nothing
+               end;
+             1:
+               begin
+                Writeln('Double2:',Name,'=',Value,'<>',ConstOffset.print_name);
+
+                RMNV_offsets.Delete(ConstOffset.Name);  //name->value
+                RMVN_offsets.Delete(ConstOffset.Value); //value->name
+
+                FreeAndNil(ConstOffset);
+
+                goto _new_values;
+               end;
+             else
+               begin
+                Writeln('Double3:',Name,'=',Value,'<>',ConstOffset.print_name);
+                Writeln('');
+               end;
+            end;
+
+            //Writeln('Double:',Name,'=',Value,'<>',It.Value);
+           end;
+          end else
+          begin
+           _new_values:
+
+            ConstOffset:=NewConstOffset(Name,Value);
+
+            RMNV_offsets.Insert(ConstOffset.Name ,ConstOffset); //name->value
+            RMVN_offsets.Insert(ConstOffset.Value,ConstOffset); //value->name
           end;
-          if Length(Name)>maxlen then maxlen:=Length(Name);
-          RMNV_offsets.Insert(Name,Value);
-          RMVN_offsets.Insert(Value,Name);
+          //
          end;
         end;
 
@@ -362,11 +523,25 @@ begin
     'const'#13#10;
  FileWrite(F,Pchar(S)^,Length(S));
 
+ //calc maxlen
+ maxlen:=0;
  It:=RMVN_offsets.Min;
  if Assigned(It) then
  begin
   repeat
-   S:=' '+It.Value+Space(maxlen-Length(It.Value))+'='+It.Key+';'#13#10;
+   ConstOffset:=It.Value;
+   if Length(ConstOffset.Name)>maxlen then maxlen:=Length(ConstOffset.Name);
+  until not It.Next;
+  FreeAndNil(It);
+ end;
+ //calc maxlen
+
+ It:=RMVN_offsets.Min;
+ if Assigned(It) then
+ begin
+  repeat
+   ConstOffset:=It.Value;
+   S:=' '+ConstOffset.Name+Space(maxlen-Length(ConstOffset.Name))+'='+ConstOffset.Value+';'#13#10;
    FileWrite(F,Pchar(S)^,Length(S));
   until not It.Next;
   FreeAndNil(It);
@@ -383,7 +558,8 @@ begin
  if Assigned(It) then
  begin
   repeat
-   S:='  '+It.Value+Space(maxlen-Length(It.Value))+':Result:='#$27+It.Value+#$27';'#13#10;
+   ConstOffset:=It.Value;
+   S:='  '+ConstOffset.Name+Space(maxlen-Length(ConstOffset.Name))+':Result:='#$27+ConstOffset.Name+#$27';'#13#10;
    FileWrite(F,Pchar(S)^,Length(S));
   until not It.Next;
   FreeAndNil(It);
@@ -404,7 +580,8 @@ end;
 type
  TUnionList=class(TStringList)
   public
-   name:RawByteString;
+   name    :RawByteString;
+   Series  :TSeries;
    bit_size:ptruint;
  end;
  TStructList=TUnionList;
@@ -414,7 +591,31 @@ type
 var
  UnionList:TMapUnionList;
 
+function is_valid_reg_by_offset(const Name:RawByteString):Boolean;
+var
+ It:TMapConstOffset.TIterator;
+ ConstOffset:TConstOffset;
+begin
+ it:=RMNV_offsets.Find('mm'+NormalizeName(Name)); //name->value
+ if Assigned(it) then
+ begin
+  ConstOffset:=it.Value;
+  FreeAndNil(it);
+
+  Result:=(ConstOffset.Series.__SI    =EndIs(Name,'__SI'    )) and
+          (ConstOffset.Series.__SI__CI=EndIs(Name,'__SI__CI')) and
+          (ConstOffset.Series.__VI    =EndIs(Name,'__VI'    )) and
+          (ConstOffset.Series.__CI__VI=EndIs(Name,'__CI__VI')) and
+          (ConstOffset.Series.__CI    =EndIs(Name,'__CI'    ));
+ end else
+ begin
+  Result:=False;
+ end;
+end;
+
 Procedure load_registers(const fname:RawByteString);
+label
+ _new_values;
 var
  L:TStringList;
  maxlen:Integer;
@@ -426,6 +627,7 @@ var
  is_union,is_struct:Boolean;
  reserved:Integer;
  union_field:TUnionList;
+ uprev_field:TUnionList;
  struct_field:TStructList;
 
  name,value:RawByteString;
@@ -444,87 +646,42 @@ begin
      begin
       name:=FetchAny(S,[' ',#9],[]);
 
-      {
-      if (not EndIs(Name,'__SI')) and
-         (not EndIs(Name,'__CI')) and
-         (not EndIs(Name,'__SI__CI')) and
-         (not BeginIs(Name,'mmDBG')) and
-         (
-          BeginIs(Name,'CB') or
-          BeginIs(Name,'DB') or
-          BeginIs(Name,'GB') or
-          BeginIs(Name,'GRBM') or
-          BeginIs(Name,'PA') or
-          BeginIs(Name,'SPI') or
-          BeginIs(Name,'SX') or
-          BeginIs(Name,'SQ') or
-          BeginIs(Name,'TA') or
-          BeginIs(Name,'VGT') or
-          BeginIs(Name,'IA') or
-          BeginIs(Name,'COMPUTE')) then
-      }
-
-      if (not EndIs(Name,'__SI')) and
-         (not EndIs(Name,'__SI__CI')) and
-         (not EndIs(Name,'__CI')) and
-
-         //((not EndIs(Name,'__VI')) or EndIs(Name,'__CI__VI')) and
-
-         (not BeginIs(Name,'DBG')) and
-         (not BeginIs(Name,'CP_ME_')) and
-         (not BeginIs(Name,'CP_RB_')) and
-         (not BeginIs(Name,'CP_RING')) and
-         (not BeginIs(Name,'SQ_THREAD_TRACE_WORD_')) and
-
-         (
-           BeginIs(Name,'CB_') or
-           BeginIs(Name,'COMPUTE_') or
-           BeginIs(Name,'CPC_') or
-           BeginIs(Name,'CPF_') or
-           BeginIs(Name,'CPG_') or
-           BeginIs(Name,'CP_') or
-           BeginIs(Name,'DB_') or
-           BeginIs(Name,'GDS_') or
-           BeginIs(Name,'GRBM_') or
-           BeginIs(Name,'IA_') or
-           BeginIs(Name,'PA_') or
-           BeginIs(Name,'SPI_') or
-           BeginIs(Name,'SQ_BUF_') or
-           BeginIs(Name,'SQ_IMG_') or
-           BeginIs(Name,'SQ_THREAD_') or
-           BeginIs(Name,'SQ_PERFCOUNTER') or
-           BeginIs(Name,'SX_') or
-           BeginIs(Name,'TA_') or
-           BeginIs(Name,'TCA_') or
-           BeginIs(Name,'TCC_') or
-           BeginIs(Name,'TCP_') or
-           BeginIs(Name,'TD_') or
-           BeginIs(Name,'VGT_') or
-           BeginIs(Name,'WD_')
-          ) then
-
+      if (not EndIs(Name,'__CI')) then
       begin
-       CutEnd(Name,'__CI__VI');
-       CutEnd(Name,'__VI');
-       is_union:=True;
+       is_union :=True;
        is_struct:=false;
        reserved:=0;
        union_field:=TUnionList.Create;
        union_field.name:=name;
+       union_field.Series.Apply(union_field.name);
       end;
      end;
    '};':
      if is_union then
      begin
-      is_union:=false;
+      is_union :=false;
       is_struct:=false;
       It:=UnionList.Find(union_field.name);
       If Assigned(It) then
       begin
-       Writeln('Double:',union_field.name);
+       uprev_field:=It.Value;
        FreeAndNil(It);
+
+       Writeln('Double:',union_field.name);
+
+       if (union_field.Series.get_prio>uprev_field.Series.get_prio) then
+       begin
+        UnionList.Delete(uprev_field.name);
+        FreeAndNil(uprev_field);
+        goto _new_values;
+       end else
+       begin
+        FreeAndNil(union_field);
+       end;
+
       end else
       begin
+       _new_values:
        UnionList.Insert(union_field.name,union_field);
       end;
       union_field:=nil;
@@ -541,9 +698,7 @@ begin
      begin
       is_struct:=False;
       Name:=FetchAny(S,[' ',#9,',',';'],[]);
-      CutEnd(Name,'__CI__VI');
-      CutEnd(Name,'__VI');
-      CutEnd(Name,'__SI');
+      Name:=NormalizeName(Name);
       struct_field.name:=Name;
       union_field.AddObject(struct_field.name,struct_field);
 
@@ -570,13 +725,13 @@ begin
       begin
        Writeln('wtf?:',i);
       end;
-      CutEnd(Name,'__CI__VI');
-      CutEnd(Name,'__VI');
-      CutEnd(Name,'__SI');
+      Name:=NormalizeName(Name);
       Case name of
        'INTERFACE',
        'OVERRIDE',
-       'TYPE':name:='_'+name;
+       'TYPE',
+       'UNIT',
+       'END':name:='_'+name;
       end;
       value:=FetchAny(S,[' ',#9,';'],[]);
       struct_field.Add(name+':bit'+value);
@@ -756,9 +911,7 @@ begin
          (not EndIs(Name,'__SI__CI')) then
       if FetchAny(S,[' ',#9],[])='=' then
       begin
-       CutEnd(Name,'__CI__VI');
-       CutEnd(Name,'__VI');
-       CutEnd(Name,'__SI');
+       Name:=NormalizeName(Name);
        value:=FetchAny(S,[' ',#9,','],[]);
        if BeginIs(Value,'0x') then
        begin
@@ -868,7 +1021,7 @@ end;
 
 Procedure load_groups(const fname:RawByteString);
 var
- It:TMapStr.TIterator;
+ ItC:TMapConstOffset.TIterator;
  ItU:TMapUnionList.TIterator;
  S,name,value:RawByteString;
  i,g,v,maxlen_name,maxlen_type,count:Integer;
@@ -879,12 +1032,12 @@ var
 begin
  FillChar(groups,sizeof(groups),0);
 
- It:=RMVN_offsets.Min;
- if Assigned(It) then
+ ItC:=RMVN_offsets.Min;
+ if Assigned(ItC) then
  begin
   repeat
-   name :=It.Value;
-   value:=It.Key;
+   name :=ItC.Value.Name;
+   value:=ItC.Value.Value;
 
    CutBegin(name,'mm');
 
@@ -915,8 +1068,8 @@ begin
     //Writeln('N:',name,' ',value);
    end;
 
-  until not It.Next;
-  FreeAndNil(It);
+  until not ItC.Next;
+  FreeAndNil(ItC);
  end;
 
  //
