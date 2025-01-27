@@ -723,6 +723,21 @@ begin
 
 end;
 
+function _get_bits_str(var qinfo:SceKernelVirtualQueryInfo):RawByteString; inline;
+var
+ _F:array[0..1] of Char='_F';
+ _D:array[0..1] of Char='_D';
+ _S:array[0..1] of Char='_S';
+ _P:array[0..1] of Char='_P';
+ _C:array[0..1] of Char='_C';
+begin
+ Result:=_F[qinfo.bits.isFlexibleMemory]+
+         _D[qinfo.bits.isDirectMemory  ]+
+         _S[qinfo.bits.isStack         ]+
+         _P[qinfo.bits.isPooledMemory  ]+
+         _C[qinfo.bits.isCommitted     ];
+end;
+
 function sys_virtual_query(addr:Pointer;
                            flags:DWORD;  //SCE_KERNEL_VQ_FIND_NEXT
                            info:Pointer; //pSceKernelVirtualQueryInfo
@@ -915,6 +930,7 @@ begin
                    ,#13#10' p__end:',HexStr(qinfo.p__end)
                    ,#13#10' offset:',HexStr(qinfo.offset,16)
                    ,#13#10' protec:',HexStr(qinfo.protection,2)
+                   ,#13#10' flags :',_get_bits_str(qinfo)
                    ,#13#10' mtypes:',qinfo.memoryType
                    ,#13#10' name  :',qinfo.name
                    );
