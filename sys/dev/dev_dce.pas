@@ -111,7 +111,7 @@ begin
    begin
     trigger:=dce_handle.Vblank();
    end;
-   //trigger:=True;
+   trigger:=True;
 
    if trigger then
    begin

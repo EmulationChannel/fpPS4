@@ -86,6 +86,8 @@ type
 
   Fflip_count:array[0..15] of Integer;
 
+  Fsubmit_count:array[0..15] of PRTLEvent;
+
   flip_rate:Integer;
   vblank_count:Integer;
 
@@ -108,6 +110,7 @@ type
   function   UnregisterBuffer         (index:Integer):Integer; override;
   procedure  SubmitNode               (Node:PQNodeSubmit;is_eop:Boolean);
   procedure  ResetBuffer              (bufferIndex:Integer);
+  procedure  HackPreWait              (submit:p_submit_flip);
   function   SubmitFlip               (submit:p_submit_flip):Integer; override;
   function   SubmitFlipEop            (submit:p_submit_flip;submit_id:QWORD):Integer; override;
   function   TriggerFlipEop           (submit_id:QWORD):Integer; override;
@@ -191,6 +194,8 @@ end;
 procedure dce_thread(parameter:pointer); SysV_ABI_CDecl; forward;
 
 function TDisplayHandleSoft.Open():Integer;
+var
+ i:Integer;
 begin
  Result:=inherited;
 
@@ -209,6 +214,12 @@ begin
  FFlipAlloc.Init;
  STAILQ_INIT(@FFlipQueue);
 
+ For i:=0 to High(Fsubmit_count) do
+ begin
+  Fsubmit_count[i]:=RTLEventCreate;
+  RTLEventSetEvent(Fsubmit_count[i]);
+ end;
+
  if (Ftd=nil) then
  begin
   kthread_add(@dce_thread,Self,@Ftd,0,'[dce_soft]');
@@ -216,6 +227,8 @@ begin
 end;
 
 Destructor TDisplayHandleSoft.Destroy;
+var
+ i:Integer;
 begin
  if (Ftd<>nil) then
  begin
@@ -226,6 +239,12 @@ begin
   thread_dec_ref(Ftd);
   Ftd:=nil;
  end;
+
+ For i:=0 to High(Fsubmit_count) do
+ begin
+  RTLEventDestroy(Fsubmit_count[i]);
+ end;
+
  RTLEventDestroy(FHEvent);
  RTLEventDestroy(FVEvent);
  FreeMem(dst_cache);
@@ -314,8 +333,11 @@ begin
  m_bufs[i].right_dmem:=right_dmem;
 
  //
- labels[buf^.index]:=0; //reset
- Fflip_count[buf^.index]:=0; //reset
+ labels       [buf^.index]:=0; //reset
+ Fflip_count  [buf^.index]:=0; //reset
+ //
+ RTLEventSetEvent(Fsubmit_count[buf^.index]);
+
  //
 
  Result:=0;
@@ -964,6 +986,24 @@ begin
 
 end;
 
+{
+This hack explicitly prohibits putting the same buffer in a queue,
+thus preventing the evil behavior of some games that only
+look at the vblank period (or just wait for a timer)
+that will eventually overflow the flip buffer.
+}
+procedure TDisplayHandleSoft.HackPreWait(submit:p_submit_flip);
+begin
+ if (submit^.bufferIndex<>-1) then
+ begin
+  mtx_unlock(dce_mtx^);
+
+  RTLEventWaitFor(Fsubmit_count[submit^.bufferIndex]);
+
+  mtx_lock(dce_mtx^);
+ end;
+end;
+
 function TDisplayHandleSoft.SubmitFlip(submit:p_submit_flip):Integer;
 var
  buf :p_buffer;
@@ -986,6 +1026,8 @@ begin
  end;
 
  Node^.submit:=submit^;
+
+ HackPreWait(submit);
 
  SubmitNode(Node,False);
 
@@ -1023,6 +1065,8 @@ begin
  end;
 
  Node^.submit:=submit^;
+
+ HackPreWait(submit);
 
  Flip^.next_    :=nil;
  Flip^.submit   :=Node;
@@ -1133,6 +1177,11 @@ begin
   if (attr^.init=0) then Exit;
 
   SoftFlip(hWindow,buf,attr,@dst_cache);
+ end;
+
+ if (submit^.bufferIndex<>-1) then
+ begin
+  RTLEventSetEvent(Fsubmit_count[submit^.bufferIndex]);
  end;
 
  mtx_lock(dce_mtx^);
