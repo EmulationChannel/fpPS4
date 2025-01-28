@@ -47,6 +47,7 @@ uses
  time,
  md_time,
  kern_thr,
+ sched_ule,
  pm4defs,
  pm4_stream;
 
@@ -2953,6 +2954,8 @@ var
  ctx:t_me_render_context;
  imdone_count:QWORD;
 begin
+ sched_prio(curkthread,64);
+
  ctx:=Default(t_me_render_context);
  ctx.Init;
  ctx.me:=me;

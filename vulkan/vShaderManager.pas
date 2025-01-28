@@ -594,6 +594,10 @@ begin
   DumpSpv(FStage,M,FHash_spv);
   //
 
+  str:=' ('+HexStr(t.key.FHash,16)+') '+GetDumpSpvName(FStage,FHash_spv);
+
+  Writeln('Compile:',str);
+
   pUserData:=GPU_REGS.get_user_data(FStage);
 
   FShader:=t.AddShader(FDescSetId,M,pUserData);
