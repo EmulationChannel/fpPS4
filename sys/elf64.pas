@@ -609,9 +609,9 @@ type
   Size:QWORD;
   sceKernelExtendedPageTable   :PQWORD; //in bytes (virtual), MAX 64GB
   sceKernelFlexibleMemorySize  :PQWORD; //in bytes, MAX 448MB
-  sceKernelExtendedMemory1     :PByte ; //bool
+  sceKernelExtendedMemory1     :PByte ; //bool (SCE_KERNEL_EXTENDED_DMEM_NEO_256)
   sceKernelExtendedGpuPageTable:PQWORD; //in bytes (virtual), MAX 64GB
-  sceKernelExtendedMemory2     :PByte ; //bool
+  sceKernelExtendedMemory2     :PByte ; //bool (SCE_KERNEL_EXTENDED_DMEM_BASE_128)
   sceKernelExtendedCpuPageTable:PQWORD; //in bytes (virtual), MAX 64GB
  end;
 

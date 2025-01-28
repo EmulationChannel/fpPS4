@@ -399,6 +399,11 @@ begin
  end;
 end;
 
+function VMFS_ALIGNED_SPACE(x:QWORD):QWORD; inline; // find a range with fixed alignment
+begin
+ Result:=x shl 8;
+end;
+
 function vm_mmap2(map        :vm_map_t;
                   addr       :p_vm_offset_t;
                   size       :vm_size_t;
@@ -531,37 +536,46 @@ begin
   docow:=docow or (flags and MAP_NO_COALESCE);
  end;
 
- if ((flags and MAP_STACK)<>0) then
+ rv:=KERN_PROTECTION_FAILURE;
+
+ if ((maxprot and prot)=prot) or
+    ((addr^ shr 34) < 63) or
+    ((addr^ + size) < QWORD($fc00000001)) then
  begin
-  rv:=vm_map_stack(map, addr^, size,
+
+  if ((flags and MAP_STACK)<>0) then
+  begin
+   rv:=vm_map_stack(map, addr^, size,
+                    prot, maxprot,
+                    docow or MAP_STACK_GROWS_DOWN,
+                    anon);
+  end else
+  if (fitit) then
+  begin
+   if ((flags and MAP_ALIGNMENT_MASK)=MAP_ALIGNED_SUPER) then
+   begin
+    findspace:=VMFS_SUPER_SPACE;
+   end else
+   if ((flags and MAP_ALIGNMENT_MASK)<>0) then
+   begin
+    findspace:=VMFS_ALIGNED_SPACE(flags shr MAP_ALIGNMENT_SHIFT);
+   end else
+   begin
+    findspace:=VMFS_OPTIMAL_SPACE;
+   end;
+   rv:=vm_map_find(map, obj, foff, addr, size, findspace,
                    prot, maxprot,
-                   docow or MAP_STACK_GROWS_DOWN,
+                   docow,
                    anon);
- end else
- if (fitit) then
- begin
-  if ((flags and MAP_ALIGNMENT_MASK)=MAP_ALIGNED_SUPER) then
-  begin
-   findspace:=VMFS_SUPER_SPACE;
-  end else
-  if ((flags and MAP_ALIGNMENT_MASK)<>0) then
-  begin
-   findspace:=VMFS_ALIGNED_SPACE(flags shr MAP_ALIGNMENT_SHIFT);
   end else
   begin
-   findspace:=VMFS_OPTIMAL_SPACE;
+   rv:=vm_map_fixed(map, obj, foff, addr^, size,
+        prot, maxprot,
+        docow,
+        ord((flags and MAP_NO_OVERWRITE)=0),
+        anon);
   end;
-  rv:=vm_map_find(map, obj, foff, addr, size, findspace,
-                  prot, maxprot,
-                  docow,
-                  anon);
- end else
- begin
-  rv:=vm_map_fixed(map, obj, foff, addr^, size,
-       prot, maxprot,
-       docow,
-       ord((flags and MAP_NO_OVERWRITE)=0),
-       anon);
+
  end;
 
  if (rv=KERN_SUCCESS) then

@@ -169,8 +169,6 @@ const
  VM_FAULT_READ_AHEAD_INIT=15;
  VM_FAULT_READ_AHEAD_MAX = 7;
 
-function  VMFS_ALIGNED_SPACE(x:QWORD):QWORD; inline; // find a range with fixed alignment
-
 function  vm_map_entry_behavior(entry:vm_map_entry_t):Integer;
 function  vm_map_max(map:vm_map_t):vm_offset_t;
 function  vm_map_min(map:vm_map_t):vm_offset_t;
@@ -311,11 +309,6 @@ var
 function OFF_TO_IDX(x:QWORD):DWORD; inline;
 begin
  Result:=QWORD(x) shr PAGE_SHIFT;
-end;
-
-function VMFS_ALIGNED_SPACE(x:QWORD):QWORD; inline; // find a range with fixed alignment
-begin
- Result:=x shl 8;
 end;
 
 function vm_map_entry_behavior(entry:vm_map_entry_t):Integer; inline;
