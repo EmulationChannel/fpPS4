@@ -66,14 +66,17 @@ const
 
 var
  FMEM_LIMIT    :QWORD=0;
- DMEM_LIMIT    :QWORD=$180000000;
+ DMEM_LIMIT    :QWORD=$180000000; // 6144MB
  game_fmem_size:QWORD=bigapp_size;
  ExtendedSize  :QWORD=0;
 
- BigAppMemory  :QWORD=$170000000; //148000000,170000000,124000000
+ //148000000 5248MB
+ //170000000 5888MB
+ //124000000 4672MB
+ BigAppMemory  :QWORD=$170000000; // dmem_size + game_fmem_size
 
- g_self_loading:Integer=0;
- ext_game_fmem :Integer=0; //Enabling extended fmem size +256MB
+ g_self_loading :Integer=0;
+ g_ext_game_fmem:Integer=0; //Enabling extended fmem size +256MB
  IGNORE_EXTENDED_DMEM_BASE:Integer=0;
 
 const
@@ -240,14 +243,14 @@ procedure init_bigapp_limits;
 var
  dmem_size  :QWORD;
  limit_value:QWORD;
- m_256:QWORD;
+ m_256      :QWORD;
 begin
  if (p_neomode<>0) then
  begin
-  BigAppMemory:=$170000000;
+  BigAppMemory:=$170000000; //5888MB
  end else
  begin
-  BigAppMemory:=$148000000;
+  BigAppMemory:=$148000000; //5248MB
  end;
 
  dmem_size:=BigAppMemory - game_fmem_size;
@@ -256,7 +259,7 @@ begin
 
  //TODO: realloc dmem (DMEM_LIMIT->dmem_size)
 
- m_256:=QWORD(ext_game_fmem<>0) * $10000000;
+ m_256:=QWORD(g_ext_game_fmem<>0) * $10000000;
 
  limit_value:=dmem_size;
  if (FMEM_LIMIT <= dmem_size) then
@@ -268,7 +271,7 @@ begin
 
  vm_set_budget_limit(PTYPE_BIG_APP,field_dmem_alloc,limit_value);
  vm_set_budget_limit(PTYPE_BIG_APP,field_mlock     ,(game_fmem_size + m_256) - FMEM_BASE);
- vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,m_256 + game_fmem_size);
+ vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,(game_fmem_size + m_256));
 end;
 
 procedure set_bigapp_cred_limits;
@@ -296,7 +299,7 @@ begin
 
  end;
 
- m_256:=QWORD(ext_game_fmem<>0) * $10000000;
+ m_256:=QWORD(g_ext_game_fmem<>0) * $10000000;
 
  limit_value:=size;
  if (DMEM_LIMIT < size) then
@@ -308,7 +311,7 @@ begin
 
  vm_set_budget_limit(PTYPE_BIG_APP,field_dmem_alloc,limit_value);
  vm_set_budget_limit(PTYPE_BIG_APP,field_mlock     ,(game_fmem_size + m_256) - FMEM_BASE);
- vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,m_256 + game_fmem_size);
+ vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,(game_fmem_size + m_256));
 end;
 
 procedure set_bigapp_limits(size,is_2MB_align:QWORD);
@@ -321,6 +324,8 @@ begin
 
   if (size < game_fmem_size) then
   begin
+   //expand
+
    //TODO: realloc fmem (game_fmem_size->size) (switch_from_fmem)
 
    limit_value   :=BigAppMemory - size;
@@ -331,6 +336,8 @@ begin
    DMEM_LIMIT    :=limit_value;
   end else
   begin
+   //shrink
+
    if (is_2MB_align<>0) and
       ((game_fmem_size and $1fffff)<>0) then
    begin
@@ -348,7 +355,7 @@ begin
    DMEM_LIMIT    :=limit_value;
   end;
 
-  m_256:=QWORD(ext_game_fmem<>0) * $10000000;
+  m_256:=QWORD(g_ext_game_fmem<>0) * $10000000;
 
   limit_value:=FMEM_LIMIT;
   if (DMEM_LIMIT < FMEM_LIMIT) then
@@ -358,7 +365,7 @@ begin
 
   vm_set_budget_limit(PTYPE_BIG_APP,field_dmem_alloc,limit_value);
   vm_set_budget_limit(PTYPE_BIG_APP,field_mlock     ,(game_fmem_size + m_256) - FMEM_BASE);
-  vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,m_256 + game_fmem_size);
+  vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,(game_fmem_size + m_256));
  end;
 end;
 
@@ -392,7 +399,7 @@ var
 begin
  Result:=expand_and_reserve_game_fmem(size);
 
- m_256:=QWORD(ext_game_fmem<>0) * $10000000;
+ m_256:=QWORD(g_ext_game_fmem<>0) * $10000000;
 
  limit_value:=FMEM_LIMIT;
  if (DMEM_LIMIT < FMEM_LIMIT) then
@@ -402,7 +409,7 @@ begin
 
  vm_set_budget_limit(PTYPE_BIG_APP,field_dmem_alloc,limit_value);
  vm_set_budget_limit(PTYPE_BIG_APP,field_mlock     ,(game_fmem_size + m_256) - FMEM_BASE);
- vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,m_256 + game_fmem_size);
+ vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,(game_fmem_size + m_256));
 
  if (vm_budget_reserve(PTYPE_BIG_APP,field_mlock,size)<>0) then
  begin
@@ -462,8 +469,8 @@ var
  mem_param:TSceKernelMemParam;
  mem_param_size:QWORD;
 
- size :QWORD;
- m_256:QWORD;
+ size     :QWORD;
+ m_256    :QWORD;
  FMEM_SIZE:QWORD;
  dmem_size:QWORD;
 
@@ -542,7 +549,7 @@ begin
    end;
   end;
 
-  m_256:=QWORD(ext_game_fmem<>0) * $10000000;
+  m_256:=QWORD(g_ext_game_fmem<>0) * $10000000;
 
   //SCE_KERNEL_EXTENDED_DMEM_NEO_256
   if (p_neomode<>0) and //only neomode
@@ -566,7 +573,7 @@ begin
 
    vm_set_budget_limit(PTYPE_BIG_APP,field_dmem_alloc,size);
    vm_set_budget_limit(PTYPE_BIG_APP,field_mlock     ,(game_fmem_size + m_256) - FMEM_BASE);
-   vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,m_256 + game_fmem_size);
+   vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,(game_fmem_size + m_256));
   end;
 
   ExtendedMemory2:=true;
@@ -615,7 +622,7 @@ begin
 
     vm_set_budget_limit(PTYPE_BIG_APP,field_dmem_alloc,size);
     vm_set_budget_limit(PTYPE_BIG_APP,field_mlock     ,(game_fmem_size + m_256) - FMEM_BASE);
-    vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,m_256 + game_fmem_size);
+    vm_set_budget_limit(PTYPE_BIG_APP,field_malloc    ,(game_fmem_size + m_256));
    end;
 
   end;
@@ -894,17 +901,17 @@ begin
   as___end_mini_app_mount:; //nothing
   as__enable_ext_game_fmem:
    begin
-    if (ext_game_fmem<>0) then
+    if (g_ext_game_fmem<>0) then
     begin
      Writeln(stderr,'ext_game_fmem is already enabled');
-     Assert(false,'ext_game_fmem is already enabled');
+     Assert (false ,'ext_game_fmem is already enabled');
     end;
 
-    ext_game_fmem:=1;
+    g_ext_game_fmem:=1;
    end;
   as_disable_ext_game_fmem:
    begin
-    ext_game_fmem:=0;
+    g_ext_game_fmem:=0;
    end;
   else;
  end;
