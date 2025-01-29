@@ -3452,24 +3452,61 @@ begin
  pick(ctx,nil);
 end;
 
+function find_by_ext(const path:RawByteString):RawByteString;
+var
+ tmp:RawByteString;
+begin
+ Result:='';
+ tmp:=path;
+
+ if rtld_file_exists(pchar(tmp)) then
+ begin
+  Exit(tmp);
+ end;
+
+ tmp:=ChangeFileExt(tmp,'.sprx');
+ if rtld_file_exists(pchar(tmp)) then
+ begin
+  Exit(tmp);
+ end;
+
+ tmp:=ChangeFileExt(tmp,'.prx');
+ if rtld_file_exists(pchar(tmp)) then
+ begin
+  Exit(tmp);
+ end;
+
+end;
+
+function inc_unix_sep(const name:RawByteString):RawByteString; inline;
+begin
+ if (name[1]='/') then
+ begin
+  Result:=name;
+ end else
+ begin
+  Result:='/'+name;
+ end;
+end;
+
 function preload_prx_modules(path:pchar;flags:DWORD;var err:Integer):p_lib_info;
 label
  _do_load,
  _do_pick;
 var
  obj:p_lib_info;
- pbase:pchar;
+ basename:pchar;
  fname:RawByteString;
 begin
  Result:=nil;
  err:=0;
 
- pbase:=dynlib_basename(path);
+ basename:=dynlib_basename(path);
 
  obj:=TAILQ_FIRST(@dynlibs_info.obj_list);
  while (obj<>nil) do
  begin
-  if object_match_name(obj,pbase) then
+  if object_match_name(obj,basename) then
   begin
    Exit(obj);
   end;
@@ -3477,64 +3514,88 @@ begin
  end;
 
  //try internal preload
- fname:=pbase;
- fname:=ChangeFileExt(fname,'.prx');
+ fname:=ChangeFileExt(basename,'.prx');
 
  Result:=preload_prx_internal(pchar(fname),path,IF_PRELOAD);
  if (Result<>nil) then goto _do_pick;
 
  //try original
- fname:=path;
 
- if rtld_file_exists(pchar(fname)) then goto _do_load;
-
- fname:=ChangeFileExt(fname,'.sprx');
- if rtld_file_exists(pchar(fname)) then goto _do_load;
-
- fname:=ChangeFileExt(fname,'.prx');
- if rtld_file_exists(pchar(fname)) then goto _do_load;
-
- ///
-
- //try /system/*
- fname:=pbase;
-
- if (fname[1]<>'/') then
+ if (path[0]='/') then
  begin
-  fname:='/'+fname;
- end;
- fname:='/'+p_proc.p_randomized_path+fname;
+  //path is absolute or system relative?
 
- if rtld_file_exists(pchar(fname)) then goto _do_load;
+  //try /system/common/lib/*
+  fname:=find_by_ext('/'+p_proc.p_randomized_path+'/common/lib'+inc_unix_sep(path));
+  if (fname<>'') then goto _do_load;
 
- fname:=ChangeFileExt(fname,'.sprx');
- if rtld_file_exists(pchar(fname)) then goto _do_load;
+  //try /system/priv/lib/*
+  fname:=find_by_ext('/'+p_proc.p_randomized_path+'/priv/lib'+inc_unix_sep(path));
+  if (fname<>'') then goto _do_load;
 
- fname:=ChangeFileExt(fname,'.prx');
- if rtld_file_exists(pchar(fname)) then goto _do_load;
+  //try /system/*
+  fname:=find_by_ext('/'+p_proc.p_randomized_path+inc_unix_sep(path));
+  if (fname<>'') then goto _do_load;
 
- //
-
- //try /system/common/lib/*
- fname:=pbase;
-
- if (fname[1]<>'/') then
+  //try path
+  fname:=find_by_ext(path);
+  if (fname<>'') then goto _do_load;
+ end else
  begin
-  fname:='/'+fname;
+  //path is relative?
+
+  if (p_proc.p_sdk_version > $3ffffff) then
+  begin
+   if (Pos('web_core.elf',p_proc.p_prog_name)<>0) then
+   begin
+    //web_core only
+    fname:=ChangeFileExt(basename,'');
+    case fname of
+     'libScePigletv2VSH':;
+     'libSceSysCore':;
+     'libSceVideoCoreServerInterface':;
+     else
+      begin
+       err:=ENOENT;
+       Exit(nil);
+      end;
+    end;
+   end else
+   begin
+    err:=ENOENT;
+    Exit(nil);
+   end;
+  end;
+
+  if (Pos('/',path)=0) then //path is full relative?
+  begin
+
+   //try /libprogram.lib_dirname/*  (/app0/*)
+   fname:=find_by_ext(dynlibs_info.libprogram^.lib_dirname+inc_unix_sep(basename));
+   if (fname<>'') then goto _do_load;
+
+   if ((flags and $40)<>0) then //priv libs?
+   begin
+    //try /system/priv/lib/*
+    fname:=find_by_ext('/'+p_proc.p_randomized_path+'/priv/lib'+inc_unix_sep(basename));
+    if (fname<>'') then goto _do_load;
+
+    //try /system/common/lib/*
+    fname:=find_by_ext('/'+p_proc.p_randomized_path+'/common/lib'+inc_unix_sep(basename));
+    if (fname<>'') then goto _do_load;
+   end;
+
+  end else
+  begin
+   //try path
+   fname:=find_by_ext(path);
+   if (fname<>'') then goto _do_load;
+  end;
+
  end;
- fname:='/'+p_proc.p_randomized_path+'/common/lib'+fname;
-
- if rtld_file_exists(pchar(fname)) then goto _do_load;
-
- fname:=ChangeFileExt(fname,'.sprx');
- if rtld_file_exists(pchar(fname)) then goto _do_load;
-
- fname:=ChangeFileExt(fname,'.prx');
- if rtld_file_exists(pchar(fname)) then goto _do_load;
 
  //try internal postload
- fname:=pbase;
- fname:=ChangeFileExt(fname,'.prx');
+ fname:=ChangeFileExt(basename,'.prx');
 
  Result:=preload_prx_internal(pchar(fname),path,IF_POSTLOAD);
  if (Result<>nil) then goto _do_pick;

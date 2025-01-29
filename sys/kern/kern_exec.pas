@@ -1145,7 +1145,7 @@ begin
 
  pick_obj(dynlibs_info.libprogram);
 
- str:='libkernel.sprx';
+ str:='/libkernel.sprx';
  obj:=preload_prx_modules(pchar(str),flags,err);
 
  dynlibs_info.libkernel:=obj;
@@ -1155,7 +1155,7 @@ begin
   Writeln(StdErr,'preload_prx_modules:',str,' not loaded');
  end;
 
- str:='libSceLibcInternal.sprx';
+ str:='/libSceLibcInternal.sprx';
  obj:=preload_prx_modules(pchar(str),flags,err);
 
  if (obj=nil) then

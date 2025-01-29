@@ -219,7 +219,7 @@ begin
  Result:=copyinstr(moduleFileName,@fname,sizeof(fname),@len);
  if (Result<>0) then Exit;
 
- Writeln('sys_dynlib_load_prx:',fname);
+ Writeln('sys_dynlib_load_prx("',fname,'",0x',HexStr(flags,6),')');
 
  dynlibs_lock;
 
