@@ -1617,9 +1617,6 @@ begin
  lock_start:=ctx.text_start;
  lock___end:=ctx.text___end;
 
- //prevent deadlock
- vm_map_lock(map);
-
  lock:=pmap_wlock(map^.pmap,lock_start,lock___end);
 
   if (preload<>nil) then
@@ -1672,9 +1669,6 @@ begin
  _exit:
 
  pmap_unlock(map^.pmap,lock);
-
- //prevent deadlock
- vm_map_unlock(map);
 end;
 
 procedure op_debug_info_addr(var ctx:t_jit_context2;addr:Pointer);

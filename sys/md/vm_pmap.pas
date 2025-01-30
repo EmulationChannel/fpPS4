@@ -12,6 +12,7 @@ uses
  sys_vm_object,
  vnode,
  vuio,
+ kern_thr,
  kern_mtx,
  kern_rangelock,
  md_map,
@@ -44,8 +45,9 @@ procedure iov_uplift(iov:p_iovec);
 type
  p_pmap=^t_pmap;
  t_pmap=packed object
-  rmlock:rangelock;
-  rm_mtx:mtx;
+  vm_map:Pointer;
+  //rmlock:rangelock;
+  //rm_mtx:mtx;
   nt_map:t_vm_nt_map;
   tr_map:t_vm_track_map;
  end;
@@ -68,7 +70,7 @@ function  dev_mem_alloc(pages:Integer):Pointer;
 
 function  pmap_reserve:t_pmap_reserve_result;
 
-procedure pmap_pinit(pmap:p_pmap);
+procedure pmap_pinit(pmap:p_pmap;vm_map:Pointer);
 
 procedure pmap_align_superpage(obj   :vm_object_t;
                                offset:vm_ooffset_t;
@@ -350,7 +352,7 @@ begin
  end;
 end;
 
-procedure pmap_pinit(pmap:p_pmap);
+procedure pmap_pinit(pmap:p_pmap;vm_map:Pointer);
 var
  i,r:Integer;
  m:t_pmap_reserve_result;
@@ -377,8 +379,10 @@ begin
   end;
  end;
 
- rangelock_init(@pmap^.rmlock);
- mtx_init(pmap^.rm_mtx,'pmap');
+ //rangelock_init(@pmap^.rmlock);
+ //mtx_init(pmap^.rm_mtx,'pmap');
+
+ pmap^.vm_map:=vm_map;
 
  vm_nt_map_init(@pmap^.nt_map,VM_MINUSER_ADDRESS,VM_MAXUSER_ADDRESS);
 
@@ -656,29 +660,32 @@ begin
  end;
 end;
 
+function  vm_map_lock_range  (map:Pointer;start,__end:off_t;mode:Integer):Pointer; external;
+procedure vm_map_unlock_range(map:Pointer;cookie:Pointer); external;
+
 function pmap_wlock(pmap :pmap_t;
                     start:vm_offset_t;
-                    __end:vm_offset_t):Pointer;
+                    __end:vm_offset_t):Pointer; inline;
 begin
  //Writeln('pmap_wlock:',HexStr(start,10),'..',HexStr(__end,10));
 
- Result:=rangelock_wlock(@pmap^.rmlock,start,__end,@pmap^.rm_mtx);
+ Result:=vm_map_lock_range(pmap^.vm_map,start,__end,RL_LOCK_WRITE);
 end;
 
 function pmap_rlock(pmap :pmap_t;
                     start:vm_offset_t;
-                    __end:vm_offset_t):Pointer;
+                    __end:vm_offset_t):Pointer; inline;
 begin
  //Writeln('pmap_rlock:',HexStr(start,10),'..',HexStr(__end,10));
 
- Result:=rangelock_rlock(@pmap^.rmlock,start,__end,@pmap^.rm_mtx);
+ Result:=vm_map_lock_range(pmap^.vm_map,start,__end,RL_LOCK_READ);
 end;
 
-procedure pmap_unlock(pmap:pmap_t;cookie:Pointer);
+procedure pmap_unlock(pmap:pmap_t;cookie:Pointer); inline;
 begin
  //Writeln('pmap_unlock:',HexStr(p_rl_q_entry(cookie)^.rl_q_start,10),'..',HexStr(p_rl_q_entry(cookie)^.rl_q_end,10));
 
- rangelock_unlock(@pmap^.rmlock,cookie,@pmap^.rm_mtx);
+ vm_map_unlock_range(pmap^.vm_map,cookie);
 end;
 
 procedure pmap_copy(src_obj :p_vm_nt_file_obj;
@@ -1130,6 +1137,8 @@ procedure pmap_prot_track(pmap :pmap_t;
                           start:vm_offset_t;
                           __end:vm_offset_t;
                           prot :Byte); public;
+var
+ lock:Pointer;
 begin
  //exit;
 
@@ -1141,7 +1150,7 @@ begin
  start:=start              and (not PMAPP_MASK);
  __end:=(__end+PMAPP_MASK) and (not PMAPP_MASK);
 
- //Don't do range lock here!
+ lock:=pmap_wlock(pmap,start,__end);
 
  ppmap_track(start,__end,prot);
 
@@ -1149,6 +1158,8 @@ begin
                     start,
                     __end,
                     prot);
+
+ pmap_unlock(pmap,lock);
 end;
 
 procedure pmap_prot_restore(pmap :pmap_t;

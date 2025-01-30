@@ -13,6 +13,7 @@ uses
  sys_vm_object,
  vm_object,
  kern_mtx,
+ kern_rangelock,
  kern_thr,
  sys_resource,
  kern_resource,
@@ -54,7 +55,8 @@ type
  vm_map_t=^_vm_map;
  _vm_map=object
   header   :vm_map_entry;   // List of entries
-  lock     :mtx;            // Lock for map data
+  vmlock   :rangelock;
+  vm_mtx   :mtx;            // Lock for map data
   size     :vm_size_t;      // virtual size
   nentries :Integer;        // Number of entries
   timestamp:DWORD;          // Version number
@@ -270,9 +272,12 @@ function  vm_map_stack(map      :vm_map_t;
 function  vm_map_growstack(map:vm_map_t;addr:vm_offset_t):Integer;
 function  vmspace_exec(minuser,maxuser:vm_offset_t):Integer;
 
-procedure vm_map_lock(map:vm_map_t;tm:Boolean=True);
+procedure vm_map_lock   (map:vm_map_t;tm:Boolean=True);
 function  vm_map_trylock(map:vm_map_t):Boolean;
-procedure vm_map_unlock(map:vm_map_t;def:Boolean=True);
+procedure vm_map_unlock (map:vm_map_t;def:Boolean=True);
+
+function  vm_map_lock_range  (map:vm_map_t;start,__end:off_t;mode:Integer):Pointer;
+procedure vm_map_unlock_range(map:vm_map_t;cookie:Pointer);
 
 function  vm_map_delete(map:vm_map_t;start:vm_offset_t;__end:vm_offset_t;rmap_free:Boolean):Integer;
 function  vm_map_remove(map:vm_map_t;start:vm_offset_t;__end:vm_offset_t):Integer;
@@ -385,7 +390,7 @@ var
 begin
  vm:=@g_vmspace;
 
- pmap_pinit(vmspace_pmap(vm));
+ pmap_pinit(vmspace_pmap(vm),@vm^.vm_map);
 
  vm_map_init(@vm^.vm_map,vmspace_pmap(vm),VM_MINUSER_ADDRESS,VM_MAXUSER_ADDRESS);
 
@@ -414,9 +419,41 @@ begin
  Result:=vm;
 end;
 
+function NormalizeMode(mode:Integer):Integer; inline;
+const
+ _f:array[0..3] of Byte=(
+  RL_LOCK_READ,  //
+  RL_LOCK_READ,  //RL_LOCK_READ
+  RL_LOCK_WRITE, //RL_LOCK_WRITE
+  RL_LOCK_WRITE  //RL_LOCK_READ | RL_LOCK_WRITE
+ );
+begin
+ Result:=_f[(mode and (RL_LOCK_READ or RL_LOCK_WRITE))];
+end;
+
 procedure vm_map_lock(map:vm_map_t;tm:Boolean=True); public;
 begin
- mtx_lock(map^.lock);
+ with curkthread^ do
+ begin
+  if (td_map_cookie=nil) then
+  begin
+   td_map_cookie:=rangelock_enqueue(@map^.vmlock,0,High(off_t),RL_LOCK_WRITE,@map^.vm_mtx);
+  end else
+  with p_rl_q_entry(td_map_cookie)^ do
+  begin
+
+   if (rl_q_start<>0) or (rl_q___end<>High(off_t)) or
+      (NormalizeMode(rl_q_flags)=RL_LOCK_READ) then
+   begin
+    rangelock_update(@map^.vmlock,0,High(off_t),RL_LOCK_WRITE,@map^.vm_mtx,td_map_cookie);
+   end;
+
+   Inc(rl_q_count);
+  end;
+ end;
+
+ //mtx_lock(map^.lock);
+
  if tm then
  begin
   Inc(map^.timestamp);
@@ -425,7 +462,35 @@ end;
 
 function vm_map_trylock(map:vm_map_t):Boolean;
 begin
- Result:=mtx_trylock(map^.lock);
+ with curkthread^ do
+ begin
+  if (td_map_cookie=nil) then
+  begin
+   td_map_cookie:=rangelock_enqueue(@map^.vmlock,0,High(off_t),RL_LOCK_WRITE or RL_LOCK_TRYLOCK,@map^.vm_mtx);
+   Result:=(td_map_cookie<>nil);
+  end else
+  with p_rl_q_entry(td_map_cookie)^ do
+  begin
+
+   if (rl_q_start<>0) or (rl_q___end<>High(off_t)) or
+      (NormalizeMode(rl_q_flags)=RL_LOCK_READ) then
+   begin
+    Result:=rangelock_update(@map^.vmlock,0,High(off_t),RL_LOCK_WRITE,@map^.vm_mtx,td_map_cookie);
+   end else
+   begin
+    Result:=True;
+   end;
+
+   if Result then
+   begin
+    Inc(rl_q_count);
+   end;
+
+  end;
+ end;
+
+ //Result:=mtx_trylock(map^.lock);
+
  if Result then
  begin
   Inc(map^.timestamp);
@@ -455,10 +520,106 @@ end;
 
 procedure vm_map_unlock(map:vm_map_t;def:Boolean=True); public;
 begin
- mtx_unlock(map^.lock);
+ with curkthread^ do
+ begin
+  Assert(td_map_cookie<>nil);
+  //
+  with p_rl_q_entry(td_map_cookie)^ do
+   if (rl_q_count=0) then
+   begin
+    rangelock_unlock(@map^.vmlock,td_map_cookie,@map^.vm_mtx);
+    td_map_cookie:=nil;
+   end else
+   begin
+    Dec(rl_q_count);
+   end;
+ end;
+
+ //mtx_unlock(map^.lock);
+
  if def then
  begin
   vm_map_process_deferred();
+ end;
+end;
+
+///
+
+function vm_map_lock_range(map:vm_map_t;start,__end:off_t;mode:Integer):Pointer; public;
+label
+ _on_inc;
+const
+ _f:array[0..1] of Byte=(RL_LOCK_WRITE,RL_LOCK_READ);
+var
+ flags:Integer;
+begin
+ Result:=nil;
+ //
+ mode:=NormalizeMode(mode);
+ //
+ with curkthread^ do
+ begin
+  if (td_map_cookie=nil) then
+  begin
+   td_map_cookie:=rangelock_enqueue(@map^.vmlock,start,__end,mode,@map^.vm_mtx);
+   //
+   if (td_map_cookie<>nil) then
+   begin
+    Result:=map; //true
+   end;
+  end else
+  with p_rl_q_entry(td_map_cookie)^ do
+  begin
+
+   flags:=NormalizeMode(rl_q_flags);
+
+   if (rl_q_start<>start) or (rl_q___end<>__end) or
+      (flags<>mode) then
+   begin
+
+    if (rl_q_start<start) then start:=rl_q_start;
+    if (rl_q___end>__end) then __end:=rl_q___end;
+
+    mode:=_f[flags and mode and RL_LOCK_READ];
+
+    if (rl_q_start=start) and (rl_q___end=__end) and (flags=mode) then
+    begin
+     goto _on_inc;
+    end;
+
+    if rangelock_update(@map^.vmlock,start,__end,mode,@map^.vm_mtx,td_map_cookie) then
+    begin
+     goto _on_inc;
+    end;
+
+   end else
+   begin
+    _on_inc:
+     Inc(rl_q_count);
+     Result:=map; //true
+   end;
+
+  end;
+ end;
+end;
+
+procedure vm_map_unlock_range(map:vm_map_t;cookie:Pointer); public;
+begin
+ Assert(map=cookie,'vm_map_unlock_range');
+ //
+ with curkthread^ do
+ begin
+  Assert(td_map_cookie<>nil);
+  //
+  with p_rl_q_entry(td_map_cookie)^ do
+   if (rl_q_count=0) then
+   begin
+    rangelock_unlock(@map^.vmlock,td_map_cookie,@map^.vm_mtx);
+    td_map_cookie:=nil;
+   end else
+   begin
+    Dec(rl_q_count);
+   end;
  end;
 end;
 
@@ -470,7 +631,9 @@ end;
  }
 function vm_map_locked(map:vm_map_t):Boolean; inline;
 begin
- Result:=mtx_owned(map^.lock);
+ Result:=(curkthread^.td_map_cookie<>nil);
+
+ //Result:=mtx_owned(map^.lock);
 end;
 
 procedure VM_MAP_ASSERT_LOCKED(map:vm_map_t); inline;
@@ -513,7 +676,11 @@ end;
 procedure vm_map_init(map:vm_map_t;pmap:pmap_t;min,max:vm_offset_t);
 begin
  _vm_map_init(map, pmap, min, max);
- mtx_init(map^.lock,'user map');
+
+ rangelock_init(@map^.vmlock);
+ mtx_init(map^.vm_mtx,'user map');
+
+ //mtx_init(map^.lock,'user map');
 end;
 
 {

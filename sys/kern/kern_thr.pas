@@ -257,6 +257,7 @@ type
   //
   td_rlqe         :Pointer;
   td_fpop         :Pointer;
+  td_map_cookie   :Pointer;
   td_map_def_user :Pointer;
   td_rmap_def_user:Pointer;
   td_sel          :Pointer;
