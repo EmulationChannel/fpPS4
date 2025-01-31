@@ -44,6 +44,7 @@ function  vm_nt_sub_map_insert(
 
 // Move nodes from one submap to another
 procedure vm_nt_sub_map_move(dst,src:p_vm_nt_sub_map);
+procedure vm_nt_sub_map_clip(dst,src:p_vm_nt_sub_map);
 
 procedure vm_nt_sub_map_free(map:p_vm_nt_sub_map);
 
@@ -197,6 +198,7 @@ begin
   entry^.right:=map^.root;
   entry^.left :=nil;
  end;
+
  map^.root:=entry;
 end;
 
@@ -218,6 +220,7 @@ begin
   root:=vm_nt_sub_entry_splay(entry^.start, entry^.left);
   root^.right:=entry^.right;
  end;
+
  map^.root:=root;
 
  prev:=entry^.prev;
@@ -362,6 +365,8 @@ procedure _vm_nt_sub_map_clip_start(map:p_vm_nt_sub_map;entry:p_vm_nt_sub_entry;
 var
  new_entry:p_vm_nt_sub_entry;
 begin
+ Assert(start<entry^.__end);
+
  vm_nt_sub_simplify_entry(map, entry);
 
  new_entry:=vm_nt_sub_entry_create(map);
@@ -385,6 +390,8 @@ procedure _vm_nt_sub_map_clip_end(map:p_vm_nt_sub_map;entry:p_vm_nt_sub_entry;__
 var
  new_entry:p_vm_nt_sub_entry;
 begin
+ Assert(__end>entry^.start);
+
  new_entry:=vm_nt_sub_entry_create(map);
  new_entry^:=entry^;
 
@@ -406,6 +413,48 @@ procedure vm_nt_sub_map_move(dst,src:p_vm_nt_sub_map);
 var
  entry,next,after:p_vm_nt_sub_entry;
 begin
+ {
+ Writeln('[vm_nt_sub_map_move]');
+ Writeln(' dst:',HexStr(dst^.min_offset,16),':',HexStr(dst^.max_offset,16));
+ Writeln(' src:',HexStr(src^.min_offset,16),':',HexStr(src^.max_offset,16));
+ }
+
+ entry:=src^.header.next;
+ //
+ after:=nil;
+ //
+ while (entry<>@src^.header) do
+ begin
+  //
+  if (after=nil) then
+  begin
+   vm_nt_sub_map_lookup_entry(dst, entry^.__end, @after); //get first position of insert
+  end;
+  //
+  next:=entry^.next;
+  //
+  vm_nt_sub_entry_unlink  (src,entry);
+  vm_nt_sub_entry_link    (dst,after,entry);
+  vm_nt_sub_simplify_entry(dst,entry);
+  //
+  after:=entry;
+  //
+  entry:=next;
+ end;
+end;
+
+procedure vm_nt_sub_map_clip(dst,src:p_vm_nt_sub_map);
+var
+ entry,next,after:p_vm_nt_sub_entry;
+begin
+ Assert((dst^.min_offset=src^.min_offset) or (dst^.max_offset=src^.max_offset),'vm_nt_sub_map_clip');
+
+ {
+ Writeln('[vm_nt_sub_map_clip]');
+ Writeln(' dst:',HexStr(dst^.min_offset,16),':',HexStr(dst^.max_offset,16));
+ Writeln(' src:',HexStr(src^.min_offset,16),':',HexStr(src^.max_offset,16));
+ }
+
  entry:=nil;
  if (vm_nt_sub_map_lookup_entry(src, dst^.min_offset, @entry)) then
  begin
@@ -417,8 +466,9 @@ begin
  //
  after:=nil;
  //
- while (entry<>@src^.header) do
+ while (entry<>@src^.header) and (entry^.start<dst^.max_offset) do
  begin
+  //
   vm_nt_sub_map_clip_end(src, entry, dst^.max_offset); //devide src by dst
   //
   if (after=nil) then

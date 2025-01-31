@@ -1007,6 +1007,9 @@ begin
 
  vm_nt_map_simplify_entry(map,entry,stat);
 
+ //entry[start           ,end]
+ //prev [start  |   entry[end]
+
  if (start>entry^.start) then
  begin
   prev:=vm_nt_entry_create(map);
@@ -1014,6 +1017,12 @@ begin
 
   prev^.__end:=start;
   prev^.usize:=(prev^.__end-prev^.start); //unaligned size
+
+  //new map
+  vm_nt_sub_map_init(@prev^.sub,prev^.start,prev^.__end);
+
+  //move
+  vm_nt_sub_map_clip(@prev^.sub,@entry^.sub);
 
   entry^.offset:=entry^.offset + (start - entry^.start);
   entry^.start :=start;
@@ -1023,15 +1032,12 @@ begin
   //prev ^.sub.max_offset:=start;
   //entry^.sub.min_offset:=start;
 
-  //new map
-  vm_nt_sub_map_init(@prev^.sub,prev^.start,prev^.__end);
-
-  //move
-  vm_nt_sub_map_move(@prev^.sub,@entry^.sub);
-
   vm_nt_entry_link(map, entry^.prev, prev);
   vm_nt_file_obj_reference(prev^.obj);
  end;
+
+ //entry[start          ,end]
+ //entry[start  |   next[end]
 
  if (__end<entry^.__end) then
  begin
@@ -1039,6 +1045,12 @@ begin
   next^:=entry^;
 
   next^.start :=__end;
+
+  //new map
+  vm_nt_sub_map_init(@next^.sub,next^.start,next^.__end);
+
+  //move
+  vm_nt_sub_map_clip(@next^.sub,@entry^.sub);
 
   entry^.__end:=__end;
   entry^.usize:=(entry^.__end-entry^.start); //unaligned size
@@ -1049,12 +1061,6 @@ begin
   //update (implicitly)
   //next ^.sub.min_offset:=__end;
   //entry^.sub.max_offset:=__end;
-
-  //new map
-  vm_nt_sub_map_init(@next^.sub,next^.start,next^.__end);
-
-  //move
-  vm_nt_sub_map_move(@next^.sub,@entry^.sub);
 
   vm_nt_entry_link(map, entry, next);
   vm_nt_file_obj_reference(next^.obj);
@@ -1084,6 +1090,9 @@ begin
 
  //
 
+ //entry[start          ,end]
+ //entry[start  |   next[end]
+
  if (__end<entry^.__end) then
  begin
   next:=vm_nt_entry_create(map);
@@ -1091,8 +1100,14 @@ begin
 
   next^.start :=__end;
 
+  //new map
+  vm_nt_sub_map_init(@next^.sub,next^.start,next^.__end);
+
+  //move
+  vm_nt_sub_map_clip(@next^.sub,@entry^.sub);
+
   entry^.__end:=__end;
-  entry^.usize:=(entry^.__end-entry^.usize); //unaligned size
+  entry^.usize:=(entry^.__end-entry^.start); //unaligned size
 
   next^.offset:=next^.offset + (__end - entry^.start);
   next^.usize :=next^.usize-entry^.usize; //unaligned size
@@ -1100,12 +1115,6 @@ begin
   //update (implicitly)
   //next ^.sub.min_offset:=__end;
   //entry^.sub.max_offset:=__end;
-
-  //new map
-  vm_nt_sub_map_init(@next^.sub,next^.start,next^.__end);
-
-  //move
-  vm_nt_sub_map_move(@next^.sub,@entry^.sub);
 
   vm_nt_entry_link(map, entry, next);
   vm_nt_file_obj_reference(next^.obj);
