@@ -47,7 +47,7 @@ const
 type
  pSceNpInGameMessageData=^SceNpInGameMessageData;
  SceNpInGameMessageData=packed record
-  data:array[0..SCE_NP_IN_GAME_MESSAGE_DATA_SIZE_MAX-1] of AnsiChar;
+  data    :array[0..SCE_NP_IN_GAME_MESSAGE_DATA_SIZE_MAX-1] of AnsiChar;
   dataSize:QWORD;
  end;
 
@@ -75,6 +75,35 @@ function ps4_sceNpGetAccountIdA(userId:SceUserServiceUserId;pAccountId:PQWORD):I
 begin
  if (pAccountId=nil) then Exit(SCE_NP_ERROR_INVALID_ARGUMENT);
  pAccountId^:=1111;
+ Result:=0;
+end;
+
+{
+ja Japanese
+en English
+fr French
+es Spanish
+de German
+it Italian
+nl Dutch
+pt Portuguese
+ru Russian
+ko Korean
+zh-TW Chinese (Traditional)
+zh-CN Chinese (Simplified)
+fi Finnish
+sv Swedish
+da Danish
+no Norwegian
+pl Polish
+tr Turkish
+ar Arabic
+}
+
+function ps4_sceNpGetAccountLanguage(reqId:Integer;pOnlineId:pSceNpOnlineId;pLangCode:pSceNpLanguageCode):Integer;
+begin
+ if (pLangCode=nil) then Exit(SCE_NP_ERROR_INVALID_ARGUMENT);
+ pLangCode^.code:='en';
  Result:=0;
 end;
 
@@ -155,6 +184,79 @@ begin
   p^.data[1]:='s';
  end;
 end;
+
+{
+ae UAE
+ar Argentina
+at Austria
+au Australia
+be Belgium
+bg Bulgaria
+bh Bahrain
+bo Bolivia
+br Brazil
+ca Canada
+ch Switzerland
+cl Chile
+cn China
+co Colombia
+cr Costa Rica
+cy Cyprus
+cz Czech Republic
+de Germany
+dk Denmark
+ec Ecuador
+es Spain
+fi Finland
+fr France
+gb UK
+gr Greece
+gt Guatemala
+hk Hong Kong
+hn Honduras
+hr Croatia
+hu Hungary
+id Indonesia
+ie Ireland
+il Israel
+in India
+is Iceland
+it Italy
+jp Japan
+kr Korea
+kw Kuwait
+lb Lebanon
+lu Luxembourg
+mt Malta
+mx Mexico
+my Malaysia
+ni Nicaragua
+nl Netherlands
+no Norway
+nz New Zealand
+om Oman
+pa Panama
+pe Peru
+pl Poland
+pt Portugal
+py Paraguay
+qa Qatar
+ro Romania
+ru Russia
+sa Saudi Arabia
+se Sweden
+sg Singapore
+si Slovenia
+sk Slovakia
+sv El Salvador
+th Thailand
+tr Turkey
+tw Taiwan
+ua Ukraine
+us United States
+uy Uruguay
+za South Africa
+}
 
 function ps4_sceNpGetAccountCountry(onlineId:pSceNpOnlineId;pCountryCode:pSceNpCountryCode):Integer;
 begin
@@ -496,6 +598,7 @@ begin
  lib.set_proc($337C055DB610B400,@ps4_sceNpUnregisterStateCallbackA);
  lib.set_proc($F150537917F56702,@ps4_sceNpGetAccountDateOfBirth);
  lib.set_proc($AB733B5F304A0B7B,@ps4_sceNpGetAccountDateOfBirthA);
+ lib.set_proc($299D4C8FDC841987,@ps4_sceNpGetAccountLanguage);
  lib.set_proc($4CF31B808C6FA20D,@ps4_sceNpGetAccountLanguageA);
 
  lib.set_proc($1858555294666C71,@ps4_sceNpInGameMessageInitialize);
