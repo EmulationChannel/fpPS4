@@ -264,7 +264,14 @@ begin
 
  //Hack: callout_reset_curcpu(@td^.td_slpcallout, timo, sleepq_timeout, td);
  td^.td_slptick   :=time;
- td^.td_slpcallout:=@sleepq_timeout;
+
+ if (time<>0) then
+ begin
+  td^.td_slpcallout:=@sleepq_timeout;
+ end else
+ begin
+  td^.td_slpcallout:=nil;
+ end;
 end;
 
 {

@@ -98,10 +98,7 @@ begin
 
  sleepq_add(ident,lock,wmesg,flags,0);
 
- if (timo<>0) then
- begin
-  sleepq_set_timeout(ident,timo);
- end;
+ sleepq_set_timeout(ident,timo);
 
  if (timo<>0) and (catch<>0) then
   Result:=sleepq_timedwait_sig(ident,pri)

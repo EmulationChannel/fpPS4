@@ -512,9 +512,12 @@ begin
  seh_wrapper_before(newtd,wrap);
  //seh wrapper
 
+ stack.ss_sp  :=newtd^.td_kstack.sttop;
+ stack.ss_size:=(ptruint(newtd^.td_kstack.stack)-ptruint(newtd^.td_kstack.sttop));
+
  n:=cpu_thread_create(newtd,
-                      stack_base,
-                      stack_size,
+                      stack.ss_sp,
+                      stack.ss_size,
                       wrap,
                       Pointer(newtd));
 
@@ -643,9 +646,12 @@ begin
   Exit(EINVAL);
  end;
 
- thread_reap();
-
  td:=curkthread;
+
+ if (td<>nil) then
+ begin
+  thread_reap();
+ end;
 
  newtd:=thread_alloc(pages);
  if (newtd=nil) then Exit(ENOMEM);

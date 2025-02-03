@@ -281,7 +281,7 @@ var
  InitialTeb:PINITIAL_TEB;
  Context   :PCONTEXT;
 
- Stack:Pointer;
+ Stack     :Pointer;
 {$ENDIF}
 begin
  if (td=nil) then Exit(-1);
@@ -296,8 +296,7 @@ begin
 
   BaseInitializeStack(InitialTeb,stack_base,stack_size);
 
-  //use kernel stack to init
-  Stack:=td^.td_kstack.stack;
+  Stack:=stack_base+stack_size;
   Stack:=Pointer((ptruint(Stack) and (not $F)));
 
   BaseInitializeContext(Context,

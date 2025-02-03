@@ -3534,7 +3534,7 @@ begin
   if (fname<>'') then goto _do_load;
 
   //try /system/*
-  fname:=find_by_ext('/'+p_proc.p_randomized_path+inc_unix_sep(path));
+  fname:=find_by_ext('/'+p_proc.p_randomized_path+inc_unix_sep(basename));
   if (fname<>'') then goto _do_load;
 
   //try path
