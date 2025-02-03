@@ -22,6 +22,8 @@ uses
   Rtti,
   jsonscanner,
 
+  ms_shell_hack,
+
   host_ipc,
   game_info,
   game_edit,
@@ -1128,8 +1130,12 @@ procedure TfrmMain.MIAddFolderClick(Sender: TObject);
 var
  d:TSelectDirectoryDialog;
  form:TfrmGameEditor;
+
+ Cookie:Pointer;
 begin
- d:=TSelectDirectoryDialog.Create(nil);
+ Cookie:=RegisterDllHack;
+
+ d:=TSelectDirectoryDialog.Create(Self);
 
  //d.InitialDir:=
 
@@ -1151,7 +1157,9 @@ begin
   form.FormInit(True);
  end;
 
- d.Free;
+ FreeAndNil(d);
+
+ UnregisterDllHack(Cookie);
 end;
 
 procedure TfrmMain.MIEditClick(Sender: TObject);

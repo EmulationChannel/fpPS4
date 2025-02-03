@@ -1566,6 +1566,10 @@
         <Filename Value="sys\dev\dev_random.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="gui\ms_shell_hack.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -8,6 +8,8 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ComCtrls, ExtCtrls,
   StdCtrls, Grids,
 
+  ms_shell_hack,
+
   game_info,
   param_sfo_gui;
 
@@ -96,7 +98,10 @@ type
 procedure TButtonPath.OpenDir(Sender:TObject);
 var
  d:TSelectDirectoryDialog;
+ Cookie:Pointer;
 begin
+ Cookie:=RegisterDllHack;
+
  d:=nil;
 
  try
@@ -119,6 +124,8 @@ begin
   //
  end;
  FreeAndNil(d);
+
+ UnregisterDllHack(Cookie);
 
  TfrmGameEditor(Self.Form).LoadParamSfo(True);
 
