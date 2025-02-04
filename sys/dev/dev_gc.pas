@@ -853,6 +853,13 @@ begin
              gc_wait_GC_SRI;
             end;
 
+  $C004811D: //????
+            begin
+             Writeln('gc_wait_free:',PInteger(data)^);
+
+             gc_wait_GC_SRI;
+            end;
+
   $C0048114: //sceGnmFlushGarlic
             begin
              Writeln('sceGnmFlushGarlic');
@@ -925,6 +932,8 @@ begin
             begin
              start_gfx_ring;
 
+             gc_wait_GC_SRI;
+
              rw_wlock(ring_gfx_lock);
 
               Result:=gc_switch_buffer_internal(@ring_gfx);
@@ -970,6 +979,8 @@ begin
 
   $C00C810E: //sceGnmUnmapComputeQueue
             begin
+             gc_wait_GC_SRI;
+
              rw_wlock(ring_gfx_lock);
 
               Result:=gc_unmap_compute_queue(data);
@@ -980,6 +991,8 @@ begin
   $C010811C: //sceGnmDingDong
             begin
              start_gfx_ring;
+
+             gc_wait_GC_SRI;
 
              rw_wlock(ring_gfx_lock);
 
