@@ -63,6 +63,7 @@ const
  KERN_USRSTACK  =33;
  KERN_ARND      =37;
  KERN_SDKVERSION=38; //SDK version
+ KERN_FSST_PARAM=40; //file system service threads (FSST)
  KERN_CPUMODE   =41;
  KERN_RNG_PSEUDO=47;
 
@@ -377,6 +378,36 @@ begin
  Result:=SYSCTL_OUT(req,@data,len);
 end;
 
+type
+ t_set_fsst_param=packed record
+  mask :QWORD;
+  prio :Integer;
+  align:Integer;
+ end;
+
+function sysctl_kern_fsst_param(oidp:p_sysctl_oid;arg1:Pointer;arg2:ptrint;req:p_sysctl_req):Integer;
+var
+ params:t_set_fsst_param;
+begin
+ params:=Default(t_set_fsst_param);
+
+ Result:=SYSCTL_IN(req,@params,SizeOf(t_set_fsst_param));
+ if (Result<>0) then Exit;
+
+ if (params.prio<255) or
+    (params.prio>767) then
+ begin
+  Exit(EINVAL);
+ end;
+
+ if (params.mask=0) then
+ begin
+  Exit(EDEADLK);
+ end;
+
+ Exit(0);
+end;
+
 function sysctl_kern_rng_pseudo(oidp:p_sysctl_oid;arg1:Pointer;arg2:ptrint;req:p_sysctl_req):Integer;
 type
  t_data_64=array[0..63] of Byte;
@@ -547,6 +578,12 @@ begin
     begin
      oid[0]:=CTL_KERN;
      oid[1]:=KERN_SDKVERSION;
+     len^  :=2;
+    end;
+  'kern.fsst_param':
+    begin
+     oid[0]:=CTL_KERN;
+     oid[1]:=KERN_FSST_PARAM;
      len^  :=2;
     end;
   'kern.cpumode':
@@ -730,6 +767,7 @@ begin
   KERN_USRSTACK  :Result:=SYSCTL_HANDLE(noid,name,$80008008,@sysctl_kern_usrstack);
   KERN_ARND      :Result:=SYSCTL_HANDLE(noid,name,$80048005,@sysctl_kern_arandom);
   KERN_SDKVERSION:Result:=SYSCTL_HANDLE(noid,name,$80048006,p_system_sdk_version,@sysctl_handle_int);
+  KERN_FSST_PARAM:Result:=SYSCTL_HANDLE(noid,name,$50040005,@sysctl_kern_fsst_param);
   KERN_CPUMODE   :Result:=SYSCTL_HANDLE(noid,name,$80040002,p_cpumode,@sysctl_handle_int);
   KERN_RNG_PSEUDO:Result:=SYSCTL_HANDLE(noid,name,$80040005,@sysctl_kern_rng_pseudo);
 
