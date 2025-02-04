@@ -2891,7 +2891,7 @@ begin
  end;
 end;
 
-function do_unlock_umutex(td:p_kthread;m:p_umutex):Integer;
+function do_unlock_umutex(td:p_kthread;m:p_umutex):Integer; inline;
 var
  flags:DWORD;
 begin
@@ -4092,6 +4092,7 @@ begin
  if (obj=nil) then Exit(EINVAL);
  td:=curkthread;
  if (td=nil) then Exit(EFAULT);
+
  Case op of
   UMTX_OP_LOCK             :Result:=__umtx_op_lock_umtx        (td,obj,val,uaddr1,uaddr2);
   UMTX_OP_UNLOCK           :Result:=__umtx_op_unlock_umtx      (td,obj,val,uaddr1,uaddr2);

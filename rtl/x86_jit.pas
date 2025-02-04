@@ -2640,11 +2640,11 @@ begin
 
  op:=desc.op;
  case mreg.AMemSize of
-  os8:
-      if (not (not_os8 in desc.opt)) then
-      begin
-       Dec(op);
-      end;
+   os8:
+       if (not (not_os8 in desc.opt)) then
+       begin
+        Dec(op);
+       end;
   os16:
        if (not (not_prefix in desc.opt)) then
        begin
@@ -2868,11 +2868,11 @@ begin
 
  op:=desc.op;
  case size of
-  os8:
-      if (not (not_os8 in desc.opt)) then
-      begin
-       Dec(op);
-      end;
+   os8:
+       if (not (not_os8 in desc.opt)) then
+       begin
+        Dec(op);
+       end;
   os16:
        if (not (not_prefix in desc.opt)) then
        begin
@@ -3368,6 +3368,11 @@ begin
 
  op:=desc.op;
  case reg.ASize of
+   os8:
+      if (not (not_os8 in desc.opt)) then
+      begin
+       Dec(op);
+      end;
   os16:
       if (not (not_prefix in desc.opt)) then
       begin
@@ -3424,6 +3429,11 @@ begin
 
  op:=desc.op;
  case mreg.AMemSize of
+   os8:
+      if (not (not_os8 in desc.opt)) then
+      begin
+       Dec(op);
+      end;
   os16:
       if (not (not_prefix in desc.opt)) then
       begin

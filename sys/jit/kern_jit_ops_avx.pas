@@ -437,22 +437,25 @@ begin
  end;
 end;
 
-const
- maskmov_dqu_desc:t_op_type=(op:$F7;simdop:1;mm:1);
-
 procedure op_maskmov_dqu(var ctx:t_jit_context2);
 begin
- with ctx.builder do
+ if jit_memory_guard then
  begin
-  //save
-  movq(r_tmp0,rdi);
+  with ctx.builder do
+  begin
+   //save
+   movq(r_tmp1,rdi);
 
-  op_uplift(ctx,rdi,os64,[not_use_r_tmp0]); //in/out:rdi
+   op_uplift(ctx,rdi,os64,[not_use_r_tmp1]); //in/out:rdi
 
-  _VV(maskmov_dqu_desc,ctx.din.Operand[1].RegValue[0],ctx.din.Operand[2].RegValue[0],os128);
+   add_orig(ctx);
 
-  //restore
-  movq(rdi,r_tmp0);
+   //restore
+   movq(rdi,r_tmp1);
+  end;
+ end else
+ begin
+  add_orig(ctx);
  end;
 end;
 

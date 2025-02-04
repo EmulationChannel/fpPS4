@@ -603,6 +603,27 @@ begin
  end;
 end;
 
+procedure op_maskmov(var ctx:t_jit_context2);
+begin
+ if jit_memory_guard then
+ begin
+  with ctx.builder do
+  begin
+   //save
+   movq(r_tmp1,rdi);
+
+   op_uplift(ctx,rdi,os64,[not_use_r_tmp1]); //in/out:rdi
+
+   add_orig(ctx);
+
+   //restore
+   movq(rdi,r_tmp1);
+  end;
+ end else
+ begin
+  add_orig(ctx);
+ end;
+end;
 
 //
 
@@ -703,6 +724,9 @@ begin
  jit_cbs[OPPnone,OPmovmsk  ,OPSx_ps]:=@op_reg_mem_mov_wo; //reg reg
  jit_cbs[OPPnone,OPmovmsk  ,OPSx_pd]:=@op_reg_mem_mov_wo; //reg reg
  jit_cbs[OPPnone,OPpmovmskb,OPSnone]:=@op_reg_mem_mov_wo; //reg reg
+
+ jit_cbs[OPPnone,OPmaskmov,OPSx_q  ]:=@op_maskmov;
+ jit_cbs[OPPnone,OPmaskmov,OPSx_dqu]:=@op_maskmov;
 
  jit_cbs[OPPnone,OPcomi ,OPSx_ss]:=@op_reg_mem_ro;
  jit_cbs[OPPnone,OPcomi ,OPSx_sd]:=@op_reg_mem_ro;
