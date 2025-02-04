@@ -1017,7 +1017,7 @@ function _kern_kevent(td:p_kthread;
                       nchanges:Integer;
                       nevents:Integer;
                       k_ops:p_kevent_copyops;
-                      timeout:p_timespec):Integer;
+                      timeout:p_timespec):Integer; inline;
 type
  t_keva=array[0..KQ_NEVENTS-1] of t_kevent;
 var
