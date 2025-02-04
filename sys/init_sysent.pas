@@ -564,7 +564,7 @@ var
   ),
   (//[101]
      sy_narg:2;
-     sy_call:nil;
+     sy_call:@sys_netabort;
      sy_name:'sys_netabort'
   ),
   (//[102]

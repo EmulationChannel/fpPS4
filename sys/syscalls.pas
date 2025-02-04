@@ -65,6 +65,7 @@ function  socket(domain,stype,protocol:Integer):Integer;
 function  _connect(fd:Integer;name:Pointer;namelen:Integer):Integer;
 function  __sys_netcontrol(fd,op:Integer;buf:Pointer;nbuf:DWORD):Integer;
 function  getpriority(which,who:Integer):Integer;
+function  __sys_netabort(fd,flags:Integer):Integer;
 function  _bind(s:Integer;name:Pointer;namelen:Integer):Integer;
 function  _setsockopt(s,level,name:Integer;val:Pointer;valsize:Integer):Integer;
 function  _listen(s,backlog:Integer):Integer;
@@ -671,6 +672,13 @@ end;
 function getpriority(which,who:Integer):Integer; assembler; nostackframe;
 asm
  movq  $100,%rax
+ call  fast_syscall
+ jmp   cerror
+end;
+
+function __sys_netabort(fd,flags:Integer):Integer; assembler; nostackframe;
+asm
+ movq  $101,%rax
  call  fast_syscall
  jmp   cerror
 end;

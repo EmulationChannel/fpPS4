@@ -5,14 +5,15 @@ unit uipc_syscalls;
 
 interface
 
-function sys_socket(domain,stype,protocol:Integer):Integer;
-function sys_socketex(name:pchar;domain,stype,protocol:Integer):Integer;
+function sys_socket     (domain,stype,protocol:Integer):Integer;
+function sys_socketex   (name:pchar;domain,stype,protocol:Integer):Integer;
 function sys_socketclose(fd:Integer):Integer;
-function sys_bind(s:Integer;name:Pointer;namelen:Integer):Integer;
-function sys_listen(s,backlog:Integer):Integer;
-function sys_accept(s:Integer;aname,anamelen:Pointer):Integer;
-function sys_connect(fd:Integer;name:Pointer;namelen:Integer):Integer;
-function sys_setsockopt(s,level,name:Integer;val:Pointer;valsize:Integer):Integer;
+function sys_bind       (s:Integer;name:Pointer;namelen:Integer):Integer;
+function sys_listen     (s,backlog:Integer):Integer;
+function sys_accept     (s:Integer;aname,anamelen:Pointer):Integer;
+function sys_connect    (fd:Integer;name:Pointer;namelen:Integer):Integer;
+function sys_setsockopt (s,level,name:Integer;val:Pointer;valsize:Integer):Integer;
+function sys_netabort   (fd,flags:Integer):Integer;
 
 implementation
 
@@ -608,6 +609,34 @@ begin
  Result:=kern_setsockopt(s,level,name,val,UIO_USERSPACE,valsize);
 end;
 
+const
+ SOCKET_ABORT_FLAG_RCV      =$00000001;
+ SOCKET_ABORT_FLAG_SND      =$00000002;
+ SOCKET_ABORT_FLAG_SND_AGAIN=$00000004;
+
+function sys_netabort(fd,flags:Integer):Integer;
+var
+ error:Integer;
+ fp:p_file;
+begin
+
+ if ((flags and $1000000)=0) then
+ begin
+  error:=getsock_cap(fd, flags, @fp, nil);
+  if (error=0) then
+  begin
+   //error:=bnet_netabort(td,fp->f_data,flags);
+   fdrop(fp);
+  end;
+ end else
+ begin
+  flags:=flags and $feffffff;
+  error:=0;
+  //error:=kern_epollabort(td,fd,flags);
+ end;
+
+ Exit(error);
+end;
 
 end.
 
