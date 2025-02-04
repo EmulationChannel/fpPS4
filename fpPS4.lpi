@@ -1570,6 +1570,11 @@
         <Filename Value="gui\ms_shell_hack.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="src\ps4_libsceremoteplay.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceRemoteplay"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
