@@ -6,7 +6,8 @@ unit ps4_libSceGameLiveStreaming;
 interface
 
 uses
- subr_dynlib;
+ subr_dynlib,
+ ps4_libSceUserService;
 
 const
  SCE_GAME_LIVE_STREAMING_MAX_SOCIAL_FEEDBACK_PRESET_TEXT_LENGTH=32;
@@ -49,13 +50,13 @@ type
   isOnAir        :Boolean;
   _align         :array[0..2] of Byte;
   spectatorCounts:DWORD;
-  userId         :Integer;
+  userId         :SceUserServiceUserId;
   reserved       :array[0..59] of Byte;
  end;
 
  pSceGameLiveStreamingStatus2=^SceGameLiveStreamingStatus2;
  SceGameLiveStreamingStatus2=packed record
-  userId                  :Integer;
+  userId                  :SceUserServiceUserId;
   isOnAir                 :Boolean;
   _align                  :array[0..2] of Byte;
   spectatorCounts         :DWORD;

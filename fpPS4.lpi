@@ -1575,6 +1575,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ps4_libSceRemoteplay"/>
       </Unit>
+      <Unit>
+        <Filename Value="src\np\ps4_libscenpsns.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceNpSns"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

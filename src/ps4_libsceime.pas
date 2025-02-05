@@ -16,7 +16,8 @@ uses
   atomic,
   mpmc_queue,
   Classes,
-  SysUtils;
+  SysUtils,
+  ps4_libSceUserService;
 
 const
  SCE_IME_ERROR_BUSY                        =-2135162879; // 0x80BC0001
@@ -634,7 +635,7 @@ type
 
  pSceImeKeyboardInfo=^SceImeKeyboardInfo;
  SceImeKeyboardInfo=packed record
-  userId     :Integer;
+  userId     :SceUserServiceUserId;
   device     :Integer; //SceImeKeyboardDeviceType
   _type      :Integer; //SceImeKeyboardType
   repeatDelay:DWORD;
@@ -645,7 +646,7 @@ type
 
  pSceImeKeyboardResourceIdArray=^SceImeKeyboardResourceIdArray;
  SceImeKeyboardResourceIdArray=packed record
-  userId    :Integer;
+  userId    :SceUserServiceUserId;
   resourceId:array[0..SCE_IME_KEYBOARD_MAX_NUMBER-1] of DWORD;
  end;
 
@@ -654,7 +655,7 @@ type
   character :WideChar;
   status    :DWORD;
   _type     :Integer; //SceImeKeyboardType
-  userId    :Integer;
+  userId    :SceUserServiceUserId;
   resourceId:DWORD;
   _align    :Integer;
   timestamp :QWORD; //SceRtcTick
@@ -1134,7 +1135,7 @@ begin
 end;
 
 function ps4_sceImeKeyboardOpen(
-          userId:Integer;
+          userId:SceUserServiceUserId;
           param:pSceImeKeyboardParam
           ):Integer;
 begin
@@ -1207,7 +1208,7 @@ begin
  Result:=0;
 end;
 
-function ps4_sceImeKeyboardGetResourceId(userId:Integer;resourceIdArray:pSceImeKeyboardResourceIdArray):Integer;
+function ps4_sceImeKeyboardGetResourceId(userId:SceUserServiceUserId;resourceIdArray:pSceImeKeyboardResourceIdArray):Integer;
 begin
  if (keyboard_init=0) then Exit(SCE_IME_ERROR_NOT_OPENED);
  if (resourceIdArray=nil) then Exit(SCE_IME_ERROR_INVALID_ADDRESS);

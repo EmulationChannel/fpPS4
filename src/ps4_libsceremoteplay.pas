@@ -10,6 +10,9 @@ uses
 
 implementation
 
+uses
+ ps4_libSceUserService;
+
 const
  SCE_REMOTEPLAY_HEAP_SIZE=6*1024;
 
@@ -33,7 +36,7 @@ const
  SCE_REMOTEPLAY_CONNECTION_STATUS_DISCONNECT=0;
  SCE_REMOTEPLAY_CONNECTION_STATUS_CONNECT   =1;
 
-function ps4_sceRemoteplayGetConnectionStatus(userId:Integer;pStatus:PInteger):Integer;
+function ps4_sceRemoteplayGetConnectionStatus(userId:SceUserServiceUserId;pStatus:PInteger):Integer;
 begin
  if (pStatus<>nil) then
  begin

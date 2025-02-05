@@ -83,6 +83,7 @@ uses
  ps4_libSceNpGameIntent,
  ps4_libSceNpWebApi,
  ps4_libSceNpWebApi2,
+ ps4_libSceNpSns,
  ps4_libSceRemoteplay,
  ps4_libSceScreenShot,
  ps4_libSceSaveData,

@@ -10,6 +10,9 @@ uses
 
 implementation
 
+uses
+ ps4_libSceUserService;
+
 const
  SCE_NP_GAME_INTENT_TYPE_MAX_SIZE=(32+1);
  SCE_NP_GAME_INTENT_DATA_MAX_SIZE=(16*1024+1);
@@ -30,7 +33,7 @@ type
  pSceNpGameIntentInfo=^SceNpGameIntentInfo;
  SceNpGameIntentInfo=packed record
   size      :QWORD;
-  userId    :Integer;
+  userId    :SceUserServiceUserId;
   intentType:array[0..SCE_NP_GAME_INTENT_TYPE_MAX_SIZE-1] of AnsiChar;
   padding   :array[0..6] of Byte;
   reserved  :array[0..255] of Byte;
