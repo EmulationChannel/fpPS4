@@ -2608,6 +2608,26 @@ begin
 
 end;
 
+const
+ DmaDataStr:array[0..15] of Pchar=(
+  {0} 'Memory',
+  {1} 'Gds',
+  {2} 'Data',
+  {3} 'MemoryUsingL2',
+  {4} 'Register',
+  {5} '0x5',
+  {6} '0x6',
+  {7} '0x7',
+  {8} '0x8',
+  {9} '0x9',
+  {A} '0xA',
+  {B} '0xB',
+  {C} 'RegisterNoIncrement',
+  {D} '0xD',
+  {E} '0xE',
+  {F} '0xF'
+ );
+
 procedure pm4_DmaData(var ctx:t_me_render_context;node:p_pm4_node_DmaData);
 var
  adrSrc:QWORD;
@@ -2691,11 +2711,9 @@ begin
 
     end;
  else
-    //Writeln('DmaData: srcSel=0x'+HexStr(srcSel,1)+' dstSel=0x'+HexStr(dstSel,1));
-    Assert(false,'DmaData: srcSel=0x'+HexStr(srcSel,1)+' dstSel=0x'+HexStr(dstSel,1));
+         Writeln('DmaData: srcSel='+DmaDataStr[srcSel and 15]+' dstSel='+DmaDataStr[dstSel and 15]);
+    Assert(false,'DmaData: srcSel='+DmaDataStr[srcSel and 15]+' dstSel='+DmaDataStr[dstSel and 15]);
  end;
-
-
 
 end;
 

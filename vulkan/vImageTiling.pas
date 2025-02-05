@@ -40,6 +40,18 @@ begin
  if (a>b) then Result:=a else Result:=b;
 end;
 
+function nextPowerOfTwo(x:Ptruint):Ptruint; inline;
+begin
+ x:=(x-1);
+ x:=x or (x shr 1);
+ x:=x or (x shr 2);
+ x:=x or (x shr 4);
+ x:=x or (x shr 8);
+ x:=x or (x shr 16);
+ x:=x or (x shr 32);
+ Result:=(x+1);
+end;
+
 Function GetLinearSize(const key:TvImageKey;align:Boolean):Ptruint;
 var
  m_bytePerElement:Ptruint;
@@ -58,6 +70,12 @@ begin
  m_level :=key.params.mipLevels;
  m_width :=key.params.width;
  m_height:=key.params.height;
+
+ if (key.params.pow2pad<>0) then
+ begin
+  m_width :=nextPowerOfTwo(m_width);
+  m_height:=nextPowerOfTwo(m_height);
+ end;
 
  Result:=0;
 
@@ -97,18 +115,6 @@ end;
 Function GetLinearAlignSize(const key:TvImageKey):Ptruint;
 begin
  Result:=GetLinearSize(key,true);
-end;
-
-function nextPowerOfTwo(x:Ptruint):Ptruint; inline;
-begin
- x:=(x-1);
- x:=x or (x shr 1);
- x:=x or (x shr 2);
- x:=x or (x shr 4);
- x:=x or (x shr 8);
- x:=x or (x shr 16);
- x:=x or (x shr 32);
- Result:=(x+1);
 end;
 
 Function Get1dThinAlignWidth(bpp,width:Ptruint):Ptruint; inline;
