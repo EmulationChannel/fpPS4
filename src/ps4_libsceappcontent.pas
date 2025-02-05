@@ -97,7 +97,7 @@ function ps4_sceAppContentAppParamGetInt(paramId:DWORD;value:PInteger):Integer;
 begin
  Result:=0;
  if (value=nil) then Exit(SCE_APP_CONTENT_ERROR_PARAMETER);
- Case SCE_APP_CONTENT_APPPARAM_ID_SKU_FLAG of
+ Case paramId of
   SCE_APP_CONTENT_APPPARAM_ID_SKU_FLAG            :value^:=SCE_APP_CONTENT_APPPARAM_SKU_FLAG_FULL;
   SCE_APP_CONTENT_APPPARAM_ID_USER_DEFINED_PARAM_1:value^:=ParamSfoGetUInt('USER_DEFINED_PARAM_1');
   SCE_APP_CONTENT_APPPARAM_ID_USER_DEFINED_PARAM_2:value^:=ParamSfoGetUInt('USER_DEFINED_PARAM_2');
