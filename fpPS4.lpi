@@ -1580,6 +1580,16 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ps4_libSceNpSns"/>
       </Unit>
+      <Unit>
+        <Filename Value="src\np\ps4_libscenpmatching2.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceNpMatching2"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\np\ps4_libscenpsignaling.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ps4_libSceNpSignaling"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
