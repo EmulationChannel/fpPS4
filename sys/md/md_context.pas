@@ -300,7 +300,9 @@ begin
  uc_xstate:=PXSTATE(uc_xsave+1);
 
  //uc_xstate^.Mask:=
- //uc_xstate^.CompactionMask:=
+ uc_xstate^.CompactionMask:=GetEnabledXStateFeatures;
+ uc_xstate^.CompactionMask:=uc_xstate^.CompactionMask and (XSTATE_MASK_LEGACY or XSTATE_MASK_AVX);
+ uc_xstate^.CompactionMask:=uc_xstate^.CompactionMask or QWORD(1 shl 63);
 
  uc_xsave^.ControlWord:=__INITIAL_FPUCW__;
  //uc_xsave^.StatusWord: WORD;
