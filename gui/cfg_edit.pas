@@ -217,6 +217,8 @@ begin
  if (src=nil) then Exit;
 
  i:=src.ItemIndex;
+ if (i=-1) then Exit;
+
  ptr:=PVkPhysicalDeviceProperties(src.Items.Objects[i]);
 
  if (ptr=nil) then Exit;

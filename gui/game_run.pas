@@ -121,7 +121,11 @@ end;
 
 Destructor TGameProcessSimple.Destroy;
 begin
- thread_dec_ref(Ftd);
+ if (Ftd<>nil) then
+ begin
+  thread_dec_ref(Ftd);
+  Ftd:=nil;
+ end;
  inherited;
 end;
 

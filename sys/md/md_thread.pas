@@ -325,7 +325,7 @@ begin
    Result:=0;
   end else
   begin
-   Result:=-1;
+   Result:=GetLastError;
   end;
  {$ENDIF}
 

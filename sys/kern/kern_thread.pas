@@ -679,6 +679,7 @@ begin
 
  if (n<>0) then
  begin
+  Writeln(StdErr,'failed cpu_thread_create:0x',HexStr(n,8));
   thread_free(newtd);
   Exit(EINVAL);
  end;
