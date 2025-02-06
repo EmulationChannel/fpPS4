@@ -2282,6 +2282,12 @@ var
  obj:elf_obj;
 
 begin
+ DefaultSystemCodePage:=CP_UTF8;
+ DefaultUnicodeCodePage:=CP_UTF8;
+ DefaultFileSystemCodePage:=CP_UTF8;
+ DefaultRTLFileSystemCodePage:=CP_UTF8;
+ UTF8CompareLocale:=CP_UTF8;
+
  parse_param;
 
  if (ParamCount<=1) or (FileName='') then
