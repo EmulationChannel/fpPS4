@@ -97,6 +97,7 @@ type
   procedure Init(Emit:TCustomEmit); inline;
   function  Fetch(pSource:PsrRegSlot):TsrPrivate;
   function  FetchCustom(dtype:TsrDataType):TsrPrivate;
+  function  FetchArray(dtype:TsrDataType;array_count:DWORD):TsrPrivate;
   function  First:TsrPrivate; inline;
   //
   procedure build_slot_reset(pSlot:PsrRegSlot;var orig:TsrRegNode);
@@ -446,7 +447,7 @@ begin
  repeat
   nswp:=True;
   dnode:=FLineList.pHead;
-  While true do
+  While (dnode<>nil) do
   begin
    dnext:=dnode.pNext;
    if (dnext=nil) then Break;
@@ -479,7 +480,7 @@ var
  pRegs:array[0..1] of TsrRegNode;
 begin
  dnode:=FLineList.pTail;
- While true do
+ While (dnode<>nil) do
  begin
   dprev:=dnode.pPrev;
   if (dprev=nil) then Break;
@@ -646,6 +647,25 @@ begin
  begin
   pTypeList:=FEmit.GetTypeList;
   Result.Ftype:=pTypeList^.Fetch(dtype);
+ end;
+ //
+ FList.Push_tail(Result);
+end;
+
+function TsrPrivateList.FetchArray(dtype:TsrDataType;array_count:DWORD):TsrPrivate;
+var
+ pTypeList:PsrTypeList;
+begin
+ Result:=FEmit.specialize New<TsrPrivate>;
+ Result.Init;
+ Result.InitVar; ////
+ Result.FPrivId:=FPrivId; Inc(FPrivId);
+ //
+ if (dtype<>dtUnknow) then
+ begin
+  pTypeList:=FEmit.GetTypeList;
+  Result.Ftype:=pTypeList^.Fetch(dtype);
+  Result.Ftype:=pTypeList^.FetchArray(Result.Ftype,array_count);
  end;
  //
  FList.Push_tail(Result);

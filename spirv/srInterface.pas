@@ -81,6 +81,8 @@ type
   //
   FLocalSize         :TLocalSize;
   FLDS_SIZE          :DWORD;
+  FVGPRS             :WORD;
+  FSGPRS             :WORD;
   FGeometryInfo      :TGeometryInfo;
   //
   Config:TsrConfig;

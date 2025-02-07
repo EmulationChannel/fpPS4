@@ -165,6 +165,9 @@ begin
  if (SGPRS>=2) then SGPRS:=SGPRS-2; //VCC
  if (SGPRS>104) then SGPRS:=104;
 
+ FVGPRS:=VGPRS;
+ FSGPRS:=SGPRS;
+
  if (VGPRS<>0) then
  For p:=0 to VGPRS-1 do
  begin
@@ -175,7 +178,7 @@ begin
  end;
 
  if (SGPRS<>0) then
- For p:=USER_SGPR to (SGPRS+USER_SGPR)-1 do
+ For p:=USER_SGPR to (SGPRS-USER_SGPR)-1 do
  begin
   if (RegsStory.SGRP[p].current=nil) then
   begin

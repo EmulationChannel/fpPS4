@@ -172,6 +172,7 @@ type
   //
   function  get_sdst7(SDST:Byte):PsrRegSlot;
   function  get_sdst7_pair(SDST:Byte;dst:PPsrRegSlot):Boolean;
+  function  get_sdst8(SDST:Word):PsrRegSlot;
   function  get_ssrc8(SSRC:Byte):PsrRegSlot;
   function  get_ssrc9(SSRC:Word):PsrRegSlot;
   function  get_ssrc9_pair(SSRC:Word;src:PPsrRegSlot):Boolean;
@@ -437,6 +438,11 @@ begin
   else
       Result:=False;
  end;
+end;
+
+function TsrRegsStory.get_sdst8(SDST:Word):PsrRegSlot;
+begin
+ Result:=get_ssrc8(SDST);
 end;
 
 function TsrRegsStory.get_ssrc8(SSRC:Byte):PsrRegSlot;

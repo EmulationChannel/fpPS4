@@ -33,6 +33,7 @@ type
   //
   function  get_sdst7(SDST:Byte):PsrRegSlot;
   function  get_sdst7_pair(SDST:Byte;dst:PPsrRegSlot):Boolean;
+  function  get_sdst8(SSRC:Byte):PsrRegSlot;
   function  get_ssrc8(SSRC:Byte):PsrRegSlot;
   function  get_ssrc9(SSRC:Word):PsrRegSlot;
   function  get_ssrc9_pair(SSRC:Word;src:PPsrRegSlot):Boolean;
@@ -226,6 +227,11 @@ end;
 function TEmitFetch.get_sdst7_pair(SDST:Byte;dst:PPsrRegSlot):Boolean;
 begin
  Result:=RegsStory.get_sdst7_pair(SDST,dst);
+end;
+
+function TEmitFetch.get_sdst8(SSRC:Byte):PsrRegSlot;
+begin
+ Result:=RegsStory.get_sdst8(SSRC);
 end;
 
 function TEmitFetch.get_ssrc8(SSRC:Byte):PsrRegSlot;

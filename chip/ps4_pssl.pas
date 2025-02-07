@@ -1687,12 +1687,15 @@ begin
  end;
  str:=str+' ';
 
+ //operand #1
  str:=str+_get_sdst7(SPI.SOP2.SDST);
  str:=str+', ';
 
+ //operand #2
  str:=str+_get_ssrc8(SPI.SOP2.SSRC0,SPI.INLINE32);
  str:=str+', ';
 
+ //operand #3
  str:=str+_get_ssrc8(SPI.SOP2.SSRC1,SPI.INLINE32);
 
  Result:=str;
@@ -1759,9 +1762,11 @@ begin
  end;
  str:=str+' ';
 
+ //operand #1
  str:=str+_get_sdst7(SPI.SOP1.SDST);
  str:=str+', ';
 
+ //operand #2
  str:=str+_get_ssrc8(SPI.SOP1.SSRC,SPI.INLINE32);
 
  Result:=str;
@@ -1794,9 +1799,11 @@ begin
  end;
  str:=str+' ';
 
+ //operand #1
  str:=str+_get_ssrc8(SPI.SOPC.SSRC0,SPI.INLINE32);
  str:=str+', ';
 
+ //operand #2
  str:=str+_get_ssrc8(SPI.SOPC.SSRC1,SPI.INLINE32);
 
  Result:=str;
@@ -1970,6 +1977,7 @@ begin
   str:=str+' ';
  end;
 
+ //operand #1
  case t1 of
   1:begin
      With SPI.SMRD do
@@ -1991,6 +1999,7 @@ begin
   str:=str+', ';
  end;
 
+ //operand #2
  case t2 of
   2,4:
     begin
@@ -2006,6 +2015,7 @@ begin
   str:=str+', ';
  end;
 
+ //operand #3
  if (t3<>0) then
  With SPI.SMRD do
   Case IMM of
@@ -2049,9 +2059,11 @@ begin
  end;
  str:=str+' ';
 
+ //operand #1
  str:=str+_get_sdst7(SPI.SOPK.SDST);
  str:=str+', ';
 
+ //operand #2
  Case SPI.SOPK.OP of
   S_MOVK_I32   ,
   S_MOVK_HI_I32,
@@ -2305,15 +2317,18 @@ begin
  end;
  str:=str+' ';
 
+ //operand #1
  str:=str+_get_sdst7(VOP3.VDST);
  str:=str+', ';
 
+ //operand #2
  if Byte(VOP3.NEG).TestBit(0) then str:=str+'-';
  if Byte(VOP3.ABS).TestBit(0) then str:=str+'abs(';
  str:=str+_get_ssrc9(VOP3.SRC0);
  if Byte(VOP3.ABS).TestBit(0) then str:=str+')';
  str:=str+', ';
 
+ //operand #3
  if Byte(VOP3.NEG).TestBit(1) then str:=str+'-';
  if Byte(VOP3.ABS).TestBit(1) then str:=str+'abs(';
  str:=str+_get_ssrc9(VOP3.SRC1);
@@ -2501,24 +2516,45 @@ begin
  end;
  str:=str+' ';
 
- str:=str+_get_vdst8(VOP3.VDST);
+ //operand #1
+ Case VOP3.OP of
+  384+V_NOP:; //zero operands
 
- Case VOP3.OMOD of
-  0:;
-  1:str:=str+'*2';
-  2:str:=str+'*4';
-  3:str:=str+'/2';
+  256+V_READLANE_B32,
+  384+V_READFIRSTLANE_B32:
+    begin
+     //Exception
+     str:=str+_get_ssrc8(VOP3.VDST); //sdst
+    end;
+  else
+    begin
+     str:=str+_get_vdst8(VOP3.VDST);
+    end;
  end;
 
- str:=str+', ';
+ if (VOP3.OP<>(384+V_NOP)) then
+ begin
 
- if Byte(VOP3.NEG).TestBit(0) then str:=str+'-';
- if Byte(VOP3.ABS).TestBit(0) then str:=str+'abs(';
- str:=str+_get_ssrc9(VOP3.SRC0);
- if Byte(VOP3.ABS).TestBit(0) then str:=str+')';
+  //dest modifier
+  Case VOP3.OMOD of
+   0:;
+   1:str:=str+'*2';
+   2:str:=str+'*4';
+   3:str:=str+'/2';
+  end;
 
+  str:=str+', ';
+
+  //operand #2
+  if Byte(VOP3.NEG).TestBit(0) then str:=str+'-';
+  if Byte(VOP3.ABS).TestBit(0) then str:=str+'abs(';
+  str:=str+_get_ssrc9(VOP3.SRC0);
+  if Byte(VOP3.ABS).TestBit(0) then str:=str+')';
+ end;
+
+ //operand #3
  Case VOP3.OP of
-  384+V_NOP..384+V_MOVRELSD_B32:;
+  384+V_NOP..384+V_MOVRELSD_B32:; //only 2 operands
   else
    begin
     str:=str+', ';
@@ -2533,6 +2569,7 @@ begin
   V_MAD_LEGACY_F32..V_DIV_FIXUP_F64,
   V_DIV_FMAS_F32..V_MAD_I64_I32:
     begin
+     //operand #4
      str:=str+', ';
      if Byte(VOP3.NEG).TestBit(2) then str:=str+'-';
      if Byte(VOP3.ABS).TestBit(2) then str:=str+'abs(';
@@ -2570,8 +2607,10 @@ begin
  end;
  str:=str+' ';
 
+ //operand #1
  str:=str+_get_vdst8(VOP3.VDST);
 
+ //dest modifier
  Case VOP3.OMOD of
   0:;
   1:str:=str+'*2';
@@ -2581,17 +2620,21 @@ begin
 
  str:=str+', ';
 
+ //operand #2
  str:=str+_get_sdst7(VOP3.SDST);
  str:=str+', ';
 
+ //operand #3
  if Byte(VOP3.NEG).TestBit(0) then str:=str+'-';
  str:=str+_get_ssrc9(VOP3.SRC0);
  str:=str+', ';
 
+ //operand #4
  if Byte(VOP3.NEG).TestBit(1) then str:=str+'-';
  str:=str+_get_ssrc9(VOP3.SRC1);
  str:=str+', ';
 
+ //operand #5
  if Byte(VOP3.NEG).TestBit(2) then str:=str+'-';
  str:=str+_get_ssrc9(VOP3.SRC2);
 
@@ -2671,22 +2714,36 @@ begin
  end;
  str:=str+' ';
 
- str:=str+_get_vdst8(SPI.VOP2.VDST);
+ //operand #1
+ Case SPI.VOP2.OP of
+  V_READLANE_B32:
+    begin
+     //Exception
+     str:=str+_get_ssrc8(SPI.VOP2.VDST); //sdst
+    end;
+  else
+    begin
+     str:=str+_get_vdst8(SPI.VOP2.VDST);
+    end;
+ end;
  str:=str+', ';
 
+ //operand #2
  str:=str+_get_ssrc9(SPI.VOP2.SRC0,SPI.INLINE32);
  str:=str+', ';
 
+ //operand #3
  Case SPI.VOP2.OP of
   V_READLANE_B32,
   V_WRITELANE_B32:
     begin
-     str:=str+_get_ssrc8(SPI.VOP2.VSRC1);
+     //Exception
+     str:=str+_get_ssrc8(SPI.VOP2.VSRC1); //slane
     end;
   else
-   begin
-    str:=str+_get_vdst8(SPI.VOP2.VSRC1);
-   end;
+    begin
+     str:=str+_get_vdst8(SPI.VOP2.VSRC1);
+    end;
  end;
 
  Result:=str;
@@ -2918,9 +2975,11 @@ begin
  end;
  str:=str+' VCC, ';
 
+ //operand #1
  str:=str+_get_ssrc9(SPI.VOPC.SRC0,SPI.INLINE32);
  str:=str+', ';
 
+ //operand #2
  str:=str+_get_vdst8(SPI.VOPC.VSRC1);
 
  Result:=str;
@@ -3003,10 +3062,27 @@ begin
  end;
  str:=str+' ';
 
- str:=str+_get_vdst8(SPI.VOP1.VDST);
- str:=str+', ';
+ //operand #1
+ Case SPI.VOP1.OP of
+  V_NOP:; //zero operands
 
- str:=str+_get_ssrc9(SPI.VOP1.SRC0,SPI.INLINE32);
+  V_READFIRSTLANE_B32:
+    begin
+     //Exception
+     str:=str+_get_ssrc8(SPI.VOP1.VDST);
+    end;
+  else
+    begin
+     str:=str+_get_vdst8(SPI.VOP1.VDST);
+    end;
+ end;
+
+ //operand #2
+ if (SPI.VOP1.OP<>V_NOP) then
+ begin
+  str:=str+', ';
+  str:=str+_get_ssrc9(SPI.VOP1.SRC0,SPI.INLINE32);
+ end;
 
  Result:=str;
 end;
@@ -3076,18 +3152,23 @@ begin
  end;
  str:=str+' ';
 
+ //operand #1
  str:=str+_get_vdst8(SPI.MUBUF.VDATA);
  str:=str+', ';
 
+ //operand #2
  str:=str+_get_vdst8(SPI.MUBUF.VADDR);
  str:=str+', ';
 
+ //operand #3
  str:=str+'s['+IntToStr(SPI.MUBUF.SRSRC*4)+':'+IntToStr(SPI.MUBUF.SRSRC*4+3)+']';
  str:=str+', ';
 
+ //operand #4
  str:=str+IntToStr(SPI.MUBUF.OFFSET);
  str:=str+', ';
 
+ //operand #5
  str:=str+'[';
  str:=str+_get_ssrc8(SPI.MUBUF.SOFFSET);
  str:=str+']';
@@ -3119,18 +3200,23 @@ begin
  end;
  str:=str+' ';
 
+ //operand #1
  str:=str+_get_vdst8(SPI.MTBUF.VDATA);
  str:=str+', ';
 
+ //operand #2
  str:=str+_get_vdst8(SPI.MTBUF.VADDR);
  str:=str+', ';
 
+ //operand #3
  str:=str+'s['+IntToStr(SPI.MTBUF.SRSRC*4)+':'+IntToStr(SPI.MTBUF.SRSRC*4+3)+']';
  str:=str+', ';
 
+ //operand #4
  str:=str+IntToStr(SPI.MTBUF.OFFSET);
  str:=str+', ';
 
+ //operand #5
  str:=str+'[';
  str:=str+_get_ssrc8(SPI.MTBUF.SOFFSET);
  str:=str+']';
@@ -3287,6 +3373,7 @@ begin
 
  t:=PopCnt(Byte(SPI.MIMG.DMASK));
 
+ //operand #1
  Case t of
   2,3,4:
     begin
@@ -3303,8 +3390,10 @@ begin
  end;
  str:=str+', ';
 
+ //operand #2
  str:=str+'s['+IntToStr(SPI.MIMG.SRSRC*4)+':'+IntToStr(SPI.MIMG.SRSRC*4+7)+']';
 
+ //operand #3
  Case SPI.MIMG.OP of
   IMAGE_SAMPLE..IMAGE_SAMPLE_C_CD_CL_O:
    begin

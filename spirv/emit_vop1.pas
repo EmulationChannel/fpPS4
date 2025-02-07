@@ -8,7 +8,9 @@ uses
   sysutils,
   ps4_pssl,
   spirv,
+  srNode,
   srType,
+  srTypes,
   srReg,
   srConst,
   emit_fetch;
@@ -18,6 +20,7 @@ type
   procedure emit_VOP1;
   procedure emit_V_MOV_B32;
   procedure emit_V_READFIRSTLANE_B32;
+  procedure emit_V_MOVRELS_B32;
   procedure emit_V_CVT(OpId:DWORD;dst_type,src_type:TsrDataType);
   procedure emit_V_CVT_F16_F32;
   procedure emit_V_CVT_F32_F16;
@@ -40,6 +43,9 @@ type
 
 implementation
 
+uses
+ srPrivate;
+
 procedure TEmit_VOP1.emit_V_MOV_B32;
 Var
  dst:PsrRegSlot;
@@ -50,16 +56,75 @@ begin
  MakeCopy(dst,src);
 end;
 
-procedure TEmit_VOP1.emit_V_READFIRSTLANE_B32;
+procedure TEmit_VOP1.emit_V_READFIRSTLANE_B32; //sdst, vsrc
 Var
  dst:PsrRegSlot;
  src:TsrRegNode;
 begin
  //TODO: V_READFIRSTLANE_B32
  //
- dst:=get_vdst8(FSPI.VOP1.VDST);
+ dst:=get_sdst8  (FSPI.VOP1.VDST); //NOTE: SDST
  src:=fetch_ssrc9(FSPI.VOP1.SRC0,dtUnknow);
  MakeCopy(dst,src);
+end;
+
+procedure TEmit_VOP1.emit_V_MOVRELS_B32; //vdst = VGPR[vgpr_index_of(vsrc) + M0.u] OOB:VGPR0
+Var
+ i,vmin,vmax:WORD;
+
+ priv:TsrPrivate;
+ iType:TsrType;
+ idx:TsrRegNode;
+ pChain:TsrNode;
+
+ dst:PsrRegSlot;
+ src:TsrRegNode;
+begin
+ idx:=MakeRead(get_m0,dtUnknow);
+
+ idx:=RegDown(idx);
+
+ if idx.is_const then
+ begin
+  i:=idx.AsConst.AsInt32;
+
+  dst:=get_vdst8  (FSPI.VOP1.VDST);
+  src:=fetch_ssrc9(FSPI.VOP1.SRC0+i,dtUnknow);
+  MakeCopy(dst,src);
+ end else
+ begin
+
+  vmin:=FSPI.VOP1.SRC0-256;
+  vmax:=FVGPRS;
+  Assert(vmin<vmax);
+
+  priv :=PrivateList.FetchArray(dtFloat32,vmax-vmin);
+
+  iType:=TypeList.Fetch(dtFloat32);
+
+  for i:=vmin to vmax-1 do
+  begin
+   idx:=self.NewImm_i(dtInt32,(i-vmin));
+
+   pChain:=OpAccessChainTo(iType,priv.pVar,idx);
+
+   src:=fetch_vsrc8(i,dtFloat32);
+
+   OpStore(line,pChain,src);
+  end;
+
+  idx:=MakeRead(get_m0,dtInt32);
+
+  pChain:=OpAccessChainTo(iType,priv.pVar,idx);
+
+  src:=OpLoadTo(iType,pChain);
+
+  dst:=get_vdst8(FSPI.VOP1.VDST);
+
+  MakeCopy(dst,src);
+
+ end;
+
 end;
 
 procedure TEmit_VOP1.emit_V_CVT(OpId:DWORD;dst_type,src_type:TsrDataType);
@@ -381,6 +446,8 @@ begin
   V_FFBL_B32 : emit_V_FFBL_B32;
 
   V_BFREV_B32: emit_V_BFREV_B32;
+
+  V_MOVRELS_B32: emit_V_MOVRELS_B32;
 
   else
    Assert(false,'VOP1?'+IntToStr(FSPI.VOP1.OP)+' '+get_str_spi(FSPI));
