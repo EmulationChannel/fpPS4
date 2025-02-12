@@ -1497,6 +1497,29 @@ begin
  end;
 end;
 
+function _get_sdst7_64(SDST:Byte):RawByteString;
+begin
+ Case SDST of
+  0..103:Result:='s['+IntToStr(SDST)+':'+IntToStr(SDST+1)+']';
+  106:Result:='VCC';
+  107:Result:='?VCC_HI';
+  124:Result:='?M0';
+  126:Result:='EXEC';
+  127:Result:='?EXEC_HI';
+  else
+      Result:='?';
+ end;
+end;
+
+function _get_sdst7_cnt(SDST,count:Byte):RawByteString; inline;
+begin
+ case count of
+  2:Result:=_get_sdst7_64(SDST);
+  else
+    Result:=_get_sdst7(SDST);
+ end;
+end;
+
 function _get_ssrc8(SSRC:Byte):RawByteString;
 begin
  Case SSRC of
@@ -1527,7 +1550,7 @@ begin
  end;
 end;
 
-function _get_ssrc8(SSRC:Byte;d2:DWORD):RawByteString;
+function _get_ssrc8_imm(SSRC:Byte;d2:DWORD):RawByteString;
 begin
  Case SSRC of
   0..103:Result:='s'+IntToStr(SSRC);
@@ -1555,6 +1578,46 @@ begin
   255:Result:='#0x'+HexStr(d2,8);
   else
       Result:='?';
+ end;
+end;
+
+function _get_ssrc8_imm_64(SSRC:Byte;d2:DWORD):RawByteString;
+begin
+ Case SSRC of
+  0..103:Result:='s['+IntToStr(SSRC)+':'+IntToStr(SSRC+1)+']';
+  106:Result:='VCC';
+  107:Result:='?VCC_HI';
+  124:Result:='?M0';
+  126:Result:='EXEC';
+  127:Result:='?EXEC_HI';
+
+  128..192:Result:=IntToStr(SSRC-128);
+  193..208:Result:=IntToStr(-(SSRC-192));
+  240:Result:='0.5';
+  241:Result:='-0.5';
+  242:Result:='1.0';
+  243:Result:='-1.0';
+  244:Result:='2.0';
+  245:Result:='-2.0';
+  246:Result:='4.0';
+  247:Result:='-4.0';
+
+  251:Result:='VCCZ';
+  252:Result:='EXECZ';
+  253:Result:='SCC';
+  254:Result:='LDS_DIRECT';
+  255:Result:='#0x'+HexStr(d2,8);
+  else
+      Result:='?';
+ end;
+end;
+
+function _get_ssrc8_imm_cnt(SSRC,count:Byte;d2:DWORD):RawByteString; inline;
+begin
+ case count of
+  2:Result:=_get_ssrc8_imm_64(SSRC,d2);
+  else
+    Result:=_get_ssrc8_imm(SSRC,d2);
  end;
 end;
 
@@ -1592,7 +1655,50 @@ begin
  end;
 end;
 
-function _get_ssrc9(SSRC:Word;d2:DWORD):RawByteString;
+function _get_ssrc9_64(SSRC:Word):RawByteString;
+begin
+ Case SSRC of
+  0..103:Result:='s['+IntToStr(SSRC)+':'+IntToStr(SSRC+1)+']';
+  106:Result:='VCC';
+  107:Result:='?VCC_HI';
+  124:Result:='M0';
+  126:Result:='EXEC';
+  127:Result:='?EXEC_HI';
+
+  128..192:Result:=IntToStr(SSRC-128);
+  193..208:Result:=IntToStr(-(SSRC-192));
+  240:Result:='0.5';
+  241:Result:='-0.5';
+  242:Result:='1.0';
+  243:Result:='-1.0';
+  244:Result:='2.0';
+  245:Result:='-2.0';
+  246:Result:='4.0';
+  247:Result:='-4.0';
+
+  251:Result:='VCCZ';
+  252:Result:='EXECZ';
+  253:Result:='SCC';
+  254:Result:='LDS_DIRECT';
+
+  256..511:
+      Result:='v['+IntToStr(SSRC-256)+':'+IntToStr(SSRC-256+1)+']';
+
+  else
+      Result:='?';
+ end;
+end;
+
+function _get_ssrc9_cnt(SSRC,count:Word):RawByteString;
+begin
+ case count of
+  2:Result:=_get_ssrc9_64(SSRC);
+  else
+    Result:=_get_ssrc9(SSRC);
+ end;
+end;
+
+function _get_ssrc9_imm(SSRC:Word;d2:DWORD):RawByteString;
 begin
  Case SSRC of
   0..103:Result:='s'+IntToStr(SSRC);
@@ -1626,14 +1732,91 @@ begin
  end;
 end;
 
+function _get_ssrc9_imm_64(SSRC:Word;d2:DWORD):RawByteString;
+begin
+ Case SSRC of
+  0..103:Result:='s['+IntToStr(SSRC)+':'+IntToStr(SSRC+1)+']';
+  106:Result:='VCC';
+  107:Result:='?VCC_HI';
+  124:Result:='M0';
+  126:Result:='EXEC';
+  127:Result:='?EXEC_HI';
+
+  128..192:Result:=IntToStr(SSRC-128);
+  193..208:Result:=IntToStr(-(SSRC-192));
+  240:Result:='0.5';
+  241:Result:='-0.5';
+  242:Result:='1.0';
+  243:Result:='-1.0';
+  244:Result:='2.0';
+  245:Result:='-2.0';
+  246:Result:='4.0';
+  247:Result:='-4.0';
+
+  251:Result:='VCCZ';
+  252:Result:='EXECZ';
+  253:Result:='SCC';
+  254:Result:='LDS_DIRECT';
+  255:Result:='#0x'+HexStr(d2,8);
+  256..511:
+      Result:='v['+IntToStr(SSRC-256)+':'+IntToStr(SSRC-256+1)+']';
+
+  else
+      Result:='?';
+ end;
+end;
+
+function _get_ssrc9_imm_cnt(SSRC,count:Word;d2:DWORD):RawByteString;
+begin
+ case count of
+  2:Result:=_get_ssrc9_imm_64(SSRC,d2);
+  else
+    Result:=_get_ssrc9_imm(SSRC,d2);
+ end;
+end;
+
 function _get_vdst8(SDST:Byte):RawByteString; inline;
 begin
  Result:='v'+IntToStr(SDST);
 end;
 
+function _get_vdst8_cnt(SDST,count:Byte):RawByteString; inline;
+begin
+ case count of
+  1:Result:=_get_vdst8(SDST);
+  else
+    Result:='v['+IntToStr(SDST)+':'+IntToStr(SDST+count-1)+']';
+ end;
+end;
+
 function _get_str_SOP2(Var SPI:TSPI):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count:Byte; inline;
+ begin
+  Case SPI.SOP2.OP of
+   S_CSELECT_B64,
+   S_AND_B64    ,
+   S_OR_B64     ,
+   S_XOR_B64    ,
+   S_ANDN2_B64  ,
+   S_ORN2_B64   ,
+   S_NAND_B64   ,
+   S_NOR_B64    ,
+   S_XNOR_B64   ,
+   S_LSHL_B64   ,
+   S_LSHR_B64   ,
+   S_ASHR_I64   ,
+   S_BFM_B64    ,
+   S_BFE_U64    ,
+   S_BFE_I64    :
+    Result:=2;
+   else
+    Result:=1;
+  end;
+ end;
+
 begin
  Case SPI.SOP2.OP of
 
@@ -1688,15 +1871,15 @@ begin
  str:=str+' ';
 
  //operand #1
- str:=str+_get_sdst7(SPI.SOP2.SDST);
+ str:=str+_get_sdst7_cnt(SPI.SOP2.SDST,get_dword_count);
  str:=str+', ';
 
  //operand #2
- str:=str+_get_ssrc8(SPI.SOP2.SSRC0,SPI.INLINE32);
+ str:=str+_get_ssrc8_imm_cnt(SPI.SOP2.SSRC0,get_dword_count,SPI.INLINE32);
  str:=str+', ';
 
  //operand #3
- str:=str+_get_ssrc8(SPI.SOP2.SSRC1,SPI.INLINE32);
+ str:=str+_get_ssrc8_imm_cnt(SPI.SOP2.SSRC1,get_dword_count,SPI.INLINE32);
 
  Result:=str;
 end;
@@ -1704,6 +1887,56 @@ end;
 function _get_str_SOP1(Var SPI:TSPI):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count_1:Byte; inline;
+ begin
+  Case SPI.SOP1.OP of
+   S_MOV_B64           ,
+   S_CMOV_B64          ,
+   S_NOT_B64           ,
+   S_WQM_B64           ,
+   S_BREV_B64          ,
+   S_BITSET0_B64       ,
+   S_BITSET1_B64       ,
+   S_GETPC_B64         ,
+   S_SETPC_B64         ,
+   S_SWAPPC_B64        ,
+
+   S_AND_SAVEEXEC_B64  ,
+   S_OR_SAVEEXEC_B64   ,
+   S_XOR_SAVEEXEC_B64  ,
+   S_ANDN2_SAVEEXEC_B64,
+   S_ORN2_SAVEEXEC_B64 ,
+   S_NAND_SAVEEXEC_B64 ,
+   S_NOR_SAVEEXEC_B64  ,
+   S_XNOR_SAVEEXEC_B64 ,
+   S_QUADMASK_B64      ,
+   S_MOVRELS_B64       ,
+   S_MOVRELD_B64       :
+    Result:=2;
+   else
+    Result:=1;
+  end;
+ end;
+
+ function get_dword_count_2:Byte; inline;
+ begin
+  Case SPI.SOP1.OP of
+   S_BITSET0_B64,
+   S_BITSET1_B64:
+    Result:=1;
+   S_BCNT0_I32_B64,
+   S_BCNT1_I32_B64,
+   S_FF0_I32_B64  ,
+   S_FF1_I32_B64  ,
+   S_FLBIT_I32_B64,
+   S_FLBIT_I32_I64:
+    Result:=2;
+   else
+    Result:=get_dword_count_1;
+  end;
+ end;
+
 begin
  Case SPI.SOP1.OP of
   S_MOV_B32           :str:='S_MOV_B32';
@@ -1763,11 +1996,18 @@ begin
  str:=str+' ';
 
  //operand #1
- str:=str+_get_sdst7(SPI.SOP1.SDST);
- str:=str+', ';
+ str:=str+_get_sdst7_cnt(SPI.SOP1.SDST,get_dword_count_1);
 
  //operand #2
- str:=str+_get_ssrc8(SPI.SOP1.SSRC,SPI.INLINE32);
+ Case SPI.SOP1.OP of
+  S_GETPC_B64:; //only 1 operand
+  S_SETPC_B64:; //only 1 operand
+  else
+   begin
+    str:=str+', ';
+    str:=str+_get_ssrc8_imm_cnt(SPI.SOP1.SSRC,get_dword_count_2,SPI.INLINE32);
+   end;
+ end;
 
  Result:=str;
 end;
@@ -1775,6 +2015,18 @@ end;
 function _get_str_SOPC(Var SPI:TSPI):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count_1:Byte; inline;
+ begin
+  Case SPI.SOPC.OP of
+   S_BITCMP0_B64,
+   S_BITCMP1_B64:
+    Result:=2;
+   else
+    Result:=1;
+  end;
+ end;
+
 begin
  Case SPI.SOPC.OP of
   S_CMP_EQ_I32 :str:='S_CMP_EQ_I32';
@@ -1800,16 +2052,16 @@ begin
  str:=str+' ';
 
  //operand #1
- str:=str+_get_ssrc8(SPI.SOPC.SSRC0,SPI.INLINE32);
+ str:=str+_get_ssrc8_imm_cnt(SPI.SOPC.SSRC0,get_dword_count_1,SPI.INLINE32);
  str:=str+', ';
 
  //operand #2
- str:=str+_get_ssrc8(SPI.SOPC.SSRC1,SPI.INLINE32);
+ str:=str+_get_ssrc8_imm(SPI.SOPC.SSRC1,SPI.INLINE32);
 
  Result:=str;
 end;
 
-function _text_branch_offset(OFFSET_DW:DWORD;S:SmallInt):RawByteString;
+function _text_branch_offset(OFFSET_DW:DWORD;S:SmallInt):RawByteString; inline;
 begin
  Result:='#0x'+HexStr((OFFSET_DW+S+1)*4,8);
 end;
@@ -1868,160 +2120,134 @@ end;
 function _get_str_SMRD(Var SPI:TSPI):RawByteString;
 var
  str:RawByteString;
- t1,t2,t3:Byte;
+ t:Byte;
+
+ function get_dword_count_1:Byte; inline;
+ begin
+  Case SPI.SMRD.OP of
+   S_LOAD_DWORD          :Result:=1;
+   S_LOAD_DWORDX2        :Result:=2;
+   S_LOAD_DWORDX4        :Result:=4;
+   S_LOAD_DWORDX8        :Result:=8;
+   S_LOAD_DWORDX16       :Result:=16;
+   //--
+   S_BUFFER_LOAD_DWORD   :Result:=1;
+   S_BUFFER_LOAD_DWORDX2 :Result:=2;
+   S_BUFFER_LOAD_DWORDX4 :Result:=4;
+   S_BUFFER_LOAD_DWORDX8 :Result:=8;
+   S_BUFFER_LOAD_DWORDX16:Result:=16;
+   //--
+   S_MEMTIME             :Result:=2;
+   else
+    Result:=0;
+  end;
+ end;
+
+ function get_dword_count_2:Byte; inline;
+ begin
+  Case SPI.SMRD.OP of
+   S_LOAD_DWORD          :Result:=2;
+   S_LOAD_DWORDX2        :Result:=2;
+   S_LOAD_DWORDX4        :Result:=2;
+   S_LOAD_DWORDX8        :Result:=2;
+   S_LOAD_DWORDX16       :Result:=2;
+   //--
+   S_BUFFER_LOAD_DWORD   :Result:=4;
+   S_BUFFER_LOAD_DWORDX2 :Result:=4;
+   S_BUFFER_LOAD_DWORDX4 :Result:=4;
+   S_BUFFER_LOAD_DWORDX8 :Result:=4;
+   S_BUFFER_LOAD_DWORDX16:Result:=4;
+   else
+    Result:=0;
+  end;
+ end;
+
+ function get_dword_count_3:Byte; inline;
+ begin
+  Case SPI.SMRD.OP of
+   S_LOAD_DWORD          :Result:=1;
+   S_LOAD_DWORDX2        :Result:=1;
+   S_LOAD_DWORDX4        :Result:=1;
+   S_LOAD_DWORDX8        :Result:=1;
+   S_LOAD_DWORDX16       :Result:=1;
+   //--
+   S_BUFFER_LOAD_DWORD   :Result:=1;
+   S_BUFFER_LOAD_DWORDX2 :Result:=1;
+   S_BUFFER_LOAD_DWORDX4 :Result:=1;
+   S_BUFFER_LOAD_DWORDX8 :Result:=1;
+   S_BUFFER_LOAD_DWORDX16:Result:=1;
+   else
+    Result:=0;
+  end;
+ end;
+
 begin
- t1:=0;
- t2:=0;
- t3:=0;
-
  Case SPI.SMRD.OP of
-
-  S_LOAD_DWORD:
-    begin
-     str:='S_LOAD_DWORD';
-     t1:=1;
-     t2:=2;
-     t3:=1;
-    end;
-
-  S_LOAD_DWORDX2:
-    begin
-     str:='S_LOAD_DWORDX2';
-     t1:=2;
-     t2:=2;
-     t3:=1;
-    end;
-
-  S_LOAD_DWORDX4:
-    begin
-     str:='S_LOAD_DWORDX4';
-     t1:=4;
-     t2:=2;
-     t3:=1;
-    end;
-
-   S_LOAD_DWORDX8:
-    begin
-     str:='S_LOAD_DWORDX8';
-     t1:=8;
-     t2:=2;
-     t3:=1;
-    end;
-
-  S_LOAD_DWORDX16:
-    begin
-     str:='S_LOAD_DWORDX16';
-     t1:=16;
-     t2:=2;
-     t3:=1;
-    end;
-
+  S_LOAD_DWORD          :str:='S_LOAD_DWORD';
+  S_LOAD_DWORDX2        :str:='S_LOAD_DWORDX2';
+  S_LOAD_DWORDX4        :str:='S_LOAD_DWORDX4';
+  S_LOAD_DWORDX8        :str:='S_LOAD_DWORDX8';
+  S_LOAD_DWORDX16       :str:='S_LOAD_DWORDX16';
   //--
-
-  S_BUFFER_LOAD_DWORD:
-    begin
-     str:='S_BUFFER_LOAD_DWORD';
-     t1:=1;
-     t2:=4;
-     t3:=1;
-    end;
-
-  S_BUFFER_LOAD_DWORDX2:
-    begin
-     str:='S_BUFFER_LOAD_DWORDX2';
-     t1:=2;
-     t2:=4;
-     t3:=1;
-    end;
-
-  S_BUFFER_LOAD_DWORDX4:
-    begin
-     str:='S_BUFFER_LOAD_DWORDX4';
-     t1:=4;
-     t2:=4;
-     t3:=1;
-    end;
-
-  S_BUFFER_LOAD_DWORDX8:
-    begin
-     str:='S_BUFFER_LOAD_DWORDX8';
-     t1:=8;
-     t2:=4;
-     t3:=1;
-    end;
-
-  S_BUFFER_LOAD_DWORDX16:
-    begin
-     str:='S_BUFFER_LOAD_DWORDX16';
-     t1:=16;
-     t2:=4;
-     t3:=1;
-    end;
-
-  S_MEMTIME:
-    begin
-     str:='S_MEMTIME';
-     t1:=2;
-    end;
-  S_DCACHE_INV:
-   begin
-    str:='S_DCACHE_INV';
-   end
-
+  S_BUFFER_LOAD_DWORD   :str:='S_BUFFER_LOAD_DWORD';
+  S_BUFFER_LOAD_DWORDX2 :str:='S_BUFFER_LOAD_DWORDX2';
+  S_BUFFER_LOAD_DWORDX4 :str:='S_BUFFER_LOAD_DWORDX4';
+  S_BUFFER_LOAD_DWORDX8 :str:='S_BUFFER_LOAD_DWORDX8';
+  S_BUFFER_LOAD_DWORDX16:str:='S_BUFFER_LOAD_DWORDX16';
+  //--
+  S_MEMTIME             :str:='S_MEMTIME';
+  S_DCACHE_INV          :str:='S_DCACHE_INV';
   else
       str:='SMRD?'+IntToStr(SPI.SMRD.OP);
  end;
 
- if (t1<>0) then
- begin
-  str:=str+' ';
- end;
+ t:=get_dword_count_1;
 
  //operand #1
- case t1 of
+ case t of
+  0:; //nothing
   1:begin
      With SPI.SMRD do
      begin
+      str:=str+' ';
       str:=str+'s['+IntToStr(SDST)+']';
      end;
     end;
-  2,4,8,16:
+  else
     begin
      With SPI.SMRD do
      begin
-      str:=str+'s['+IntToStr(SDST)+':'+IntToStr(SDST+t1-1)+']';
+      str:=str+' ';
+      str:=str+'s['+IntToStr(SDST)+':'+IntToStr(SDST+t-1)+']';
      end;
     end;
  end;
 
- if (t2<>0) then
- begin
-  str:=str+', ';
- end;
+ t:=get_dword_count_2;
 
  //operand #2
- case t2 of
-  2,4:
-    begin
-     With SPI.SMRD do
-     begin
-      str:=str+'s['+IntToStr(SBASE*2)+':'+IntToStr(SBASE*2+t2-1)+']';
-     end;
-    end;
+ if (t<>0) then
+ begin
+  With SPI.SMRD do
+  begin
+   str:=str+', ';
+   str:=str+'s['+IntToStr(SBASE*2)+':'+IntToStr(SBASE*2+t-1)+']';
+  end;
  end;
 
- if (t3<>0) then
- begin
-  str:=str+', ';
- end;
+ t:=get_dword_count_3;
 
  //operand #3
- if (t3<>0) then
- With SPI.SMRD do
-  Case IMM of
-   0:str:=str+_get_ssrc8(OFFSET,SPI.INLINE32);
-   1:str:=str+'0x'+HexStr(OFFSET,2);
-  end;
+ if (t<>0) then
+ begin
+  str:=str+', ';
+
+  With SPI.SMRD do
+   Case IMM of
+    0:str:=str+_get_ssrc8_imm(OFFSET,SPI.INLINE32);
+    1:str:=str+'0x'+HexStr(OFFSET,2);
+   end;
+ end;
 
  Result:=str;
 end;
@@ -2094,6 +2320,134 @@ end;
 function _get_str_VOP3c(Var VOP3:TVOP3a):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count:Byte; inline;
+ begin
+  Case VOP3.OP of
+   V_CMP_F_F64     ,
+   V_CMP_LT_F64    ,
+   V_CMP_EQ_F64    ,
+   V_CMP_LE_F64    ,
+   V_CMP_GT_F64    ,
+   V_CMP_LG_F64    ,
+   V_CMP_GE_F64    ,
+   V_CMP_O_F64     ,
+   V_CMP_U_F64     ,
+   V_CMP_NGE_F64   ,
+   V_CMP_NLG_F64   ,
+   V_CMP_NGT_F64   ,
+   V_CMP_NLE_F64   ,
+   V_CMP_NEQ_F64   ,
+   V_CMP_NLT_F64   ,
+   V_CMP_T_F64     ,
+
+   V_CMPX_F_F64    ,
+   V_CMPX_LT_F64   ,
+   V_CMPX_EQ_F64   ,
+   V_CMPX_LE_F64   ,
+   V_CMPX_GT_F64   ,
+   V_CMPX_LG_F64   ,
+   V_CMPX_GE_F64   ,
+   V_CMPX_O_F64    ,
+   V_CMPX_U_F64    ,
+   V_CMPX_NGE_F64  ,
+   V_CMPX_NLG_F64  ,
+   V_CMPX_NGT_F64  ,
+   V_CMPX_NLE_F64  ,
+   V_CMPX_NEQ_F64  ,
+   V_CMPX_NLT_F64  ,
+   V_CMPX_T_F64    ,
+
+   V_CMPS_F_F64    ,
+   V_CMPS_LT_F64   ,
+   V_CMPS_EQ_F64   ,
+   V_CMPS_LE_F64   ,
+   V_CMPS_GT_F64   ,
+   V_CMPS_LG_F64   ,
+   V_CMPS_GE_F64   ,
+   V_CMPS_O_F64    ,
+   V_CMPS_U_F64    ,
+   V_CMPS_NGE_F64  ,
+   V_CMPS_NLG_F64  ,
+   V_CMPS_NGT_F64  ,
+   V_CMPS_NLE_F64  ,
+   V_CMPS_NEQ_F64  ,
+   V_CMPS_NLT_F64  ,
+   V_CMPS_T_F64    ,
+
+   V_CMPSX_F_F64   ,
+   V_CMPSX_LT_F64  ,
+   V_CMPSX_EQ_F64  ,
+   V_CMPSX_LE_F64  ,
+   V_CMPSX_GT_F64  ,
+   V_CMPSX_LG_F64  ,
+   V_CMPSX_GE_F64  ,
+   V_CMPSX_O_F64   ,
+   V_CMPSX_U_F64   ,
+   V_CMPSX_NGE_F64 ,
+   V_CMPSX_NLG_F64 ,
+   V_CMPSX_NGT_F64 ,
+   V_CMPSX_NLE_F64 ,
+   V_CMPSX_NEQ_F64 ,
+   V_CMPSX_NLT_F64 ,
+   V_CMPSX_T_F64   ,
+
+   V_CMP_F_I64     ,
+   V_CMP_LT_I64    ,
+   V_CMP_EQ_I64    ,
+   V_CMP_LE_I64    ,
+   V_CMP_GT_I64    ,
+   V_CMP_LG_I64    ,
+   V_CMP_GE_I64    ,
+   V_CMP_T_I64     ,
+
+   V_CMPX_F_I64    ,
+   V_CMPX_LT_I64   ,
+   V_CMPX_EQ_I64   ,
+   V_CMPX_LE_I64   ,
+   V_CMPX_GT_I64   ,
+   V_CMPX_LG_I64   ,
+   V_CMPX_GE_I64   ,
+   V_CMPX_T_I64    ,
+
+   V_CMP_F_U64     ,
+   V_CMP_LT_U64    ,
+   V_CMP_EQ_U64    ,
+   V_CMP_LE_U64    ,
+   V_CMP_GT_U64    ,
+   V_CMP_LG_U64    ,
+   V_CMP_GE_U64    ,
+   V_CMP_T_U64     ,
+
+   V_CMPX_F_U64    ,
+   V_CMPX_LT_U64   ,
+   V_CMPX_EQ_U64   ,
+   V_CMPX_LE_U64   ,
+   V_CMPX_GT_U64   ,
+   V_CMPX_LG_U64   ,
+   V_CMPX_GE_U64   ,
+   V_CMPX_T_U64    ,
+
+   V_CMP_CLASS_F64 ,
+   V_CMPX_CLASS_F64:
+
+    Result:=2;
+   else
+    Result:=1;
+  end;
+ end;
+
+ function get_dword_count_3:Byte; inline;
+ begin
+  Case VOP3.OP of
+   V_CMP_CLASS_F64 ,
+   V_CMPX_CLASS_F64:
+    Result:=1;
+   else
+    Result:=get_dword_count;
+  end;
+ end;
+
 begin
  Case VOP3.OP of
 
@@ -2318,20 +2672,20 @@ begin
  str:=str+' ';
 
  //operand #1
- str:=str+_get_sdst7(VOP3.VDST);
+ str:=str+_get_sdst7_cnt(VOP3.VDST,2);
  str:=str+', ';
 
  //operand #2
  if Byte(VOP3.NEG).TestBit(0) then str:=str+'-';
  if Byte(VOP3.ABS).TestBit(0) then str:=str+'abs(';
- str:=str+_get_ssrc9(VOP3.SRC0);
+ str:=str+_get_ssrc9_cnt(VOP3.SRC0,get_dword_count);
  if Byte(VOP3.ABS).TestBit(0) then str:=str+')';
  str:=str+', ';
 
  //operand #3
  if Byte(VOP3.NEG).TestBit(1) then str:=str+'-';
  if Byte(VOP3.ABS).TestBit(1) then str:=str+'abs(';
- str:=str+_get_ssrc9(VOP3.SRC1);
+ str:=str+_get_ssrc9_cnt(VOP3.SRC1,get_dword_count_3);
  if Byte(VOP3.ABS).TestBit(1) then str:=str+')';
 
  str:=str+' ; VOP3c';
@@ -2342,6 +2696,68 @@ end;
 function _get_str_VOP3a(Var VOP3:TVOP3a):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count:Byte; inline;
+ begin
+  Case VOP3.OP of
+   V_FMA_F64           ,
+   V_DIV_FIXUP_F64     ,
+   V_LSHL_B64          ,
+   V_LSHR_B64          ,
+   V_ASHR_I64          ,
+   V_ADD_F64           ,
+   V_MUL_F64           ,
+   V_MIN_F64           ,
+   V_MAX_F64           ,
+   V_LDEXP_F64         ,
+   V_DIV_FMAS_F64      ,
+   V_TRIG_PREOP_F64    ,
+
+   384+V_TRUNC_F64     ,
+   384+V_CEIL_F64      ,
+   384+V_RNDNE_F64     ,
+   384+V_FLOOR_F64     ,
+
+   384+V_RCP_F64       ,
+   384+V_RCP_CLAMP_F64 ,
+   384+V_RSQ_F64       ,
+   384+V_RSQ_CLAMP_F64 ,
+   384+V_SQRT_F64      ,
+
+   384+V_FREXP_MANT_F64,
+   384+V_FRACT_F64     :
+
+    Result:=2;
+   else
+    Result:=1;
+  end;
+ end;
+
+ function get_dword_count_1:Byte; inline;
+ begin
+  Case VOP3.OP of
+   384+V_CVT_F64_I32,
+   384+V_CVT_F64_F32,
+   384+V_CVT_F64_U32:
+    Result:=2;
+   else
+    Result:=get_dword_count;
+  end;
+ end;
+
+ function get_dword_count_2:Byte; inline;
+ begin
+  Case VOP3.OP of
+   384+V_CVT_I32_F64      ,
+   384+V_CVT_F32_F64      ,
+   384+V_CVT_U32_F64      ,
+   384+V_FREXP_EXP_I32_F64:
+    Result:=2;
+   else
+    Result:=get_dword_count;
+  end;
+ end;
+
 begin
  Case VOP3.OP of
 
@@ -2528,7 +2944,7 @@ begin
     end;
   else
     begin
-     str:=str+_get_vdst8(VOP3.VDST);
+     str:=str+_get_vdst8_cnt(VOP3.VDST,get_dword_count_1);
     end;
  end;
 
@@ -2548,7 +2964,7 @@ begin
   //operand #2
   if Byte(VOP3.NEG).TestBit(0) then str:=str+'-';
   if Byte(VOP3.ABS).TestBit(0) then str:=str+'abs(';
-  str:=str+_get_ssrc9(VOP3.SRC0);
+  str:=str+_get_ssrc9_cnt(VOP3.SRC0,get_dword_count_2);
   if Byte(VOP3.ABS).TestBit(0) then str:=str+')';
  end;
 
@@ -2560,7 +2976,7 @@ begin
     str:=str+', ';
     if Byte(VOP3.NEG).TestBit(1) then str:=str+'-';
     if Byte(VOP3.ABS).TestBit(1) then str:=str+'abs(';
-    str:=str+_get_ssrc9(VOP3.SRC1);
+    str:=str+_get_ssrc9_cnt(VOP3.SRC1,get_dword_count);
     if Byte(VOP3.ABS).TestBit(1) then str:=str+')';
    end;
  end;
@@ -2573,7 +2989,7 @@ begin
      str:=str+', ';
      if Byte(VOP3.NEG).TestBit(2) then str:=str+'-';
      if Byte(VOP3.ABS).TestBit(2) then str:=str+'abs(';
-     str:=str+_get_ssrc9(VOP3.SRC2);
+     str:=str+_get_ssrc9_cnt(VOP3.SRC2,get_dword_count);
      if Byte(VOP3.ABS).TestBit(2) then str:=str+')';
     end;
   else;
@@ -2589,6 +3005,17 @@ end;
 function _get_str_VOP3b(Var VOP3:TVOP3b):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count:Byte; inline;
+ begin
+  Case VOP3.OP of
+   V_DIV_SCALE_F64:
+    Result:=2;
+   else
+    Result:=1;
+  end;
+ end;
+
 begin
  Case VOP3.OP of
 
@@ -2608,7 +3035,7 @@ begin
  str:=str+' ';
 
  //operand #1
- str:=str+_get_vdst8(VOP3.VDST);
+ str:=str+_get_vdst8_cnt(VOP3.VDST,get_dword_count);
 
  //dest modifier
  Case VOP3.OMOD of
@@ -2621,22 +3048,22 @@ begin
  str:=str+', ';
 
  //operand #2
- str:=str+_get_sdst7(VOP3.SDST);
+ str:=str+_get_sdst7_cnt(VOP3.SDST,get_dword_count);
  str:=str+', ';
 
  //operand #3
  if Byte(VOP3.NEG).TestBit(0) then str:=str+'-';
- str:=str+_get_ssrc9(VOP3.SRC0);
+ str:=str+_get_ssrc9_cnt(VOP3.SRC0,get_dword_count);
  str:=str+', ';
 
  //operand #4
  if Byte(VOP3.NEG).TestBit(1) then str:=str+'-';
- str:=str+_get_ssrc9(VOP3.SRC1);
+ str:=str+_get_ssrc9_cnt(VOP3.SRC1,get_dword_count);
  str:=str+', ';
 
  //operand #5
  if Byte(VOP3.NEG).TestBit(2) then str:=str+'-';
- str:=str+_get_ssrc9(VOP3.SRC2);
+ str:=str+_get_ssrc9_cnt(VOP3.SRC2,get_dword_count);
 
  str:=str+' ; VOP3b';
 
@@ -2729,7 +3156,7 @@ begin
  str:=str+', ';
 
  //operand #2
- str:=str+_get_ssrc9(SPI.VOP2.SRC0,SPI.INLINE32);
+ str:=str+_get_ssrc9_imm(SPI.VOP2.SRC0,SPI.INLINE32);
  str:=str+', ';
 
  //operand #3
@@ -2752,6 +3179,134 @@ end;
 function _get_str_VOPC(Var SPI:TSPI):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count:Byte; inline;
+ begin
+  Case SPI.VOPC.OP of
+   V_CMP_F_F64     ,
+   V_CMP_LT_F64    ,
+   V_CMP_EQ_F64    ,
+   V_CMP_LE_F64    ,
+   V_CMP_GT_F64    ,
+   V_CMP_LG_F64    ,
+   V_CMP_GE_F64    ,
+   V_CMP_O_F64     ,
+   V_CMP_U_F64     ,
+   V_CMP_NGE_F64   ,
+   V_CMP_NLG_F64   ,
+   V_CMP_NGT_F64   ,
+   V_CMP_NLE_F64   ,
+   V_CMP_NEQ_F64   ,
+   V_CMP_NLT_F64   ,
+   V_CMP_T_F64     ,
+
+   V_CMPX_F_F64    ,
+   V_CMPX_LT_F64   ,
+   V_CMPX_EQ_F64   ,
+   V_CMPX_LE_F64   ,
+   V_CMPX_GT_F64   ,
+   V_CMPX_LG_F64   ,
+   V_CMPX_GE_F64   ,
+   V_CMPX_O_F64    ,
+   V_CMPX_U_F64    ,
+   V_CMPX_NGE_F64  ,
+   V_CMPX_NLG_F64  ,
+   V_CMPX_NGT_F64  ,
+   V_CMPX_NLE_F64  ,
+   V_CMPX_NEQ_F64  ,
+   V_CMPX_NLT_F64  ,
+   V_CMPX_T_F64    ,
+
+   V_CMPS_F_F64    ,
+   V_CMPS_LT_F64   ,
+   V_CMPS_EQ_F64   ,
+   V_CMPS_LE_F64   ,
+   V_CMPS_GT_F64   ,
+   V_CMPS_LG_F64   ,
+   V_CMPS_GE_F64   ,
+   V_CMPS_O_F64    ,
+   V_CMPS_U_F64    ,
+   V_CMPS_NGE_F64  ,
+   V_CMPS_NLG_F64  ,
+   V_CMPS_NGT_F64  ,
+   V_CMPS_NLE_F64  ,
+   V_CMPS_NEQ_F64  ,
+   V_CMPS_NLT_F64  ,
+   V_CMPS_T_F64    ,
+
+   V_CMPSX_F_F64   ,
+   V_CMPSX_LT_F64  ,
+   V_CMPSX_EQ_F64  ,
+   V_CMPSX_LE_F64  ,
+   V_CMPSX_GT_F64  ,
+   V_CMPSX_LG_F64  ,
+   V_CMPSX_GE_F64  ,
+   V_CMPSX_O_F64   ,
+   V_CMPSX_U_F64   ,
+   V_CMPSX_NGE_F64 ,
+   V_CMPSX_NLG_F64 ,
+   V_CMPSX_NGT_F64 ,
+   V_CMPSX_NLE_F64 ,
+   V_CMPSX_NEQ_F64 ,
+   V_CMPSX_NLT_F64 ,
+   V_CMPSX_T_F64   ,
+
+   V_CMP_F_I64     ,
+   V_CMP_LT_I64    ,
+   V_CMP_EQ_I64    ,
+   V_CMP_LE_I64    ,
+   V_CMP_GT_I64    ,
+   V_CMP_LG_I64    ,
+   V_CMP_GE_I64    ,
+   V_CMP_T_I64     ,
+
+   V_CMPX_F_I64    ,
+   V_CMPX_LT_I64   ,
+   V_CMPX_EQ_I64   ,
+   V_CMPX_LE_I64   ,
+   V_CMPX_GT_I64   ,
+   V_CMPX_LG_I64   ,
+   V_CMPX_GE_I64   ,
+   V_CMPX_T_I64    ,
+
+   V_CMP_F_U64     ,
+   V_CMP_LT_U64    ,
+   V_CMP_EQ_U64    ,
+   V_CMP_LE_U64    ,
+   V_CMP_GT_U64    ,
+   V_CMP_LG_U64    ,
+   V_CMP_GE_U64    ,
+   V_CMP_T_U64     ,
+
+   V_CMPX_F_U64    ,
+   V_CMPX_LT_U64   ,
+   V_CMPX_EQ_U64   ,
+   V_CMPX_LE_U64   ,
+   V_CMPX_GT_U64   ,
+   V_CMPX_LG_U64   ,
+   V_CMPX_GE_U64   ,
+   V_CMPX_T_U64    ,
+
+   V_CMP_CLASS_F64 ,
+   V_CMPX_CLASS_F64:
+
+    Result:=2;
+   else
+    Result:=1;
+  end;
+ end;
+
+ function get_dword_count_3:Byte; inline;
+ begin
+  Case SPI.VOPC.OP of
+   V_CMP_CLASS_F64 ,
+   V_CMPX_CLASS_F64:
+    Result:=1;
+   else
+    Result:=get_dword_count;
+  end;
+ end;
+
 begin
  Case SPI.VOPC.OP of
 
@@ -2973,14 +3528,16 @@ begin
   else
       str:='VOPC?'+IntToStr(SPI.VOPC.OP);
  end;
- str:=str+' VCC, ';
 
  //operand #1
- str:=str+_get_ssrc9(SPI.VOPC.SRC0,SPI.INLINE32);
- str:=str+', ';
+ str:=str+' VCC, ';
 
  //operand #2
- str:=str+_get_vdst8(SPI.VOPC.VSRC1);
+ str:=str+_get_ssrc9_imm_cnt(SPI.VOPC.SRC0,get_dword_count,SPI.INLINE32);
+ str:=str+', ';
+
+ //operand #3
+ str:=str+_get_vdst8_cnt(SPI.VOPC.VSRC1,get_dword_count_3);
 
  Result:=str;
 end;
@@ -2988,6 +3545,52 @@ end;
 function _get_str_VOP1(Var SPI:TSPI):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count:Byte; inline;
+ begin
+  Case SPI.VOP1.OP of
+   V_TRUNC_F64     ,
+   V_CEIL_F64      ,
+   V_RNDNE_F64     ,
+   V_FLOOR_F64     ,
+   V_RCP_F64       ,
+   V_RCP_CLAMP_F64 ,
+   V_RSQ_F64       ,
+   V_RSQ_CLAMP_F64 ,
+   V_SQRT_F64      ,
+   V_FREXP_MANT_F64,
+   V_FRACT_F64     :
+    Result:=2;
+   else
+    Result:=1;
+  end;
+ end;
+
+ function get_dword_count_1:Byte; inline;
+ begin
+  Case SPI.VOP1.OP of
+   V_CVT_F64_I32,
+   V_CVT_F64_F32,
+   V_CVT_F64_U32:
+    Result:=2;
+   else
+    Result:=get_dword_count;
+  end;
+ end;
+
+ function get_dword_count_2:Byte; inline;
+ begin
+  Case SPI.VOP1.OP of
+   V_CVT_I32_F64      ,
+   V_CVT_F32_F64      ,
+   V_CVT_U32_F64      ,
+   V_FREXP_EXP_I32_F64:
+    Result:=2;
+   else
+    Result:=get_dword_count;
+  end;
+ end;
+
 begin
 
  Case SPI.VOP1.OP of
@@ -3073,7 +3676,7 @@ begin
     end;
   else
     begin
-     str:=str+_get_vdst8(SPI.VOP1.VDST);
+     str:=str+_get_vdst8_cnt(SPI.VOP1.VDST,get_dword_count_1);
     end;
  end;
 
@@ -3081,7 +3684,7 @@ begin
  if (SPI.VOP1.OP<>V_NOP) then
  begin
   str:=str+', ';
-  str:=str+_get_ssrc9(SPI.VOP1.SRC0,SPI.INLINE32);
+  str:=str+_get_ssrc9_imm_cnt(SPI.VOP1.SRC0,get_dword_count_2,SPI.INLINE32);
  end;
 
  Result:=str;
@@ -3090,6 +3693,49 @@ end;
 function _get_str_MUBUF(Var SPI:TSPI):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count_1:Byte;
+ begin
+  case SPI.MUBUF.OP of
+   BUFFER_LOAD_FORMAT_XY   :Result:=2;
+   BUFFER_LOAD_FORMAT_XYZ  :Result:=3;
+   BUFFER_LOAD_FORMAT_XYZW :Result:=4;
+
+   BUFFER_STORE_FORMAT_XY  :Result:=2;
+   BUFFER_STORE_FORMAT_XYZ :Result:=3;
+   BUFFER_STORE_FORMAT_XYZW:Result:=4;
+
+   BUFFER_LOAD_DWORDX2     :Result:=2;
+   BUFFER_LOAD_DWORDX4     :Result:=4;
+   BUFFER_LOAD_DWORDX3     :Result:=3;
+
+   BUFFER_STORE_DWORDX2    :Result:=2;
+   BUFFER_STORE_DWORDX4    :Result:=4;
+   BUFFER_STORE_DWORDX3    :Result:=3;
+
+   BUFFER_ATOMIC_SWAP_X2   :Result:=2;
+   BUFFER_ATOMIC_CMPSWAP_X2:Result:=2;
+   BUFFER_ATOMIC_ADD_X2    :Result:=2;
+   BUFFER_ATOMIC_SUB_X2    :Result:=2;
+   BUFFER_ATOMIC_SMIN_X2   :Result:=2;
+   BUFFER_ATOMIC_UMIN_X2   :Result:=2;
+   BUFFER_ATOMIC_SMAX_X2   :Result:=2;
+   BUFFER_ATOMIC_UMAX_X2   :Result:=2;
+   BUFFER_ATOMIC_AND_X2    :Result:=2;
+   BUFFER_ATOMIC_OR_X2     :Result:=2;
+   BUFFER_ATOMIC_XOR_X2    :Result:=2;
+   BUFFER_ATOMIC_INC_X2    :Result:=2;
+   BUFFER_ATOMIC_DEC_X2    :Result:=2;
+   else
+    Result:=1;
+  end;
+ end;
+
+ function get_dword_count_2:Byte; inline;
+ begin
+  Result:=ord(SPI.MUBUF.OFFEN)+ord(SPI.MUBUF.IDXEN);
+ end;
+
 begin
  case SPI.MUBUF.OP of
   BUFFER_LOAD_FORMAT_X    :str:='BUFFER_LOAD_FORMAT_X';
@@ -3153,11 +3799,11 @@ begin
  str:=str+' ';
 
  //operand #1
- str:=str+_get_vdst8(SPI.MUBUF.VDATA);
+ str:=str+_get_vdst8_cnt(SPI.MUBUF.VDATA,get_dword_count_1);
  str:=str+', ';
 
  //operand #2
- str:=str+_get_vdst8(SPI.MUBUF.VADDR);
+ str:=str+_get_vdst8_cnt(SPI.MUBUF.VADDR,get_dword_count_2);
  str:=str+', ';
 
  //operand #3
@@ -3186,6 +3832,27 @@ end;
 function _get_str_MTBUF(Var SPI:TSPI):RawByteString;
 var
  str:RawByteString;
+
+ function get_dword_count_1:Byte; inline;
+ begin
+  case SPI.MTBUF.OP of
+   TBUFFER_LOAD_FORMAT_XY   :Result:=2;
+   TBUFFER_LOAD_FORMAT_XYZ  :Result:=3;
+   TBUFFER_LOAD_FORMAT_XYZW :Result:=4;
+
+   TBUFFER_STORE_FORMAT_XY  :Result:=2;
+   TBUFFER_STORE_FORMAT_XYZ :Result:=3;
+   TBUFFER_STORE_FORMAT_XYZW:Result:=4;
+   else
+    Result:=1;
+  end;
+ end;
+
+ function get_dword_count_2:Byte; inline;
+ begin
+  Result:=ord(SPI.MTBUF.OFFEN)+ord(SPI.MTBUF.IDXEN);
+ end;
+
 begin
  case SPI.MTBUF.OP of
   TBUFFER_LOAD_FORMAT_X    :str:='TBUFFER_LOAD_FORMAT_X';
@@ -3201,11 +3868,11 @@ begin
  str:=str+' ';
 
  //operand #1
- str:=str+_get_vdst8(SPI.MTBUF.VDATA);
+ str:=str+_get_vdst8_cnt(SPI.MTBUF.VDATA,get_dword_count_1);
  str:=str+', ';
 
  //operand #2
- str:=str+_get_vdst8(SPI.MTBUF.VADDR);
+ str:=str+_get_vdst8_cnt(SPI.MTBUF.VADDR,get_dword_count_2);
  str:=str+', ';
 
  //operand #3
