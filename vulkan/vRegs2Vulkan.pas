@@ -139,6 +139,20 @@ type
   Function get_user_data(FStage:TvShaderStage):Pointer;
  end;
 
+ TGPU_SHADERDATA_RT=packed object
+  SG_REG                  :TSH_REG_GFX_GROUP;                           // 0x2C00
+  SPI_PS_INPUT_ENA        :TSPI_PS_INPUT_ENA;                           // 0xA1B3
+  SPI_PS_INPUT_ADDR       :TSPI_PS_INPUT_ADDR;                          // 0xA1B4
+  SPI_INTERP_CONTROL_0    :TSPI_INTERP_CONTROL_0;                       // 0xA1B5
+  SPI_PS_IN_CONTROL       :TSPI_PS_IN_CONTROL;                          // 0xA1B6
+  SPI_PS_INPUT_CNTL       :array[0..31] of TSPI_PS_INPUT_CNTL_0;        // 0xA191
+  DB_SHADER_CONTROL       :TDB_SHADER_CONTROL;                          // 0xA203
+  VGT_INSTANCE_STEP_RATE_0:TVGT_INSTANCE_STEP_RATE_0;                   // 0xA2A8
+  VGT_INSTANCE_STEP_RATE_1:TVGT_INSTANCE_STEP_RATE_1;                   // 0xA2A9
+  RENDER_TARGET           :array[0..7] of TRENDER_TARGET;               // 0xA318
+  UC_REG                  :TUSERCONFIG_REG_SHORT;                       // 0xC000
+ end;
+
 function GET_INDEX_TYPE_SIZE(i:TVkIndexType):Byte;
 
 //
@@ -2187,7 +2201,11 @@ begin
     Result.params.cube :=1;
    end;
   else;
-   Assert(false,'Unknow tsharp4 type:0x'+HexStr(PT^._type,1));
+   begin
+    Writeln(stderr,'Unknow tsharp4 type:0x'+HexStr(PT^._type,1));
+    Result.params.itype  :=ord(VK_IMAGE_TYPE_2D);
+    Result.params.invalid:=1;
+   end;
  end;
 
  Result.params.pow2pad   :=PT^.pow2pad;
@@ -2241,7 +2259,7 @@ begin
   SQ_RSRC_IMG_2D_MSAA_ARRAY:
    begin
     Result.params.arrayLayers:=PT^.last_array+1;
-   end
+   end;
   else;
  end;
 end;
@@ -2256,7 +2274,7 @@ begin
   6:Result:=VK_SWIZZLE_B;
   7:Result:=VK_SWIZZLE_A;
   else
-    Result:=VK_SWIZZLE_I;
+    Result:=VK_SWIZZLE_I; //what is the actual behavior when the value is incorrect?
  end;
 end;
 
@@ -2285,8 +2303,12 @@ begin
   SQ_RSRC_IMG_2D_ARRAY     :Result.vtype:=ord(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
   SQ_RSRC_IMG_2D_MSAA      :Result.vtype:=ord(VK_IMAGE_VIEW_TYPE_2D);
   SQ_RSRC_IMG_2D_MSAA_ARRAY:Result.vtype:=ord(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
-  else;
-   Assert(false,'Unknow tsharp4 type:0x'+HexStr(PT^._type,1));
+  else
+   begin
+    Writeln(stderr,'Unknow tsharp4 type:0x'+HexStr(PT^._type,1));
+    Result.vtype  :=ord(VK_IMAGE_VIEW_TYPE_2D);
+    Result.invalid:=1;
+   end;
  end;
 
  Result.dstSel.x:=_get_dst_sel_swizzle(PT^.dst_sel_x);

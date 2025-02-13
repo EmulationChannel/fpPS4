@@ -14,6 +14,7 @@ uses
  sys_eventvar,
 
  si_ci_vi_merged_enum,
+ si_ci_vi_merged_groups,
 
  sys_bootparam,
  host_ipc_interface,
@@ -1289,18 +1290,22 @@ begin
 
    //Writeln('init_img:',HexStr(resource^.rkey.Addr),' ',(resource^.rkey.params.width),'x',(resource^.rkey.params.height));
 
-   ri:=FetchImage(ctx.Cmd,
-                  resource^.rkey,
-                  i^.curr.img_usage + i^.next.img_usage
-                 );
-
-   Assert(ri<>nil);
-
-   resource^.rimage:=ri;
-
    //now preload only sampled image
    if (resource^.uall.img_usage=[iu_sampled]) then
    begin
+    ri:=FetchImage(ctx.Cmd,
+                   resource^.rkey,
+                   i^.curr.img_usage + i^.next.img_usage
+                  );
+
+    if (ri=nil) then
+    begin
+     //NO MEM
+     Break;
+    end;
+
+    resource^.rimage:=ri;
+
     pm4_load_from(ctx.Cmd,ri,i^.curr.mem_usage);
    end;
   end else
@@ -1411,7 +1416,38 @@ var
  meta_instance:p_pm4_resource_instance;
  d_instance:p_pm4_resource_instance;
  s_instance:p_pm4_resource_instance;
+
+ //
+ GPU_REGS:TGPU_REGS;
+ CX_REG  :TCONTEXT_REG_GROUP;    // 0xA000
+
+ pa:TPushConstAllocator;
+ pp:PPushConstAllocator;
 begin
+ //recheck shaders
+ GPU_REGS.SG_REG:=@ctx.rt_info^.SHADERDATA.SG_REG;
+ GPU_REGS.CX_REG:=@CX_REG;
+ GPU_REGS.UC_REG:=@ctx.rt_info^.SHADERDATA.UC_REG;
+
+ CX_REG:=Default(TCONTEXT_REG_GROUP);
+
+ CX_REG.SPI_PS_INPUT_ENA        :=ctx.rt_info^.SHADERDATA.SPI_PS_INPUT_ENA        ;
+ CX_REG.SPI_PS_INPUT_ADDR       :=ctx.rt_info^.SHADERDATA.SPI_PS_INPUT_ADDR       ;
+ CX_REG.SPI_INTERP_CONTROL_0    :=ctx.rt_info^.SHADERDATA.SPI_INTERP_CONTROL_0    ;
+ CX_REG.SPI_PS_IN_CONTROL       :=ctx.rt_info^.SHADERDATA.SPI_PS_IN_CONTROL       ;
+ CX_REG.SPI_PS_INPUT_CNTL       :=ctx.rt_info^.SHADERDATA.SPI_PS_INPUT_CNTL       ;
+ CX_REG.DB_SHADER_CONTROL       :=ctx.rt_info^.SHADERDATA.DB_SHADER_CONTROL       ;
+ CX_REG.VGT_INSTANCE_STEP_RATE_0:=ctx.rt_info^.SHADERDATA.VGT_INSTANCE_STEP_RATE_0;
+ CX_REG.VGT_INSTANCE_STEP_RATE_1:=ctx.rt_info^.SHADERDATA.VGT_INSTANCE_STEP_RATE_1;
+ CX_REG.RENDER_TARGET           :=ctx.rt_info^.SHADERDATA.RENDER_TARGET           ;
+
+ pa.Init;
+ pp:=@pa;
+
+ ctx.rt_info^.ShaderGroup:=FetchShaderGroupRT(GPU_REGS,pp);
+ Assert(ctx.rt_info^.ShaderGroup<>nil);
+ //recheck shaders
+
  RP_KEY.Clear;
 
  if (ctx.rt_info^.RT_COUNT<>0) then
@@ -2195,14 +2231,28 @@ var
 
  FUniformBuilder:TvUniformBuilder;
 
+ //
+ GPU_REGS:TGPU_REGS;
+ pa:TPushConstAllocator;
+ pp:PPushConstAllocator;
 begin
- CP_KEY.FShaderGroup:=node^.ShaderGroup;
- CP:=FetchComputePipeline(ctx.Cmd,@CP_KEY);
-
  ////////
 
  //hack
- dst:=Pointer(@node^.USER_DATA_CS)-Ptruint(@TGPU_USERDATA(nil^).A[vShaderStageCs]);
+ dst:=Pointer(@node^.COMPUTE_GROUP.COMPUTE_USER_DATA)-Ptruint(@TGPU_USERDATA(nil^).A[vShaderStageCs]);
+
+ //recheck shaders
+ GPU_REGS.SC_REG:=@node^.COMPUTE_GROUP;
+
+ pa.Init;
+ pp:=@pa;
+
+ node^.ShaderGroup:=FetchShaderGroupCS(GPU_REGS,pp);
+ Assert(node^.ShaderGroup<>nil);
+ //recheck shaders
+
+ CP_KEY.FShaderGroup:=node^.ShaderGroup;
+ CP:=FetchComputePipeline(ctx.Cmd,@CP_KEY);
 
  FUniformBuilder:=Default(TvUniformBuilder);
  CP_KEY.FShaderGroup.ExportUnifBuilder(FUniformBuilder,dst);
@@ -2510,7 +2560,18 @@ begin
    begin
     ctx.InsertLabel('PERFCOUNTER_SAMPLE');
    end;
-
+  PIXEL_PIPE_STAT_CONTROL: //[OcclusionQuery] to set up the pixel pipe to perform the dump.
+   begin
+    Writeln(stderr,'TODO:PIXEL_PIPE_STAT_CONTROL');
+   end;
+  PIXEL_PIPE_STAT_DUMP: //[OcclusionQuery] to trigger the actual dump of pixel pipe data.
+   begin
+    Writeln(stderr,'TODO:PIXEL_PIPE_STAT_DUMP');
+   end;
+  PIXEL_PIPE_STAT_RESET: //[OcclusionQuery] Reset this query
+   begin
+    Writeln(stderr,'TODO:PIXEL_PIPE_STAT_RESET');
+   end;
   else
    begin
     Writeln(stderr,'EventWrite eventType=0x',HexStr(node^.eventType,2));
@@ -2932,6 +2993,9 @@ begin
  size:=(__end-start);
 
  Move(ctx.me^.CONST_RAM[start],addr_dmem^,size);
+
+ ctx.BeginCmdBuffer;
+ ctx.Cmd.AddPlannedTrigger(QWORD(node^.addr),QWORD(node^.addr)+size,nil);
 end;
 
 //
@@ -3041,7 +3105,7 @@ begin
     begin
      if p_print_gpu_ops then
      begin
-      Writeln('+',ctx.node^.ntype);
+      Writeln('+',ctx.node^.id,':',ctx.node^.ntype);
      end;
      ctx.stream^.hint_cmds:=True;
     end;

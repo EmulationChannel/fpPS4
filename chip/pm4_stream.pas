@@ -67,7 +67,8 @@ type
 
  p_pm4_rt_info=^t_pm4_rt_info;
  t_pm4_rt_info=object
-  USERDATA:TGPU_USERDATA;
+  USERDATA  :TGPU_USERDATA;
+  SHADERDATA:TGPU_SHADERDATA_RT;
 
   ShaderGroup:TvShaderGroup;
 
@@ -250,6 +251,8 @@ type
   scope:t_pm4_resource_curr_scope;
   //
   ntype:t_pm4_node_type;
+  //
+  id:QWORD;
  end;
 
  p_pm4_node_Hint=^t_pm4_node_Hint;
@@ -361,7 +364,7 @@ type
  p_pm4_node_DispatchDirect=^t_pm4_node_DispatchDirect;
  t_pm4_node_DispatchDirect=object(t_pm4_node)
 
-  USER_DATA_CS:TSPI_USER_DATA;
+  COMPUTE_GROUP:TSH_REG_COMPUTE_GROUP;
 
   ShaderGroup:TvShaderGroup;
 
@@ -822,12 +825,18 @@ begin
  allocator.Free;
 end;
 
+var
+ global_id:QWORD=0;
+
 Procedure t_pm4_stream.add_node(node:p_pm4_node);
 begin
  if (list.tqh_last=nil) then
  begin
   TAILQ_INIT(@list);
  end;
+
+ node^.id:=System.InterlockedIncrement64(global_id);
+ //Writeln('add_node:',node^.id);
 
  TAILQ_INSERT_TAIL(@list,node,@node^.entry);
 
@@ -1498,6 +1507,19 @@ begin
 
  GPU_REGS.export_user_data_rt(@rt_info.USERDATA);
 
+ //copy
+ rt_info.SHADERDATA.SG_REG                  :=GPU_REGS.SG_REG^                         ;
+ rt_info.SHADERDATA.SPI_PS_INPUT_ENA        :=GPU_REGS.CX_REG^.SPI_PS_INPUT_ENA        ;
+ rt_info.SHADERDATA.SPI_PS_INPUT_ADDR       :=GPU_REGS.CX_REG^.SPI_PS_INPUT_ADDR       ;
+ rt_info.SHADERDATA.SPI_INTERP_CONTROL_0    :=GPU_REGS.CX_REG^.SPI_INTERP_CONTROL_0    ;
+ rt_info.SHADERDATA.SPI_PS_IN_CONTROL       :=GPU_REGS.CX_REG^.SPI_PS_IN_CONTROL       ;
+ rt_info.SHADERDATA.SPI_PS_INPUT_CNTL       :=GPU_REGS.CX_REG^.SPI_PS_INPUT_CNTL       ;
+ rt_info.SHADERDATA.DB_SHADER_CONTROL       :=GPU_REGS.CX_REG^.DB_SHADER_CONTROL       ;
+ rt_info.SHADERDATA.VGT_INSTANCE_STEP_RATE_0:=GPU_REGS.CX_REG^.VGT_INSTANCE_STEP_RATE_0;
+ rt_info.SHADERDATA.VGT_INSTANCE_STEP_RATE_1:=GPU_REGS.CX_REG^.VGT_INSTANCE_STEP_RATE_1;
+ rt_info.SHADERDATA.RENDER_TARGET           :=GPU_REGS.CX_REG^.RENDER_TARGET           ;
+ rt_info.SHADERDATA.UC_REG                  :=GPU_REGS.UC_REG^;
+
  rt_info.RT_COUNT:=0;
 
  if GPU_REGS.COMP_ENABLE then
@@ -1623,6 +1645,8 @@ begin
  rt_info.ShaderGroup:=FetchShaderGroupRT(GPU_REGS,pp);
  Assert(rt_info.ShaderGroup<>nil);
 
+ //DumpShaderGroup(rt_info.ShaderGroup);
+
  //
 
  FUniformBuilder:=Default(TvUniformBuilder);
@@ -1720,10 +1744,12 @@ var
  pa:TPushConstAllocator;
  pp:PPushConstAllocator;
 begin
- //hack
- dst:=Pointer(@node^.USER_DATA_CS)-Ptruint(@TGPU_USERDATA(nil^).A[vShaderStageCs]);
 
- GPU_REGS.export_user_data_cs(dst);
+ //copy
+ node^.COMPUTE_GROUP:=GPU_REGS.SC_REG^;
+
+ //hack
+ dst:=Pointer(@node^.COMPUTE_GROUP.COMPUTE_USER_DATA)-Ptruint(@TGPU_USERDATA(nil^).A[vShaderStageCs]);
 
  pa.Init;
  pp:=@pa;

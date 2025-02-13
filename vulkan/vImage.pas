@@ -122,7 +122,8 @@ type
   itype      :0..3; //2 TVkImageType 0..2
   cube       :0..1; //1 VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT
   pow2pad    :0..1; //1
-  reserved   :0..15; //4
+  invalid    :0..1; //1
+  reserved   :0..7; //3
   tiling     :TvTiling;
   samples    :Byte; //TVkSampleCountFlagBits 1..4 (3)
   mipLevels  :Byte; //(0..15) (4)
@@ -145,9 +146,10 @@ type
  end;
 
  PvImageViewKey=^TvImageViewKey;
- TvImageViewKey=packed object
+ TvImageViewKey=bitpacked object
   cformat   :TVkFormat;
-  vtype     :Byte;      //TVkImageViewType 0..6
+  vtype     :0..127;    //TVkImageViewType 0..6
+  invalid   :0..1;
   fusage    :Byte;
   dstSel    :TvDstSel;  //word
   base_level:Byte;      //first mip level   (0..15)
