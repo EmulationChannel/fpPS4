@@ -407,6 +407,15 @@ Var
 begin
  tmp:=NewReg(dtBool);
 
+ case OpId of
+  Op.OpOrdered  :Assert(false,'TODO:OpOrdered');
+  Op.OpUnordered:Assert(false,'TODO:OpUnordered');
+  else;
+ end;
+
+ //Op.OpOrdered   -> (!isNan(S0) && !isNan(S1)) -> !(isNan(S0) || isNan(S1))
+ //Op.OpUnordered -> (isNan(S0) || isNan(S1))
+
  _Op2(line,OpId,tmp,src0,src1);
 
  exc:=MakeRead(get_exec0,dtBool);

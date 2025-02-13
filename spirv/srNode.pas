@@ -157,7 +157,7 @@ type
   function  OpCast  (pLine,      dst,src:TsrNode):TsrNode; virtual abstract;
   function  OpLoad  (pLine,dtype,dst,src:TsrNode):TsrNode; virtual abstract;
   function  OpStore (pLine,      dst,src:TsrNode):TsrNode; virtual abstract;
-  procedure PostLink(pLine,      dst:TsrNode);             virtual abstract;
+  Function  PostLink(pLine,      dst:TsrNode):TsrNode;     virtual abstract;
   procedure emit_spi;                                      virtual abstract;
  end;
 

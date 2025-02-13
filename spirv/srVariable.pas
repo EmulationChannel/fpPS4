@@ -112,7 +112,7 @@ end;
 
 Procedure TsrVariable._PrepType(node:PPrepTypeNode);
 begin
- node^.dnode:=TsrVariable(node^.dnode).FSource;
+ node^.dnode:=FSource;
 end;
 
 Function TsrVariable._GetPtype:TsrNode;

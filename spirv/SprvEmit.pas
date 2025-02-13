@@ -160,10 +160,12 @@ procedure TSprvEmit.FillGPR(VGPRS,USER_SGPR,SGPRS:Word);
 var
  p:Byte;
 begin
- if (VGPRS>256) then VGPRS:=256;
+ if (VGPRS>256)       then VGPRS:=256;
+ if (USER_SGPR>16)    then USER_SGPR:=16;
 
- if (SGPRS>=2) then SGPRS:=SGPRS-2; //VCC
- if (SGPRS>104) then SGPRS:=104;
+ if (SGPRS>=2)        then SGPRS:=SGPRS-2; //VCC
+ if (SGPRS>104)       then SGPRS:=104;
+ if (USER_SGPR>SGPRS) then SGPRS:=USER_SGPR;
 
  FVGPRS:=VGPRS;
  FSGPRS:=SGPRS;
@@ -177,8 +179,8 @@ begin
   end;
  end;
 
- if (SGPRS<>0) then
- For p:=USER_SGPR to (SGPRS-USER_SGPR)-1 do
+ if (SGPRS>USER_SGPR) then
+ For p:=USER_SGPR to SGPRS-1 do
  begin
   if (RegsStory.SGRP[p].current=nil) then
   begin

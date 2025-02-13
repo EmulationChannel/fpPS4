@@ -810,12 +810,17 @@ begin
      else
                          Result:=cTrue;
     end;
-  W_VOPC  :Result:=cTrue;
+  //W_VOPC -> used separately
   W_VOP3  :
     Case FSPI.VOP3a.OP of
-     384+V_NOP:Result:=cNone;
+     //VOP3c -> used separately
+     0..255                 :Result:=cFalse;
+     384+V_NOP              :Result:=cNone;
+     256+V_READLANE_B32     :Result:=cFalse;
+     256+V_WRITELANE_B32    :Result:=cFalse;
+     384+V_READFIRSTLANE_B32:Result:=cFalse;
      else
-               Result:=cTrue;
+                             Result:=cTrue;
     end;
   W_DS    :
     Case FSPI.DS.OP of
@@ -825,7 +830,7 @@ begin
     end;
   W_MUBUF :Result:=cTrue;
   W_MTBUF :Result:=cTrue;
-  //W_EXP  exp used separately
+  //W_EXP -> used separately
   W_MIMG  :Result:=cTrue;
   W_VOP2  :
     Case FSPI.VOP2.OP of

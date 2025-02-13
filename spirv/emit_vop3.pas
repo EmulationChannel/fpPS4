@@ -98,7 +98,7 @@ begin
 
  if x then
  begin
-  MakeCopy(get_exec0,dst[0]^.current);
+  MakeCopy  (get_exec0,dst[0]^.current);
   SetConst_q(get_exec1,dtUnknow,0);     //set zero
  end;
 end;
@@ -119,7 +119,7 @@ begin
 
  if x then
  begin
-  MakeCopy(get_exec0,dst[0]^.current);
+  MakeCopy  (get_exec0,dst[0]^.current);
   SetConst_q(get_exec1,dtUnknow,0);     //set zero
  end;
 end;
@@ -820,9 +820,20 @@ begin
 
  MakeCopy64(dst[0],dst[1],sum);
 
+ {
+  TODO:
+  if (EXEC[i]) {
+    V_MAD_U64_U32
+    VCC[i] = car;
+  }
+  else {
+    VCC[i] = 0;
+  }
+ }
+
  //VCC = carry & EXEC
- exc:=MakeRead(get_exec0,dtUnknow);
- OpBitwiseAnd(get_vcc0,car,exc);
+ //exc:=MakeRead(get_exec0,dtUnknow);
+ //OpBitwiseAnd(get_vcc0,car,exc);
 end;
 
 procedure TEmit_VOP3.emit_V_SAD_U32; //dst.u = abs(vsrc0.u - vsrc1.u) + vaccum.u[15:0]
@@ -1249,7 +1260,7 @@ procedure TEmit_VOP3.emit_V_ADDC_U32;
 Var
  dst,car:PsrRegSlot;
  src:array[0..2] of TsrRegNode;
- exc:TsrRegNode;
+ //exc:TsrRegNode;
 begin
  dst:=get_vdst8(FSPI.VOP3b.VDST);
  car:=get_sdst7(FSPI.VOP3b.SDST);
@@ -1275,17 +1286,28 @@ begin
 
  OpBitwiseOr(car,src[1],src[0]);   //car1 or car2
 
- src[0]:=MakeRead(car,dtUInt32);
+ {
+  TODO:
+  if (EXEC[i]) {
+    V_ADDC_U32
+    SDST[i] = bor;
+  }
+  else {
+    SDST[i] = 0;
+  }
+ }
 
- exc:=MakeRead(get_exec0,dtUnknow);
- OpBitwiseAnd(car,src[0],exc);     //carry_out & EXEC
+ //src[0]:=MakeRead(car,dtUInt32);
+
+ //exc:=MakeRead(get_exec0,dtUnknow);
+ //OpBitwiseAnd(car,src[0],exc);     //carry_out & EXEC
 end;
 
 procedure TEmit_VOP3.emit_V_SUBB_U32;
 Var
  dst,bor:PsrRegSlot;
  src:array[0..2] of TsrRegNode;
- exc:TsrRegNode;
+ //exc:TsrRegNode;
 begin
  dst:=get_vdst8(FSPI.VOP3b.VDST);
  bor:=get_sdst7(FSPI.VOP3b.SDST);
@@ -1312,17 +1334,28 @@ begin
  //Or??? And???
  OpBitwiseOr(bor,src[1],src[0]);   //car1 or car2
 
- src[0]:=MakeRead(bor,dtUInt32);
+ {
+  TODO:
+  if (EXEC[i]) {
+    V_SUBB_U32
+    SDST[i] = bor;
+  }
+  else {
+    SDST[i] = 0;
+  }
+ }
 
- exc:=MakeRead(get_exec0,dtUnknow);
- OpBitwiseAnd(bor,src[0],exc);     //borrow_out & EXEC
+ //src[0]:=MakeRead(bor,dtUInt32);
+
+ //exc:=MakeRead(get_exec0,dtUnknow);
+ //OpBitwiseAnd(bor,src[0],exc);     //borrow_out & EXEC
 end;
 
 procedure TEmit_VOP3.emit_V_SUB_I32;
 Var
  dst,bor:PsrRegSlot;
  src:array[0..1] of TsrRegNode;
- exc:TsrRegNode;
+ //exc:TsrRegNode;
 begin
  dst:=get_vdst8(FSPI.VOP3b.VDST);
  bor:=get_sdst7(FSPI.VOP3b.SDST);
@@ -1335,8 +1368,19 @@ begin
 
  OpISubExt(dst,bor,src[0],src[1],dtUInt32);
 
- exc:=MakeRead(get_exec0,dtUnknow);
- OpBitwiseAnd(bor,bor^.current,exc); //borrow_out & EXEC
+ {
+  TODO:
+  if (EXEC[i]) {
+    V_SUB_I32
+    SDST[i] = bor;
+  }
+  else {
+    SDST[i] = 0;
+  }
+ }
+
+ //exc:=MakeRead(get_exec0,dtUnknow);
+ //OpBitwiseAnd(bor,bor^.current,exc); //borrow_out & EXEC
 end;
 
 procedure TEmit_VOP3.emit_VOP3b;

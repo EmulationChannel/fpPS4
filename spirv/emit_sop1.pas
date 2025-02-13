@@ -210,7 +210,7 @@ begin
  set_code_ptr(newptr,btSetpc);
 end;
 
-procedure TEmit_SOP1.emit_S_AND_SAVEEXEC_B64; //sdst.du = EXEC;| EXEC = (ssrc.du & EXEC);| SCC = (sdst != 0)
+procedure TEmit_SOP1.emit_S_AND_SAVEEXEC_B64; //sdst.du = EXEC;| NEW_EXEC = (ssrc.du & EXEC);| SCC = (NEW_EXEC != 0)
 Var
  dst:array[0..1] of PsrRegSlot;
  src:array[0..1] of TsrRegNode;
@@ -229,11 +229,15 @@ begin
  OpBitwiseAnd(get_exec0,src[0],exc[0]);
  OpBitwiseAnd(get_exec1,src[1],exc[1]);
 
+ //set if the new value of EXEC is non-zero
+ exc[0]:=MakeRead(get_exec0,dtUnknow);
+ exc[1]:=MakeRead(get_exec1,dtUnknow);
+
  //SCC = ((exc[0] != 0) or ((exc[1] != 0))
 
  OpISccNotZero2(exc[0],exc[1]); //implict cast (int != 0)
 
- //SCC = (sdst != 0)    SCC = ((exc[0] != 0) or ((exc[1] != 0))
+ //SCC = (NEW_EXEC != 0)    SCC = ((exc[0] != 0) or ((exc[1] != 0))
 end;
 
 function F_WQM_32(D:DWORD):DWORD;

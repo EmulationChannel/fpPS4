@@ -1018,6 +1018,23 @@ begin
  end;
 end;
 
+Function FindByHalfSpace(node:TspirvOp;pDst:TsrNode):Boolean;
+begin
+ Result:=False;
+ while (node<>nil) do
+ begin
+  if (node.pDst=pDst) then Exit(True);
+  //
+  if node.IsType(ntOpBlock) then
+  if IsReal(TsrOpBlock(node).Block.bType) then
+  begin
+   Exit(False);
+  end;
+  //
+  node:=flow_down_prev_up(node);
+ end;
+end;
+
 function TEmitOp.OpSampledImage(pLine:TspirvOp;Tgrp,Sgrp:TsrNode;dtype:TsrDataType;info:TsrTypeImageInfo):TsrRegNode;
 Var
  src:array[0..1] of TsrNode;
@@ -1025,9 +1042,6 @@ Var
  p:TsrCacheOp;
  dst:TsrRegNode;
  node:TspirvOp;
- tmp:TspirvOp;
-label
- _prev;
 begin
  src[0]:=Tgrp;
  src[1]:=Sgrp;
@@ -1036,55 +1050,16 @@ begin
 
  p:=CacheOpList.Fetch(pLine.Parent,Op.OpSampledImage,dtTypeSampledImage,2,@src);
 
- if (p.pDst<>nil) then //check before break block
+ if (p.pDst<>nil) then //check that it is in the current half-space
  begin
-  node:=pLine;
-  repeat
-
-   if (node.pDst=p.pDst) then
-   begin
-    Break; //end
-   end;
-
-   if node.IsType(ntOpBlock) then
-   begin
-    tmp:=nil;
-    if IsReal(TsrOpBlock(node).Block.bType) then
-    begin
-     p.pDst:=nil; //reset
-     Break;
-    end else
-    begin
-     tmp:=node.Last;
-    end;
-    if (tmp<>nil) then
-    begin
-     node:=tmp;
-     Continue;
-    end;
-   end;
-
-   _prev:
-
-   tmp:=node.Prev;
-
-   if (tmp=nil) then
-   begin
-    if (node.Parent=nil) or
-       (node.Parent=pLine.Parent) then
-    begin
-     Break; //end
-    end else
-    begin
-     node:=node.Parent;
-     Goto _prev;
-    end;
-   end else
-   begin
-    node:=tmp;
-   end;
-
-  until false;
+  if FindByHalfSpace(pLine,p.pDst) then
+  begin
+   //use it
+  end else
+  begin
+   //reset
+   p.pDst:=nil;
+  end;
  end;
 
  if (p.pDst=nil) then

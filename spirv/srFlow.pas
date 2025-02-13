@@ -22,14 +22,19 @@ uses
  emit_op;
 
 type
+ TConvertResult=record
+  pNode:TsrNode;
+  pLine:TspirvOp;
+ end;
+
  TEmitFlow=class(TEmitOp)
   //
   Procedure InitFlow;
   procedure mark_end_of(mark:TsrVolMark);
   Procedure PushBlockOp(pLine:TspirvOp;pChild:TsrOpBlock;pLBlock:TsrCFGBlock=nil);
   function  PopBlockOp:Boolean;
-  function  ConvertCond(cond:TsrCondition;pLine:TspirvOp):TsrRegNode;
-  function  ConvertStatment(node:TsrStatement;pLine:TspirvOp):TsrNode;
+  function  ConvertCond(cond:TsrCondition;pLine:TspirvOp):TConvertResult;
+  function  ConvertStatment(node:TsrStatement;pLine:TspirvOp):TConvertResult;
   procedure emit_break(b_adr:TSrcAdr;pCurr:TsrOpBlock);
   procedure EmitStatment(node:TsrStatement);
   procedure EmitStatmentList(List:TsrStatementList);
@@ -233,7 +238,7 @@ var
      if (pLBlock.pCond<>nil) then
      begin
       //have post conditions
-      src:=ConvertStatment(pLBlock.pCond,pLine);
+      src:=ConvertStatment(pLBlock.pCond,pLine).pNode;
       Assert(src<>nil);
       //
       OpBranchCond(line,pBegOp,pEndOp,src); //True|False
@@ -415,17 +420,17 @@ begin
  end;
 end;
 
-function TEmitFlow.ConvertCond(cond:TsrCondition;pLine:TspirvOp):TsrRegNode;
+function TEmitFlow.ConvertCond(cond:TsrCondition;pLine:TspirvOp):TConvertResult;
 begin
  case cond of
-  cFalse :Result:=NewImm_b(False,pLine);
-  cTrue  :Result:=NewImm_b(True ,pLine);
-  cScc0  :Result:=fetch_scc;
-  cScc1  :Result:=fetch_scc;
-  cVccz  :Result:=fetch_vccz ; //It means that lane_id=0
-  cVccnz :Result:=fetch_vccz ; //It means that lane_id=0
-  cExecz :Result:=fetch_execz; //It means that lane_id=0
-  cExecnz:Result:=fetch_execz; //It means that lane_id=0
+  cFalse :Result.pNode:=NewImm_b(False,pLine);
+  cTrue  :Result.pNode:=NewImm_b(True ,pLine);
+  cScc0  :Result.pNode:=fetch_scc;
+  cScc1  :Result.pNode:=fetch_scc;
+  cVccz  :Result.pNode:=fetch_vccz ; //It means that lane_id=0
+  cVccnz :Result.pNode:=fetch_vccz ; //It means that lane_id=0
+  cExecz :Result.pNode:=fetch_execz; //It means that lane_id=0
+  cExecnz:Result.pNode:=fetch_execz; //It means that lane_id=0
   else
    Assert(false,'ConvertCond');
  end;
@@ -436,24 +441,27 @@ begin
   cExecz:
    begin
     //invert
-    if Result.is_const then
+    if TsrRegNode(Result.pNode).is_const then
     begin
      //early optimization
-     Result:=NewImm_b(not Result.AsConst.AsBool,pLine);
+     Result.pNode:=NewImm_b(TsrRegNode(Result.pNode).AsConst.AsBool,pLine);
     end else
     begin
-     Result:=OpLogicalNotTo(Result,@pLine);
+     Result.pNode:=OpLogicalNotTo(Result.pNode,@pLine);
     end;
     //
    end;
   else;
  end;
  //
+ Result.pLine:=pLine;
 end;
 
-function TEmitFlow.ConvertStatment(node:TsrStatement;pLine:TspirvOp):TsrNode;
+function TEmitFlow.ConvertStatment(node:TsrStatement;pLine:TspirvOp):TConvertResult;
 begin
- Result:=nil;
+ Result.pNode:=nil;
+ Result.pLine:=pLine;
+ //
  case node.sType of
   sCond :begin
           Result:=ConvertCond(node.u.cond,pLine);
@@ -461,28 +469,28 @@ begin
   sVar  :begin
           if (node.pCache<>nil) then
           begin
-           Result:=TsrNode(node.pCache);
+           Result.pNode:=TsrNode(node.pCache);
           end else
           begin
-           Result:=PrivateList.FetchCustom(dtBool).NewVolatile;
-           node.pCache:=Result;
+           Result.pNode:=PrivateList.NewVolatile(nil);
+           node.pCache:=Result.pNode;
           end;
          end;
   sLoad :begin
-          Result:=TsrNode(node.pCache);
-          Assert(Result<>nil);
+          Result.pNode:=TsrNode(node.pCache);
+          Assert(Result.pNode<>nil);
          end;
   sNot  :begin
-          Result:=TsrNode(node.pCache);
-          Assert(Result<>nil);
+          Result.pNode:=TsrNode(node.pCache);
+          Assert(Result.pNode<>nil);
          end;
   sOr   :begin
-          Result:=TsrNode(node.pCache);
-          Assert(Result<>nil);
+          Result.pNode:=TsrNode(node.pCache);
+          Assert(Result.pNode<>nil);
          end;
   sAnd  :begin
-          Result:=TsrNode(node.pCache);
-          Assert(Result<>nil);
+          Result.pNode:=TsrNode(node.pCache);
+          Assert(Result.pNode<>nil);
          end;
   else
    Assert(false);
@@ -542,22 +550,25 @@ Var
  V:TsrVolatile;
  R:TsrRegNode;
  D:TsrRegNode;
+ C:TConvertResult;
 begin
  case node.sType of
   sCond:; //skip
   sStore:
    begin
-    V:=ConvertStatment(node.pDst,line).specialize AsType<TsrVolatile>;
+    C:=ConvertStatment(node.pDst,line);
+    V:=C.pNode.specialize AsType<TsrVolatile>;
     Assert(V<>nil);
 
-    R:=ConvertStatment(node.pSrc,line).specialize AsType<TsrRegNode>;
+    C:=ConvertStatment(node.pSrc,C.pLine);
+    R:=C.pNode.specialize AsType<TsrRegNode>;
     Assert(R<>nil);
 
     V.AddStore(R);
    end;
   sLoad:
    begin
-    V:=ConvertStatment(node.pSrc,line).specialize AsType<TsrVolatile>;
+    V:=ConvertStatment(node.pSrc,line).pNode.specialize AsType<TsrVolatile>;
     Assert(V<>nil);
 
     R:=NewReg(dtBool);
@@ -573,7 +584,7 @@ begin
    end;
   sNot:
    begin
-    R:=ConvertStatment(node.pSrc,line).specialize AsType<TsrRegNode>;
+    R:=ConvertStatment(node.pSrc,line).pNode.specialize AsType<TsrRegNode>;
     Assert(R<>nil);
 
     R:=OpLogicalNotTo(R);
@@ -582,10 +593,10 @@ begin
    end;
   sOr:
    begin
-    R:=ConvertStatment(node.pSrc,line).specialize AsType<TsrRegNode>;
+    R:=ConvertStatment(node.pSrc,line).pNode.specialize AsType<TsrRegNode>;
     Assert(R<>nil);
 
-    D:=ConvertStatment(node.pDst,line).specialize AsType<TsrRegNode>;
+    D:=ConvertStatment(node.pDst,line).pNode.specialize AsType<TsrRegNode>;
     Assert(D<>nil);
 
     R:=OpOrTo(R,D);
@@ -594,10 +605,10 @@ begin
    end;
   sAnd:
    begin
-    R:=ConvertStatment(node.pSrc,line).specialize AsType<TsrRegNode>;
+    R:=ConvertStatment(node.pSrc,line).pNode.specialize AsType<TsrRegNode>;
     Assert(R<>nil);
 
-    D:=ConvertStatment(node.pDst,line).specialize AsType<TsrRegNode>;
+    D:=ConvertStatment(node.pDst,line).pNode.specialize AsType<TsrRegNode>;
     Assert(D<>nil);
 
     R:=OpAndTo(R,D);
@@ -721,7 +732,7 @@ begin
  if (pLBlock.pElse=nil) then  //no else
  if (pLBlock.pCond<>nil) then //have cond
  begin
-  src:=ConvertStatment(pLBlock.pCond,pBefor);
+  src:=ConvertStatment(pLBlock.pCond,pBefor).pNode;
   //
   if _IsConstTrue(src) or
      _IsNestedTrue(src) then
@@ -800,7 +811,7 @@ begin
   begin
    if (src=nil) then
    begin
-    src:=ConvertStatment(pLBlock.pCond,pBefor);
+    src:=ConvertStatment(pLBlock.pCond,pBefor).pNode;
    end;
    Assert(src<>nil);
    //

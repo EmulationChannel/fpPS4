@@ -206,7 +206,13 @@ end;
 
 Function TsrConst.AsBool:Boolean; inline;
 begin
- Result:=GetLiteral(0).AsBool;
+ if (dtype=dtBool) then
+ begin
+  Result:=GetLiteral(0).AsBool;
+ end else
+ begin
+  Result:=GetLiteral(0).AsUint64<>0;
+ end;
 end;
 
 function TsrConst.AsUint8:Byte; inline;

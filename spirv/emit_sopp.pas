@@ -164,7 +164,7 @@ begin
  pCond:=FetchCond(c_adr);
  Assert(pCond<>nil,'Goto Unknow');
 
- src:=ConvertCond(cond,pCond.vctx.Befor);
+ src:=ConvertCond(cond,pCond.vctx.Befor).pNode;
 
  pBegOp:=pCond.Labels.pBegOp;
  pEndOp:=pCond.Labels.pEndOp;

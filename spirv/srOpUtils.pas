@@ -607,7 +607,7 @@ begin
   if node.pWriter.IsType(TsrVolatile) then
   begin
    V:=node.pWriter.specialize AsType<TsrVolatile>;
-   node:=V.FList.pTail.pNode;
+   node:=V.FList.pTail.src;
   end else
   begin
    Break;

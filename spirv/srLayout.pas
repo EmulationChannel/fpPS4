@@ -343,7 +343,7 @@ end;
 
 Procedure TsrChain._PrepType(node:PPrepTypeNode);
 begin
- TsrChain(node^.dnode).PrepType(TsrDataType(node^.rtype));
+ PrepType(TsrDataType(node^.rtype));
  node^.dnode:=nil;
 end;
 

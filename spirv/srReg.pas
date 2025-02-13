@@ -146,6 +146,7 @@ type
   //
   befor:TsrNode;
   after:TsrNode;
+  block:TsrNode;
   //
   FList:TsrVolatileNodeList;
   //
@@ -201,15 +202,6 @@ begin
 end;
 
 //
-
-{
-TsrVolatileContext=object
- befor:TsrNode;
- after:TsrNode;
- //
- FList:TDependenceNodeList;
- //
-}
 
 Procedure TsrVolatileContext.AddVolatile(V,N:TsrNode);
 var
@@ -291,38 +283,34 @@ var
  new:TsrDataType;
  pConstList:PsrConstList;
 begin
- With TsrRegNode(node^.dnode) do
+ new:=TsrDataType(node^.rtype);
+ if (new=dtUnknow) then
  begin
-  new:=TsrDataType(node^.rtype);
-  if (new=dtUnknow) then
-  begin
-   node^.dnode:=nil;
-   Exit;
-  end;
+  node^.dnode:=nil;
+  Exit;
+ end;
 
-  if FSlot^.isBoolOnly then
+ if FSlot^.isBoolOnly then
+ begin
+  //next
+  node^.rtype:=ord(dtBool);
+  node^.dnode:=pWriter;
+  Exit;
+ end else
+ if is_unprep_type(dtype,new,dweak) then
+ begin
+  dtype:=new;
+  dweak:=True;
+  if is_const then
+  begin
+   pConstList:=FSlot^.FEmit.GetConstList;
+   pWriter:=pConstList^.Bitcast(new,pWriter.specialize AsType<ntConst>);
+  end else
   begin
    //next
-   node^.rtype:=ord(dtBool);
    node^.dnode:=pWriter;
    Exit;
-  end else
-  if is_unprep_type(dtype,new,dweak) then
-  begin
-   dtype:=new;
-   dweak:=True;
-   if is_const then
-   begin
-    pConstList:=FSlot^.FEmit.GetConstList;
-    pWriter:=pConstList^.Bitcast(new,pWriter.specialize AsType<ntConst>);
-   end else
-   begin
-    //next
-    node^.dnode:=pWriter;
-    Exit;
-   end;
   end;
-
  end;
 
  node^.dnode:=nil;
@@ -834,6 +822,8 @@ function RegDownSlot(node:TsrRegNode):TsrRegNode;
 var
  tmp:TsrRegNode;
 begin
+ Exit(RegDown(node));
+
  //backtrace
  Result:=node;
  While (Result<>nil) do

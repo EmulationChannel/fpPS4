@@ -180,7 +180,7 @@ type
   function  AddSpirvOp(pLine,pNew:TSpirvOp):TSpirvOp;
   function  AddSGlslOp(pLine:TSpirvOp;OpId:DWORD):TSpirvOp;
   //
-  procedure PostLink(pLine,dst:TsrNode); override;
+  Function  PostLink(pLine,dst:TsrNode):TsrNode; override;
   procedure MakeCopy(dst:PsrRegSlot;src:TsrRegNode);
   //
   Procedure SetConst(pSlot:PsrRegSlot;pConst:TsrConst);
@@ -542,7 +542,7 @@ begin
  Result:=node;
 end;
 
-procedure TEmitInterface.PostLink(pLine,dst:TsrNode);
+Function TEmitInterface.PostLink(pLine,dst:TsrNode):TsrNode;
 var
  node:TSpirvOp;
 begin
@@ -553,32 +553,41 @@ begin
  if (node.OpId=Op.OpNop) then
  begin
   node.AddParam(dst);
-  Exit;
+  Exit(node);
  end;
 
  node:=AddSpirvOp(node,Op.OpNop);
  node.AddParam(dst);
  node.mark_not_used;
+ Exit(node);
 end;
 
 procedure TEmitInterface.MakeCopy(dst:PsrRegSlot;src:TsrRegNode);
 var
  node:TsrRegNode;
+ pLine:TspirvOp;
 begin
  node:=dst^.New(src.dtype,line);
  node.pWriter:=src;
 
- PostLink(line,node); //post processing
+ pLine:=PostLink(line,node); //post processing
+
+ //fixed line
+ node.CustomLine:=pLine;
 end;
 
 Procedure TEmitInterface.SetConst(pSlot:PsrRegSlot;pConst:TsrConst);
 var
  dst:TsrRegNode;
+ pLine:TspirvOp;
 begin
  dst:=pSlot^.New(pConst.dtype,line);
  dst.pWriter:=pConst;
 
- PostLink(line,dst); //post processing
+ pLine:=PostLink(line,dst); //post processing
+
+ //fixed line
+ dst.CustomLine:=pLine;
 end;
 
 Procedure TEmitInterface.SetConst_q(pSlot:PsrRegSlot;dtype:TsrDataType;value:QWORD);

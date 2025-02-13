@@ -294,28 +294,24 @@ var
  pNode:POpParamNode;
  pTypeList:PsrTypeList;
 begin
- With TspirvOp(node^.dnode) do
- begin
-  new:=TsrDataType(node^.rtype);
-  if (new=dtUnknow) then Exit;
+ new:=TsrDataType(node^.rtype);
+ if (new=dtUnknow) then Exit;
 
-  Case OpId of
-    Op.OpLoad:
+ Case OpId of
+   Op.OpLoad:
+    begin
+     pNode:=ParamNode(0);
+     if (pNode<>nil) then
      begin
-      pNode:=ParamNode(0);
-      if (pNode<>nil) then
-      begin
-       //change?
-       pTypeList:=pParent.Emit.GetTypeList;
-       pType:=pTypeList^.Fetch(new);
-       //next
-       node^.dnode:=pNode.pValue;
-       Exit;
-      end;
+      //change?
+      pTypeList:=pParent.Emit.GetTypeList;
+      pType:=pTypeList^.Fetch(new);
+      //next
+      node^.dnode:=pNode.pValue;
+      Exit;
      end;
-   else;
-  end;
-
+    end;
+  else;
  end;
 
  node^.dnode:=nil;
@@ -648,7 +644,8 @@ begin
  dummy.Init(Op.OpNop);
  AddSpirvOp(dummy);
  //
- vctx.Emit:=Emit;
+ vctx.Emit :=Emit;
+ vctx.block:=Self;
 end;
 
 procedure TsrOpBlock.SetCFGBlock(pLBlock:TsrCFGBlock);

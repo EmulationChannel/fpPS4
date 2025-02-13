@@ -155,7 +155,7 @@ procedure TEmit_VOP2.emit_V_ADD_I32; //vdst = vsrc0.s + vsrc1.s; sdst[thread_id:
 Var
  dst,car:PsrRegSlot;
  src:array[0..1] of TsrRegNode;
- exc:TsrRegNode;
+ //exc:TsrRegNode;
 begin
  dst:=get_vdst8(FSPI.VOP2.VDST);
  car:=get_vcc0;
@@ -165,15 +165,26 @@ begin
 
  OpIAddExt(dst,car,src[0],src[1],dtUint32);
 
- exc:=MakeRead(get_exec0,dtUnknow);
- OpBitwiseAnd(car,car^.current,exc); //carry_out & EXEC
+ {
+  TODO:
+  if (EXEC[i]) {
+    V_ADD_I32
+    VCC[i] = car;
+  }
+  else {
+    VCC[i] = 0;
+  }
+ }
+
+ //exc:=MakeRead(get_exec0,dtUnknow);
+ //OpBitwiseAnd(car,car^.current,exc); //carry_out & EXEC
 end;
 
 procedure TEmit_VOP2.emit_V_SUB_I32; //vdst = vsrc0.u - vsub.u; sdst[thread_id:] = borrow_out & EXEC
 Var
  dst,bor:PsrRegSlot;
  src:array[0..1] of TsrRegNode;
- exc:TsrRegNode;
+ //exc:TsrRegNode;
 begin
  dst:=get_vdst8(FSPI.VOP2.VDST);
  bor:=get_vcc0;
@@ -183,15 +194,26 @@ begin
 
  OpISubExt(dst,bor,src[0],src[1],dtUint32);
 
- exc:=MakeRead(get_exec0,dtUnknow);
- OpBitwiseAnd(bor,bor^.current,exc); //borrow_out & EXEC
+ {
+  TODO:
+  if (EXEC[i]) {
+    V_SUB_I32
+    VCC[i] = bor;
+  }
+  else {
+    VCC[i] = 0;
+  }
+ }
+
+ //exc:=MakeRead(get_exec0,dtUnknow);
+ //OpBitwiseAnd(bor,bor^.current,exc); //borrow_out & EXEC
 end;
 
 procedure TEmit_VOP2.emit_V_SUBREV_I32; //vdst = vsrc1.u - vsub.u; sdst[thread_id:] = borrow_out & EXEC
 Var
  dst,bor:PsrRegSlot;
  src:array[0..1] of TsrRegNode;
- exc:TsrRegNode;
+ //exc:TsrRegNode;
 begin
  dst:=get_vdst8(FSPI.VOP2.VDST);
  bor:=get_vcc0;
@@ -201,8 +223,19 @@ begin
 
  OpISubExt(dst,bor,src[1],src[0],dtUint32);
 
- exc:=MakeRead(get_exec0,dtUnknow);
- OpBitwiseAnd(bor,bor^.current,exc); //borrow_out & EXEC
+ {
+  TODO:
+  if (EXEC[i]) {
+    V_SUBREV_I32
+    VCC[i] = bor;
+  }
+  else {
+    VCC[i] = 0;
+  }
+ }
+
+ //exc:=MakeRead(get_exec0,dtUnknow);
+ //OpBitwiseAnd(bor,bor^.current,exc); //borrow_out & EXEC
 end;
 
 procedure TEmit_VOP2.emit_V2_F32(OpId:DWORD);
@@ -430,7 +463,7 @@ procedure TEmit_VOP2.emit_V_ADDC_U32;
 Var
  dst,car:PsrRegSlot;
  src:array[0..2] of TsrRegNode;
- exc:TsrRegNode;
+ //exc:TsrRegNode;
 begin
  dst:=get_vdst8(FSPI.VOP2.VDST);
  car:=get_vcc0;
@@ -455,8 +488,19 @@ begin
 
  src[0]:=MakeRead(car,dtUInt32);
 
- exc:=MakeRead(get_exec0,dtUnknow);
- OpBitwiseAnd(car,src[0],exc);     //carry_out & EXEC
+ {
+  TODO:
+  if (EXEC[i]) {
+    V_ADDC_U32
+    VCC[i] = car;
+  }
+  else {
+    VCC[i] = 0;
+  }
+ }
+
+ //exc:=MakeRead(get_exec0,dtUnknow);
+ //OpBitwiseAnd(car,src[0],exc);     //carry_out & EXEC
 end;
 
 //V_MBCNT_LO_U32_B32 v1, -1, v1
