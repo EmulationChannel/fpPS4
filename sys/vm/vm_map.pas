@@ -629,7 +629,7 @@ end;
  * Returns a non-zero value if the caller holds a write (exclusive) lock
  * on the specified map and the value "0" otherwise.
  }
-function vm_map_locked(map:vm_map_t):Boolean; inline;
+function vm_map_locked(map:vm_map_t):Boolean; public; inline;
 begin
  Result:=(curkthread^.td_map_cookie<>nil);
 

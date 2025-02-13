@@ -400,7 +400,7 @@ begin
   end;
  end;
 
- vm_track_map_init(@pmap^.tr_map,VM_MINUSER_ADDRESS,VM_MAXUSER_ADDRESS);
+ vm_track_map_init(@pmap^.tr_map,VM_MINUSER_ADDRESS,VM_MAXUSER_ADDRESS,vm_map);
 
  pmap^.tr_map.pmap:=pmap;
 end;

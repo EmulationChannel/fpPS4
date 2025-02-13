@@ -9,7 +9,9 @@ uses
  vm,
  mqueue,
  vm_pmap_prot,
- kern_mtx;
+ //kern_mtx
+ kern_rangelock
+ ;
 
 type
  p_vm_track_interval=^t_vm_track_interval;
@@ -97,7 +99,8 @@ type
  p_vm_track_map=^t_vm_track_map;
  t_vm_track_map=object
   header   :t_vm_track_map_entry; // List of entries
-  lock     :mtx;                  // Lock for map data
+  //lock     :mtx;                  // Lock for map data
+  vm_map   :Pointer;
   root     :p_vm_track_map_entry; // Root of a binary search tree
   nentries :Integer;              // Number of entries
 
@@ -114,7 +117,7 @@ type
   property  max_offset:vm_offset_t read header.__end write header.__end;
  end;
 
-procedure vm_track_map_init(map:p_vm_track_map;min,max:vm_offset_t);
+procedure vm_track_map_init(map:p_vm_track_map;min,max:vm_offset_t;vm_map:Pointer);
 
 //
 
@@ -696,9 +699,14 @@ begin
  end;
 end;
 
+function  vm_map_lock_range  (map:Pointer;start,__end:off_t;mode:Integer):Pointer; external;
+procedure vm_map_unlock_range(map:Pointer;cookie:Pointer); external;
+function  vm_map_locked      (map:Pointer):Boolean; external;
+
 procedure vm_track_map_lock(map:p_vm_track_map); inline;
 begin
- mtx_lock(map^.lock);
+ //mtx_lock(map^.lock);
+ vm_map_lock_range(map^.vm_map,0,High(Int64),RL_LOCK_WRITE);
 end;
 
 procedure _vm_track_map_process_deferred(map:p_vm_track_map); forward;
@@ -709,12 +717,14 @@ begin
  begin
   _vm_track_map_process_deferred(map);
  end;
- mtx_unlock(map^.lock);
+ //mtx_unlock(map^.lock);
+ vm_map_unlock_range(map^.vm_map,map^.vm_map);
 end;
 
 function vm_track_locked(map:p_vm_track_map):Boolean; inline;
 begin
- Result:=mtx_owned(map^.lock);
+ //Result:=mtx_owned(map^.lock);
+ Result:=vm_map_locked(map^.vm_map);
 end;
 
 procedure VM_MAP_ASSERT_LOCKED(map:p_vm_track_map); inline;
@@ -722,7 +732,7 @@ begin
  Assert(vm_track_locked(map));
 end;
 
-procedure vm_track_map_init(map:p_vm_track_map;min,max:vm_offset_t);
+procedure vm_track_map_init(map:p_vm_track_map;min,max:vm_offset_t;vm_map:Pointer);
 var
  i:Integer;
 begin
@@ -746,7 +756,8 @@ begin
  TAILQ_INIT(@map^.delete_deferred);
 
  //
- mtx_init(map^.lock,'vm_track_map');
+ //mtx_init(map^.lock,'vm_track_map');
+ map^.vm_map:=vm_map;
 end;
 
 procedure vm_track_entry_dispose(map:p_vm_track_map;pmap:Pointer;entry:p_vm_track_map_entry); inline;
