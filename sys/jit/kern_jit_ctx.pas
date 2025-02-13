@@ -28,9 +28,8 @@ type
    end;
 
    t_forward_links=object
-    root:p_forward_link;
+    root :p_forward_link;
     ptype:t_point_type;
-    procedure Resolve(_label:t_jit_i_link);
    end;
 
    p_forward_point=^t_forward_point;
@@ -85,7 +84,11 @@ type
    end;
 
   var
+   forward_link_cache :p_forward_link;
+   forward_point_cache:p_forward_point;
+   //
    forward_set:t_forward_set;
+   //
    label_set  :t_label_set;
    entry_list :p_entry_point;
    entry_set  :t_entry_point_set;
@@ -121,6 +124,7 @@ type
   procedure add_export_point (native:Pointer;dst:PPointer);
   procedure add_import_point (guest,dst:PPointer);
   procedure add_forward_link (node:p_forward_point;label_id:t_jit_i_link);
+  procedure Resolve_forwards (var links:t_forward_links;label_id:t_jit_i_link);
   function  add_forward_point(ptype:t_point_type;label_id:t_jit_i_link;dst:Pointer):p_forward_point;
   function  add_forward_point(ptype:t_point_type;dst:Pointer):p_forward_point;
   Function  new_chunk(ptype:t_point_type;start:Pointer):p_jit_code_chunk;
@@ -389,11 +393,46 @@ var
  link:p_forward_link;
 begin
  if (node=nil) or (label_id=nil_link) then Exit;
+ //
+ link:=forward_link_cache;
+ if (link<>nil) then
+ begin
+  forward_link_cache:=link^.next;
+  link^.next:=nil
+ end else
+ begin
+  link:=builder.Alloc(Sizeof(t_forward_link));
+ end;
+ //
  link:=builder.Alloc(Sizeof(t_forward_link));
+ //
  link^.label_id:=label_id;
  link^.next:=node^.links.root;
  node^.links.root:=link;
 end;
+
+procedure t_jit_context2.Resolve_forwards(var links:t_forward_links;label_id:t_jit_i_link);
+var
+ node:p_forward_link;
+begin
+ //init
+ node:=links.root;
+ //
+ While (node<>nil) do
+ begin
+  //extract
+  links.root:=node^.next;
+  //set node
+  node^.label_id._label:=label_id;
+  //cache
+  node^.label_id:=Default(t_jit_i_link);
+  node^.next    :=forward_link_cache;
+  forward_link_cache:=node;
+  //next
+  node:=links.root;
+ end;
+end;
+
 
 function t_jit_context2.add_forward_point(ptype:t_point_type;label_id:t_jit_i_link;dst:Pointer):p_forward_point;
 var
@@ -411,9 +450,19 @@ begin
  Result:=forward_set.Find(@node);
  if (Result=nil) then
  begin
-  Result:=builder.Alloc(Sizeof(t_forward_point));
+  Result:=forward_point_cache;
+  if (Result<>nil) then
+  begin
+   forward_point_cache:=Result^.pLeft;
+   Result^.pLeft:=nil;
+  end else
+  begin
+   Result:=builder.Alloc(Sizeof(t_forward_point));
+  end;
+  //
   Result^.dst:=dst;
   Result^.links.ptype:=ptype;
+  //
   forward_set.Insert(Result);
  end;
  add_forward_link(Result,label_id);
@@ -477,26 +526,23 @@ var
  min:p_forward_point;
 begin
  Result:=False;
+ //get min
  min:=forward_set.Min;
  if (min=nil) then Exit;
+ //move to min
  forward_set._Splay(min);
  min:=forward_set.pRoot;
+ //extract
  forward_set.Delete(min);
+ //set
  dst  :=min^.dst;
  links:=min^.links;
+ //cache
+ min^:=Default(t_forward_point);
+ min^.pLeft:=forward_point_cache;
+ forward_point_cache:=min;
+ //
  Result:=True;
-end;
-
-procedure t_jit_context2.t_forward_links.Resolve(_label:t_jit_i_link);
-var
- node:p_forward_link;
-begin
- node:=root;
- While (node<>nil) do
- begin
-  node^.label_id._label:=_label;
-  node:=node^.next;
- end;
 end;
 
 function t_jit_context2.add_label(curr,next:Pointer;link_curr,link_next:t_jit_i_link;flags:Integer):p_label;

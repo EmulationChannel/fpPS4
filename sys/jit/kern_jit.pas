@@ -2236,8 +2236,7 @@ begin
   //resolve forward links
   if (links.root<>nil) then
   begin
-   links.Resolve(link_curr);
-   links.root:=nil;
+   ctx.Resolve_forwards(links,link_curr);
   end;
 
   //add new entry point
@@ -2306,8 +2305,7 @@ begin
      Break;
     end else
     begin
-     links.Resolve(link_new);
-     links.root:=nil;
+     ctx.Resolve_forwards(links,link_new);
      //
      ctx.add_entry_point(addr,link_new);
     end;
