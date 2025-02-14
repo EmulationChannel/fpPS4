@@ -933,6 +933,33 @@ begin
 
    resource_instance:=ctx.node^.scope.find_image_resource_instance(FImage);
 
+   if (resource_instance=nil) then
+   begin
+    case btype of
+     vbSampled:
+      begin
+       resource_instance:=ctx.stream^.insert_image_resource(
+        @ctx.node^.scope,
+        FImage,
+        memuse,
+        [iu_sampled],
+        'Prepare_Uniforms');
+      end;
+     vbStorage,
+     vbMipStorage:
+      begin
+       resource_instance:=ctx.stream^.insert_image_resource(
+        @ctx.node^.scope,
+        FImage,
+        memuse,
+        [iu_storage],
+        'Prepare_Uniforms');
+      end;
+     else
+      Assert(false);
+    end;
+   end;
+
    Assert(resource_instance<>nil);
 
    if not resource_instance^.prepared then
@@ -984,6 +1011,17 @@ begin
   begin
 
    resource_instance:=ctx.node^.scope.find_buffer_resource_instance(R_BUF,addr,size);
+
+   if (resource_instance=nil) then
+   begin
+    resource_instance:=ctx.stream^.insert_buffer_resource(
+     @ctx.node^.scope,
+     R_BUF,
+     addr,
+     size,
+     memuse,
+     'Prepare_Uniforms');
+   end;
 
    Assert(resource_instance<>nil);
 
