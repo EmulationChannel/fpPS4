@@ -16,6 +16,7 @@ uses
   vImage,
   vSetLayoutManager,
   vPipelineLayoutManager,
+  si_ci_vi_merged_enum,
   si_ci_vi_merged_registers,
   si_ci_vi_merged_groups;
 
@@ -771,6 +772,7 @@ begin
   'RINF':L^.rinfo.enable:=(StrToDWord2(V)<>0);
   'DFMT':L^.rinfo.dfmt   :=StrToDWord2(V);
   'NFMT':L^.rinfo.nfmt   :=StrToDWord2(V);
+  'NUMT':L^.rinfo.nfmt   :=StrToDWord2(V);
   'TYPE':L^.rinfo.rtype  :=StrToDWord2(V);
   'DSEL':L^.rinfo.dstsel :=StrToDstSel(V);
 
@@ -1798,6 +1800,16 @@ begin
  end;
 end;
 
+function GetNumType(nfmt:Byte):Byte; inline;
+begin
+ Case nfmt of
+  IMG_NUM_FORMAT_UINT:Result:=1;
+  IMG_NUM_FORMAT_SINT:Result:=2;
+  else
+                      Result:=0;
+ end;
+end;
+
 procedure TvUnifChecker.AddAttr(const b:TvCustomLayout;Fset:TVkUInt32;pUserData,pImmData:PDWORD);
 var
  P:Pointer;
@@ -1847,8 +1859,8 @@ begin
    begin
 
     if rinfo.enable then
-    if (dfmt<>rinfo.dfmt) or
-       (nfmt<>rinfo.dfmt) or
+    if (     dfmt<>rinfo.dfmt    ) or
+       (     nfmt<>rinfo.nfmt    ) or
        (dst_sel_x<>rinfo.dstsel.x) or
        (dst_sel_y<>rinfo.dstsel.y) or
        (dst_sel_z<>rinfo.dstsel.z) or
@@ -1871,15 +1883,24 @@ begin
     end;
 
     if rinfo.enable then
-    if (dfmt<>rinfo.dfmt) or
-       (nfmt<>rinfo.dfmt) or
-       (dst_sel_x<>rinfo.dstsel.x) or
-       (dst_sel_y<>rinfo.dstsel.y) or
-       (dst_sel_z<>rinfo.dstsel.z) or
-       (dst_sel_w<>rinfo.dstsel.w) then
     begin
-     FResult:=False;
-     Exit;
+     if (     dfmt<>rinfo.dfmt    ) or
+        (     nfmt<>rinfo.nfmt    ) or
+        (dst_sel_x<>rinfo.dstsel.x) or
+        (dst_sel_y<>rinfo.dstsel.y) or
+        (dst_sel_z<>rinfo.dstsel.z) or
+        (dst_sel_w<>rinfo.dstsel.w) then
+     begin
+      FResult:=False;
+      Exit;
+     end;
+    end else
+    begin
+     if (GetNumType(nfmt)<>GetNumType(rinfo.nfmt)) then
+     begin
+      FResult:=False;
+      Exit;
+     end;
     end;
 
    end;

@@ -6,6 +6,7 @@ interface
 
 uses
  sysutils,
+ si_ci_vi_merged_enum,
  ps4_shader,
  spirv,
  ginodes,
@@ -883,6 +884,16 @@ begin
  //pList.OpSource(Space(deep+1)+name+':'+HexLen(P,len));
 end;
 
+function GetNumType(nfmt:Byte):Byte; inline;
+begin
+ Case nfmt of
+  IMG_NUM_FORMAT_UINT:Result:=1;
+  IMG_NUM_FORMAT_SINT:Result:=2;
+  else
+                      Result:=0;
+ end;
+end;
+
 procedure TsrDataLayoutList.AllocSourceExtension2;
 var
  Writer:TseWriter;
@@ -950,6 +961,9 @@ begin
        Writer.IntOpt('DFMT',dfmt);
        Writer.IntOpt('NFMT',nfmt);
        Writer.StrOpt('DSEL',_get_dst_sel_str(dst_sel_x,dst_sel_y,dst_sel_z,dst_sel_w));
+      end else
+      begin
+       Writer.IntOpt('NUMT',GetNumType(nfmt));
       end;
      end;
 
