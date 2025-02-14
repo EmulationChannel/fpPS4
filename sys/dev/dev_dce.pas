@@ -7,6 +7,7 @@ interface
 
 uses
  sysutils,
+ bittype,
  vm,
  vmparam,
  sys_conf,
@@ -1320,41 +1321,53 @@ begin
 
 end;
 
+type
+ t_dce_hint=bitpacked record
+  event_id:bit8;
+  video_id:bit8;
+  flip_arg:bit48;
+ end;
+
+ t_dce_data=bitpacked record
+  time    :bit12;
+  counter :bit4;
+  flip_arg:bit48;
+ end;
+
 function filt_display_event(kn:p_knote;hint:QWORD):Integer;
 var
- i:Integer;
  event_id:WORD;
- time,mask:QWORD;
- hint_h :DWORD;
- ident_h:DWORD;
+ video_id:BYTE;
+ counter :BYTE;
+ time    :QWORD;
 begin
  if (hint=0) then
  begin
-  i:=(kn^.kn_kevent.data shr 12) and $F;
+  Result:=t_dce_data(kn^.kn_kevent.data).counter;
  end else
  begin
   event_id:=kn^.kn_kevent.ident shr 48;
+  video_id:=kn^.kn_kevent.ident shr 40;
 
-  hint_h :=DWORD(hint shr 8) and $ffffff;
-  ident_h:=DWORD(kn^.kn_kevent.ident shr 40);
-
-  i:=0;
-  if ((DWORD(hint) and $ff)=event_id) and
+  if (t_dce_hint(hint).event_id=event_id) and
      (event_id<>$fe) and
-     (((hint_h xor ident_h) and $ff)=0) then
+     ((t_dce_hint(hint).video_id xor video_id)=0) then
   begin
    time:=rdtsc();
-   mask:=$f000;
-   if ((DWORD(kn^.kn_kevent.data) and $f000)<>$f000) then
+   counter:=t_dce_data(kn^.kn_kevent.data).counter;
+   if (counter<>$f) then
    begin
-    mask:=(DWORD(kn^.kn_kevent.data) + $1000) and $f000;
+    counter:=counter+1;
    end;
-   i:=1;
-   kn^.kn_kevent.data:=mask or QWORD(DWORD(time) and $fff) or (hint and QWORD($ffffffffffff0000));
+   kn^.kn_kevent.data:=(time and $fff) or                    //time
+                       (counter shl 12) or                   //counter
+                       (hint and QWORD($ffffffffffff0000));  //flip_arg
+   Result:=1;
+  end else
+  begin
+   Result:=0;
   end;
  end;
-
- Exit(i);
 end;
 
 const
