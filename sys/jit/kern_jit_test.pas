@@ -16,9 +16,9 @@ procedure apply_jit_stat(code_size:Word);
 procedure print_din_stats;
 
 function  is_sse  (x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
-function  is_3dnow(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
 function  is_float(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
 function  is_avx  (x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
+function  is_bmi  (x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
 
 implementation
 
@@ -559,25 +559,6 @@ begin
  used_op[OPPnone,OPpextr,OPSx_d]:=True;
  used_op[OPPnone,OPpextr,OPSx_q]:=True;
  used_op[OPPnone,OPpextr,OPSx_w]:=True;
- used_op[OPPnone,OPpf2id,OPSnone]:=True;
- used_op[OPPnone,OPpf2iw,OPSnone]:=True;
- used_op[OPPnone,OPpfacc,OPSnone]:=True;
- used_op[OPPnone,OPpfadd,OPSnone]:=True;
- used_op[OPPnone,OPpfcmpeq,OPSnone]:=True;
- used_op[OPPnone,OPpfcmpge,OPSnone]:=True;
- used_op[OPPnone,OPpfcmpgt,OPSnone]:=True;
- used_op[OPPnone,OPpfmax,OPSnone]:=True;
- used_op[OPPnone,OPpfmin,OPSnone]:=True;
- used_op[OPPnone,OPpfmul,OPSnone]:=True;
- used_op[OPPnone,OPpfnacc,OPSnone]:=True;
- used_op[OPPnone,OPpfpnacc,OPSnone]:=True;
- used_op[OPPnone,OPpfrcp,OPSnone]:=True;
- used_op[OPPnone,OPpfrcpit1,OPSnone]:=True;
- used_op[OPPnone,OPpfrcpit2,OPSnone]:=True;
- used_op[OPPnone,OPpfrsqit1,OPSnone]:=True;
- used_op[OPPnone,OPpfrsqrt,OPSnone]:=True;
- used_op[OPPnone,OPpfsub,OPSnone]:=True;
- used_op[OPPnone,OPpfsubr,OPSnone]:=True;
  used_op[OPPnone,OPphadd,OPSx_d]:=True;
  used_op[OPPnone,OPphadd,OPSx_w]:=True;
  used_op[OPPnone,OPphaddsw,OPSnone]:=True;
@@ -585,8 +566,6 @@ begin
  used_op[OPPnone,OPphsub,OPSx_d]:=True;
  used_op[OPPnone,OPphsub,OPSx_w]:=True;
  used_op[OPPnone,OPphsubsw,OPSnone]:=True;
- used_op[OPPnone,OPpi2fd,OPSnone]:=True;
- used_op[OPPnone,OPpi2fw,OPSnone]:=True;
  used_op[OPPnone,OPpinsr,OPSx_b]:=True;
  used_op[OPPnone,OPpinsr,OPSx_d]:=True;
  used_op[OPPnone,OPpinsr,OPSx_q]:=True;
@@ -620,7 +599,6 @@ begin
  used_op[OPPnone,OPpmovzx,OPSv_dq]:=True;
  used_op[OPPnone,OPpmuldq,OPSnone]:=True;
  used_op[OPPnone,OPpmulhrsw,OPSnone]:=True;
- used_op[OPPnone,OPpmulhrw,OPSnone]:=True;
  used_op[OPPnone,OPpmulhuw,OPSnone]:=True;
  used_op[OPPnone,OPpmulhw,OPSnone]:=True;
  used_op[OPPnone,OPpmull,OPSx_d]:=True;
@@ -665,7 +643,6 @@ begin
  used_op[OPPnone,OPpsubs,OPSx_w]:=True;
  used_op[OPPnone,OPpsubus,OPSx_b]:=True;
  used_op[OPPnone,OPpsubus,OPSx_w]:=True;
- used_op[OPPnone,OPpswapd,OPSnone]:=True;
  used_op[OPPnone,OPptest,OPSnone]:=True;
  used_op[OPPnone,OPpunpckhbw,OPSnone]:=True;
  used_op[OPPnone,OPpunpckhdq,OPSnone]:=True;
@@ -1215,39 +1192,6 @@ begin
  end;
 end;
 
-function is_3dnow(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
-begin
- Result:=False;
- if (x=OPPnone) then
- begin
-  case y of
-   OPpi2fw,
-   OPpi2fd,
-   OPpf2iw,
-   OPpf2id,
-   OPpfnacc,
-   OPpfpnacc,
-   OPpfcmpge,
-   OPpfmin,
-   OPpfrcp,
-   OPpfrsqrt,
-   OPpfsub,
-   OPpfadd,
-   OPpfcmpgt,
-   OPpfmax,
-   OPpfrcpit1,
-   OPpfrsqit1,
-   OPpfsubr,
-   OPpfacc,
-   OPpfcmpeq,
-   OPpfmul,
-   OPpfrcpit2,
-   OPpmulhrw,
-   OPpswapd:Result:=True;
-  end;
- end;
-end;
-
 function is_float(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
 begin
  Result:=(y in [OPf2xm1..OPgf2p8mulb]);
@@ -1265,9 +1209,23 @@ begin
  end;
 end;
 
+function is_bmi(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
+begin
+ case y of
+  OPandn,
+  OPbextr,
+  OPblsi,
+  OPblsmsk,
+  OPblsr,
+  OPtzcnt:Result:=True;
+  else
+   Result:=False;
+ end;
+end;
+
 type
  t_status=record
-  g,s,d,f,v:DWORD;
+  g,s,f,v,b:DWORD;
  end;
 
 function percent(a,b:DWORD):Single; inline;
@@ -1296,13 +1254,13 @@ var
   begin
    Inc(status.f);
   end else
+  if is_bmi(x,y,z) then
+  begin
+   Inc(status.b);
+  end else
   if is_avx(x,y,z) then
   begin
    Inc(status.v);
-  end else
-  if is_3dnow(x,y,z) then
-  begin
-   Inc(status.d)
   end else
   if is_sse(x,y,z) then
   begin
@@ -1356,11 +1314,11 @@ begin
   Writeln('[jit status]');
   Writeln('  general:',percent(cbs_status.g,use_status.g):5:2,'%');
   Writeln('    float:',percent(cbs_status.f,use_status.f):5:2,'%');
-  Writeln('    3DNow:',percent(cbs_status.d,use_status.d):5:2,'%');
   Writeln('      sse:',percent(cbs_status.s,use_status.s):5:2,'%');
   Writeln('      avx:',percent(cbs_status.v,use_status.v):5:2,'%');
-  Writeln('    total:',percent(cbs_status.g+cbs_status.s+use_status.d+cbs_status.f+cbs_status.v,
-                               use_status.g+use_status.s+use_status.d+use_status.f+use_status.v
+  Writeln('      bmi:',percent(cbs_status.b,use_status.b):5:2,'%');
+  Writeln('    total:',percent(cbs_status.g+cbs_status.s+cbs_status.f+cbs_status.v+use_status.b,
+                               use_status.g+use_status.s+use_status.f+use_status.v+use_status.b
                               ):0:2,'%');
  end;
 
