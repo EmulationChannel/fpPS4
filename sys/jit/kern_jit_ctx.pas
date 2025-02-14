@@ -289,7 +289,6 @@ procedure op_emit_avx3(var ctx:t_jit_context2;const desc:t_op_type);
 procedure op_emit_avx3_imm8(var ctx:t_jit_context2;const desc:t_op_avx3_imm);
 procedure op_emit_avx_F3(var ctx:t_jit_context2;const desc:t_op_type);
 procedure op_emit_avx4(var ctx:t_jit_context2;const desc:t_op_type);
-procedure op_emit_bmi_rmr(var ctx:t_jit_context2;const desc:t_op_type);
 procedure op_emit_bmi_rrm(var ctx:t_jit_context2;const desc:t_op_type);
 
 procedure print_disassemble(addr:Pointer;vsize:Integer);
@@ -3933,69 +3932,6 @@ begin
   end;
 end;
 
-procedure op_emit_bmi_rmr(var ctx:t_jit_context2;const desc:t_op_type);
-var
- mem_size:TOperandSize;
-
- new1,new2,new3:TRegValue;
-begin
- Assert(ctx.din.OperCnt=3);
-
- with ctx.builder do
- begin
-
-  if is_preserved(ctx.din.Operand[1]) then
-  begin
-   new1:=new_reg_size(r_tmp0,ctx.din.Operand[1]);
-   //not need load result
-  end else
-  begin
-   new1:=new_reg(ctx.din.Operand[1]);
-  end;
-
-  if is_memory(ctx.din.Operand[2]) then
-  begin
-   mem_size:=ctx.din.Operand[2].Size;
-   Assert(mem_size<>os0);
-
-   build_lea(ctx,2,r_tmp0);
-
-   op_copyin(ctx,mem_size);
-
-   new2:=new_reg_size(r_tmp0,mem_size);
-
-   movq(new2,[r_tmp0]);
-  end else
-  if is_preserved(ctx.din.Operand[2]) then
-  begin
-   new2:=new_reg_size(r_tmp0,ctx.din.Operand[2]);
-   //
-   op_load(ctx,new2,2);
-  end else
-  begin
-   new2:=new_reg(ctx.din.Operand[2]);
-  end;
-
-  if is_preserved(ctx.din.Operand[3]) then
-  begin
-   new3:=new_reg_size(r_tmp1,ctx.din.Operand[3]);
-   //
-   op_load(ctx,new3,3);
-  end else
-  begin
-   new3:=new_reg(ctx.din.Operand[3]);
-  end;
-
-  _VVV(desc,new1,new3,new2,new1.ASize); //1 3 2
-
-  if is_preserved(ctx.din.Operand[1]) then
-  begin
-   op_save(ctx,1,fix_size(new1));
-  end;
-
- end;
-end;
-
 //
 
 procedure op_emit_bmi_rrm(var ctx:t_jit_context2;const desc:t_op_type);
@@ -4003,15 +3939,51 @@ var
  mem_size:TOperandSize;
 
  new1,new2,new3:TRegValue;
+
+ pr_result,pr_mem:Boolean;
+
+ tmp_count:Byte;
+
+ function tmp_alloc:TRegValue; inline;
+ begin
+  case tmp_count of
+   0:Result:=r_tmp0;
+   1:Result:=r_tmp1;
+   2:Result:=r_thrd;
+   else
+    Assert(False,'tmp_alloc');
+  end;
+  Inc(tmp_count);
+ end;
+
 begin
  Assert(ctx.din.OperCnt=3);
+
+ tmp_count:=0;
 
  with ctx.builder do
  begin
 
-  if is_preserved(ctx.din.Operand[1]) then
+  pr_mem:=is_memory(ctx.din.Operand[3]);
+
+  //preload addr first
+  if pr_mem then
   begin
-   new1:=new_reg_size(r_tmp0,ctx.din.Operand[1]);
+   mem_size:=ctx.din.Operand[3].Size;
+   Assert(mem_size<>os0);
+
+   new3:=tmp_alloc;
+
+   build_lea(ctx,3,new3);
+
+   op_copyin(ctx,mem_size);
+  end;
+
+  pr_result:=is_preserved(ctx.din.Operand[1]);
+
+  if pr_result then
+  begin
+   new1:=new_reg_size(tmp_alloc,ctx.din.Operand[1]);
    //not need load result
   end else
   begin
@@ -4020,7 +3992,7 @@ begin
 
   if is_preserved(ctx.din.Operand[2]) then
   begin
-   new2:=new_reg_size(r_tmp0,ctx.din.Operand[2]);
+   new2:=new_reg_size(tmp_alloc,ctx.din.Operand[2]);
    //
    op_load(ctx,new2,2);
   end else
@@ -4028,32 +4000,33 @@ begin
    new2:=new_reg(ctx.din.Operand[2]);
   end;
 
-  if is_memory(ctx.din.Operand[3]) then
+  if pr_mem then
   begin
-   mem_size:=ctx.din.Operand[3].Size;
-   Assert(mem_size<>os0);
-
-   build_lea(ctx,3,r_tmp0);
-
-   op_copyin(ctx,mem_size);
-
-   new3:=new_reg_size(r_tmp1,mem_size);
-
-   movq(new3,[r_tmp0]);
+   _VVM(desc,new1,new2,[new3]); //1 2 3
   end else
   if is_preserved(ctx.din.Operand[3]) then
   begin
    new3:=new_reg_size(r_tmp1,ctx.din.Operand[3]);
    //
    op_load(ctx,new3,3);
+   //
+   _VVV(desc,new1,new2,new3,new1.ASize); //1 2 3
   end else
   begin
    new3:=new_reg(ctx.din.Operand[3]);
+   //
+   _VVV(desc,new1,new2,new3,new1.ASize); //1 2 3
   end;
 
-  _VVV(desc,new1,new2,new3,new1.ASize); //1 2 3
+  if (tmp_count=3) then
+  begin
+   //restore jit_frame
+   movq(r13,[GS +Integer(teb_thread)]);
+   leaq(r13,[r13+jit_frame_offset   ]);
+  end;
 
-  if is_preserved(ctx.din.Operand[1]) then
+  //store result
+  if pr_result then
   begin
    op_save(ctx,1,fix_size(new1));
   end;

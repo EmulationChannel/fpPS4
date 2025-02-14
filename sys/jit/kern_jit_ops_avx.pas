@@ -125,6 +125,8 @@ end;
 procedure op_emit_bmi_rmr(var ctx:t_jit_context2;const desc:t_op_type);
 var
  tmp:t_op_type;
+
+ Operand:array[2..3] of TOperand;
 begin
  tmp:=desc;
 
@@ -132,7 +134,18 @@ begin
  tmp.vx_len:=ctx.dis.Vex.Length;
  tmp.rexw  :=rexW in ctx.dis.Flags;
 
- kern_jit_ctx.op_emit_bmi_rmr(ctx,tmp);
+ //swap operands 2<->3
+ Operand[2]:=ctx.din.Operand[2];
+ Operand[3]:=ctx.din.Operand[3];
+ //
+ ctx.din.Operand[2]:=Operand[3];
+ ctx.din.Operand[3]:=Operand[2];
+
+ kern_jit_ctx.op_emit_bmi_rrm(ctx,tmp);
+
+ //restore operands
+ ctx.din.Operand[2]:=Operand[2];
+ ctx.din.Operand[3]:=Operand[3];
 end;
 
 procedure op_emit_bmi_rrm(var ctx:t_jit_context2;const desc:t_op_type);
@@ -959,7 +972,7 @@ end;
 
 const
  bextr_desc:t_op_type=(
-  op:$F7;simdop:0;mm:2;vw_mode:vwR64;
+  op:$F7;simdop:0;mm:2;vw_mode:vwR64;opt:[reg_size_pri]
  );
 
 procedure op_bextr(var ctx:t_jit_context2);
@@ -975,7 +988,7 @@ end;
 
 const
  andn_desc:t_op_type=(
-  op:$F2;simdop:0;mm:2;vw_mode:vwR64;
+  op:$F2;simdop:0;mm:2;vw_mode:vwR64;opt:[reg_size_pri]
  );
 
 procedure op_andn(var ctx:t_jit_context2);
@@ -1144,10 +1157,6 @@ begin
 
  jit_cbs[OPPv,OPptest,OPSnone]:=@op_vptest;
 
- jit_cbs[OPPnone,OPblsr  ,OPSnone]:=@op_bmi_gen;
- jit_cbs[OPPnone,OPblsmsk,OPSnone]:=@op_bmi_gen;
- jit_cbs[OPPnone,OPblsi  ,OPSnone]:=@op_bmi_gen;
-
  jit_cbs[OPPv,OPpcmpeq,OPSx_b ]:=@op_avx3_gen;
  jit_cbs[OPPv,OPpcmpeq,OPSx_w ]:=@op_avx3_gen;
  jit_cbs[OPPv,OPpcmpeq,OPSx_d ]:=@op_avx3_gen;
@@ -1315,8 +1324,14 @@ begin
 
  jit_cbs[OPPnone,OPvcvtph2ps,OPSnone]:=@op_avx2_reg_mem_wo;
 
+ //BMI1
  jit_cbs[OPPnone,OPbextr,OPSnone]:=@op_bextr;
  jit_cbs[OPPnone,OPandn ,OPSnone]:=@op_andn;
+ //
+ jit_cbs[OPPnone,OPblsr  ,OPSnone]:=@op_bmi_gen;
+ jit_cbs[OPPnone,OPblsmsk,OPSnone]:=@op_bmi_gen;
+ jit_cbs[OPPnone,OPblsi  ,OPSnone]:=@op_bmi_gen;
+ //BMI1
 
  jit_cbs[OPPv,OPpextr,OPSx_b]:=@op_avx3_mri;
  jit_cbs[OPPv,OPpextr,OPSx_d]:=@op_avx3_mri;

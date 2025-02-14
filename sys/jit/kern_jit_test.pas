@@ -1211,15 +1211,18 @@ end;
 
 function is_bmi(x:TOpcodePrefix;y:TOpCode;z:TOpCodeSuffix):Boolean;
 begin
- case y of
-  OPandn,
-  OPbextr,
-  OPblsi,
-  OPblsmsk,
-  OPblsr,
-  OPtzcnt:Result:=True;
-  else
-   Result:=False;
+ Result:=False;
+ if (x=OPPnone) and (z=OPSnone) then
+ begin
+  case y of
+   OPandn,
+   OPbextr,
+   OPblsi,
+   OPblsmsk,
+   OPblsr,
+   OPtzcnt:Result:=True;
+   else;
+  end;
  end;
 end;
 
