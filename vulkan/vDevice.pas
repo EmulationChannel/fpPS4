@@ -276,28 +276,29 @@ function  sparseResidencyAliased:Boolean;
 var
  limits:record
 
-  VK_KHR_swapchain                 :Boolean;
-  VK_EXT_external_memory_host      :Boolean;
+  VK_KHR_swapchain                       :Boolean;
+  VK_EXT_external_memory_host            :Boolean;
 
-  VK_EXT_vertex_input_dynamic_state:Boolean;
-  VK_KHR_imageless_framebuffer     :Boolean;
-  VK_EXT_provoking_vertex          :Boolean;
-  VK_KHR_image_format_list         :Boolean;
-  VK_EXT_descriptor_indexing       :Boolean;
+  VK_EXT_vertex_input_dynamic_state      :Boolean;
+  VK_KHR_imageless_framebuffer           :Boolean;
+  VK_EXT_provoking_vertex                :Boolean;
+  VK_KHR_image_format_list               :Boolean;
+  VK_EXT_descriptor_indexing             :Boolean;
 
-  VK_KHR_shader_float16_int8       :Boolean;
-  VK_KHR_16bit_storage             :Boolean;
-  VK_KHR_8bit_storage              :Boolean;
-  VK_KHR_push_descriptor           :Boolean;
-  VK_KHR_shader_non_semantic_info  :Boolean;
-  VK_EXT_index_type_uint8          :Boolean;
-  VK_EXT_scalar_block_layout       :Boolean;
-  VK_EXT_robustness2               :Boolean;
-  VK_EXT_image_view_min_lod        :Boolean;
-  VK_EXT_depth_clip_control        :Boolean;
-  VK_EXT_depth_clip_enable         :Boolean;
+  VK_KHR_shader_float16_int8             :Boolean;
+  VK_KHR_16bit_storage                   :Boolean;
+  VK_KHR_8bit_storage                    :Boolean;
+  VK_KHR_push_descriptor                 :Boolean;
+  VK_KHR_shader_non_semantic_info        :Boolean;
+  VK_EXT_index_type_uint8                :Boolean;
+  VK_EXT_scalar_block_layout             :Boolean;
+  VK_KHR_workgroup_memory_explicit_layout:Boolean;
+  VK_EXT_robustness2                     :Boolean;
+  VK_EXT_image_view_min_lod              :Boolean;
+  VK_EXT_depth_clip_control              :Boolean;
+  VK_EXT_depth_clip_enable               :Boolean;
 
-  VK_AMD_device_coherent_memory    :Boolean;
+  VK_AMD_device_coherent_memory          :Boolean;
 
   DeviceFeature:TVkPhysicalDeviceFeatures;
 
@@ -312,6 +313,9 @@ var
   uniformAndStorageBuffer16BitAccess:TVkBool32;
   storagePushConstant16             :TVkBool32;
   storageInputOutput16              :TVkBool32;
+
+  workgroupMemoryExplicitLayout8BitAccess :TVkBool32;
+  workgroupMemoryExplicitLayout16BitAccess:TVkBool32;
 
   robustBufferAccess2:TVkBool32;
   robustImageAccess2 :TVkBool32;
@@ -478,28 +482,29 @@ begin
   For i:=0 to count-1 do
   begin
    Case String(pProperties[i].extensionName) of
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME                 :limits.VK_KHR_swapchain                 :=True;
-    VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME      :limits.VK_EXT_external_memory_host      :=True;
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME                       :limits.VK_KHR_swapchain                       :=True;
+    VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME            :limits.VK_EXT_external_memory_host            :=True;
 
-    VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME:limits.VK_EXT_vertex_input_dynamic_state:=True;
-    VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME     :limits.VK_KHR_imageless_framebuffer     :=True;
-    VK_EXT_PROVOKING_VERTEX_EXTENSION_NAME          :limits.VK_EXT_provoking_vertex          :=True;
-    VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME         :limits.VK_KHR_image_format_list         :=True;
-    VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME       :limits.VK_EXT_descriptor_indexing       :=True;
+    VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME      :limits.VK_EXT_vertex_input_dynamic_state      :=True;
+    VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME           :limits.VK_KHR_imageless_framebuffer           :=True;
+    VK_EXT_PROVOKING_VERTEX_EXTENSION_NAME                :limits.VK_EXT_provoking_vertex                :=True;
+    VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME               :limits.VK_KHR_image_format_list               :=True;
+    VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME             :limits.VK_EXT_descriptor_indexing             :=True;
 
-    VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME       :limits.VK_KHR_shader_float16_int8       :=True;
-    VK_KHR_16BIT_STORAGE_EXTENSION_NAME             :limits.VK_KHR_16bit_storage             :=True;
-    VK_KHR_8BIT_STORAGE_EXTENSION_NAME              :limits.VK_KHR_8bit_storage              :=True;
-    VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME           :limits.VK_KHR_push_descriptor           :=True;
-    VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME  :limits.VK_KHR_shader_non_semantic_info  :=True;
-    VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME          :limits.VK_EXT_index_type_uint8          :=True;
-    VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME       :limits.VK_EXT_scalar_block_layout       :=True;
-    VK_EXT_ROBUSTNESS_2_EXTENSION_NAME              :limits.VK_EXT_robustness2               :=True;
-    VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME        :limits.VK_EXT_image_view_min_lod        :=True;
-    VK_EXT_DEPTH_CLIP_CONTROL_EXTENSION_NAME        :limits.VK_EXT_depth_clip_control        :=True;
-    VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME         :limits.VK_EXT_depth_clip_enable         :=True;
+    VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME             :limits.VK_KHR_shader_float16_int8             :=True;
+    VK_KHR_16BIT_STORAGE_EXTENSION_NAME                   :limits.VK_KHR_16bit_storage                   :=True;
+    VK_KHR_8BIT_STORAGE_EXTENSION_NAME                    :limits.VK_KHR_8bit_storage                    :=True;
+    VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME                 :limits.VK_KHR_push_descriptor                 :=True;
+    VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME        :limits.VK_KHR_shader_non_semantic_info        :=True;
+    VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME                :limits.VK_EXT_index_type_uint8                :=True;
+    VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME             :limits.VK_EXT_scalar_block_layout             :=True;
+    VK_KHR_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_EXTENSION_NAME:limits.VK_KHR_workgroup_memory_explicit_layout:=True;
+    VK_EXT_ROBUSTNESS_2_EXTENSION_NAME                    :limits.VK_EXT_robustness2                     :=True;
+    VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME              :limits.VK_EXT_image_view_min_lod              :=True;
+    VK_EXT_DEPTH_CLIP_CONTROL_EXTENSION_NAME              :limits.VK_EXT_depth_clip_control              :=True;
+    VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME               :limits.VK_EXT_depth_clip_enable               :=True;
 
-    VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME    :limits.VK_AMD_device_coherent_memory    :=True;
+    VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME          :limits.VK_AMD_device_coherent_memory          :=True;
    end;
   end;
   FreeMem(pProperties);
@@ -997,6 +1002,7 @@ var
  F16_8     :TVkPhysicalDeviceShaderFloat16Int8Features;
  FSF_8     :TVkPhysicalDevice8BitStorageFeatures;
  FSF16     :TVkPhysicalDevice16BitStorageFeatures;
+ FWMEL     :TVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR;
  FRF       :TVkPhysicalDeviceRobustness2FeaturesEXT;
  FDI       :TVkPhysicalDeviceDescriptorIndexingFeatures;
  r:TVkResult;
@@ -1065,6 +1071,7 @@ begin
  F16_8:=Default(TVkPhysicalDeviceShaderFloat16Int8Features);
  FSF_8:=Default(TVkPhysicalDevice8BitStorageFeatures);
  FSF16:=Default(TVkPhysicalDevice16BitStorageFeatures);
+ FWMEL:=Default(TVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR);
  FRF  :=Default(TVkPhysicalDeviceRobustness2FeaturesEXT);
  FDI  :=Default(TVkPhysicalDeviceDescriptorIndexingFeatures);
 
@@ -1082,7 +1089,10 @@ begin
   FSF_8.pNext:=@FSF16;
 
   FSF16.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
-  FSF16.pNext:=@FRF;
+  FSF16.pNext:=@FWMEL;
+
+  FWMEL.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR;
+  FWMEL.pNext:=@FRF;
 
   FRF.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
   FRF.pNext:=@FDI;
@@ -1098,24 +1108,27 @@ begin
   vkGetPhysicalDeviceFeatures(FPhysicalDevice,@limits.DeviceFeature);
  end;
 
- limits.shaderFloat16                     :=F16_8.shaderFloat16;
- limits.shaderInt8                        :=F16_8.shaderInt8;
+ limits.shaderFloat16                           :=F16_8.shaderFloat16;
+ limits.shaderInt8                              :=F16_8.shaderInt8;
 
- limits.storageBuffer8BitAccess           :=FSF_8.storageBuffer8BitAccess;
- limits.uniformAndStorageBuffer8BitAccess :=FSF_8.uniformAndStorageBuffer8BitAccess;
- limits.storagePushConstant8              :=FSF_8.storagePushConstant8;
+ limits.storageBuffer8BitAccess                 :=FSF_8.storageBuffer8BitAccess;
+ limits.uniformAndStorageBuffer8BitAccess       :=FSF_8.uniformAndStorageBuffer8BitAccess;
+ limits.storagePushConstant8                    :=FSF_8.storagePushConstant8;
 
- limits.storageBuffer16BitAccess          :=FSF16.storageBuffer16BitAccess;
- limits.uniformAndStorageBuffer16BitAccess:=FSF16.uniformAndStorageBuffer16BitAccess;
- limits.storagePushConstant16             :=FSF16.storagePushConstant16;
- limits.storageInputOutput16              :=FSF16.storageInputOutput16;
+ limits.storageBuffer16BitAccess                :=FSF16.storageBuffer16BitAccess;
+ limits.uniformAndStorageBuffer16BitAccess      :=FSF16.uniformAndStorageBuffer16BitAccess;
+ limits.storagePushConstant16                   :=FSF16.storagePushConstant16;
+ limits.storageInputOutput16                    :=FSF16.storageInputOutput16;
 
- limits.robustBufferAccess2               :=FRF.robustBufferAccess2;
- limits.robustImageAccess2                :=FRF.robustImageAccess2;
- limits.nullDescriptor                    :=FRF.nullDescriptor;
+ limits.workgroupMemoryExplicitLayout8BitAccess :=FWMEL.workgroupMemoryExplicitLayout8BitAccess;
+ limits.workgroupMemoryExplicitLayout16BitAccess:=FWMEL.workgroupMemoryExplicitLayout16BitAccess;
+
+ limits.robustBufferAccess2                     :=FRF.robustBufferAccess2;
+ limits.robustImageAccess2                      :=FRF.robustImageAccess2;
+ limits.nullDescriptor                          :=FRF.nullDescriptor;
 
  FDI.pNext:=nil;
- limits.DescriptorIndexingFeatures        :=FDI;
+ limits.DescriptorIndexingFeatures              :=FDI;
 
  LoadFamily;
 end;
@@ -1930,6 +1943,7 @@ var
  FDCE :TVkPhysicalDeviceDepthClipEnableFeaturesEXT;
 
  FScalar:TVkPhysicalDeviceScalarBlockLayoutFeatures;
+ FWorkgroupLayout:TVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR;
 
  FCoherent:TVkPhysicalDeviceCoherentMemoryFeaturesAMD;
 
@@ -2061,6 +2075,21 @@ begin
   FScalar.scalarBlockLayout:=VK_TRUE;
 
   DeviceInfo.add_feature(@FScalar);
+ end;
+
+ if limits.VK_KHR_workgroup_memory_explicit_layout then
+ begin
+  DeviceInfo.add_ext(VK_KHR_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_EXTENSION_NAME);
+
+  FWorkgroupLayout:=Default(TVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR);
+  FWorkgroupLayout.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR;
+
+  FWorkgroupLayout.workgroupMemoryExplicitLayout                 :=VK_TRUE;
+  FWorkgroupLayout.workgroupMemoryExplicitLayoutScalarBlockLayout:=VK_TRUE;
+  FWorkgroupLayout.workgroupMemoryExplicitLayout8BitAccess       :=limits.workgroupMemoryExplicitLayout8BitAccess;
+  FWorkgroupLayout.workgroupMemoryExplicitLayout16BitAccess      :=limits.workgroupMemoryExplicitLayout16BitAccess;
+
+  DeviceInfo.add_feature(@FWorkgroupLayout);
  end;
 
  if limits.VK_KHR_shader_float16_int8 then
