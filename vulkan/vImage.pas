@@ -59,6 +59,8 @@ type
 
  TvImageView=class(TvRefsObject)
   FHandle:TVkImageView;
+  FName  :RawByteString;
+  procedure   SetObjectName(const name:RawByteString);
   Destructor  Destroy; override;
  end;
 
@@ -1928,6 +1930,12 @@ begin
               dstAccessMask,
               newImageLayout,
               dstStageMask);
+end;
+
+procedure TvImageView.SetObjectName(const name:RawByteString);
+begin
+ FName:=name;
+ DebugReport.SetObjectName(VK_OBJECT_TYPE_IMAGE_VIEW,FHandle,PChar(name));
 end;
 
 Destructor TvImageView.Destroy;

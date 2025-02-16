@@ -1152,7 +1152,9 @@ begin
      begin
       iv:=ri.FetchView(ctx.Cmd,FView,iu_sampled);
 
-      Writeln('BindImage:','0x',HexStr(ri.FHandle,16),' 0x',HexStr(iv.FHandle,16));
+      Writeln('BindImage:->'#13#10,
+              ' 0x',HexStr(ri.FHandle,16),':',ri.key.cformat,':',ri.FName,'->'#13#10,
+              ' 0x',HexStr(iv.FHandle,16),':',iv.key.cformat,':',iv.FName);
 
       DescriptorGroup.BindImage(fset,bind,
                                 iv.FHandle,
@@ -1166,7 +1168,9 @@ begin
 
       iv:=ri.FetchView(ctx.Cmd,FView,iu_storage);
 
-      Writeln('BindStorage:','0x',HexStr(ri.FHandle,16),' 0x',HexStr(iv.FHandle,16));
+      Writeln('BindStorage:->'#13#10,
+              ' 0x',HexStr(ri.FHandle,16),':',ri.key.cformat,':',ri.FName,'->'#13#10,
+              ' 0x',HexStr(iv.FHandle,16),':',iv.key.cformat,':',iv.FName);
 
       DescriptorGroup.BindStorage(fset,bind,
                                   iv.FHandle,
@@ -1691,6 +1695,10 @@ begin
 
    ctx.Render.AddClearColor(ctx.rt_info^.RT_INFO[i].CLEAR_COLOR);
 
+   Writeln('BindFrame:->'#13#10,
+           ' 0x',HexStr(ri.FHandle,16),':',ri.key.cformat,':',ri.FName,'->'#13#10,
+           ' 0x',HexStr(iv.FHandle,16),':',iv.key.cformat,':',iv.FName);
+
    //
    if limits.VK_KHR_imageless_framebuffer then
    begin
@@ -2041,6 +2049,8 @@ begin
  pm4_InitStream(ctx);
  //
 
+ //if not ctx.WaitConfirmOrSwitch then Exit;
+
  StartFrameCapture;
 
  ctx.BeginCmdBuffer;
@@ -2058,14 +2068,17 @@ begin
  case node^.ntype of
   ntDrawIndex2:
    begin
+    Writeln('DrawIndexOffset2(',node^.indexOffset,',',node^.indexCount,')');
     ctx.Cmd.DrawIndexOffset2(Pointer(node^.indexBase),node^.indexOffset,node^.indexCount);
    end;
   ntDrawIndexOffset2:
    begin
+    Writeln('DrawIndexOffset2(',node^.indexOffset,',',node^.indexCount,')');
     ctx.Cmd.DrawIndexOffset2(Pointer(node^.indexBase),node^.indexOffset,node^.indexCount);
    end;
   ntDrawIndexAuto:
    begin
+    Writeln('DrawIndexAuto(',node^.indexOffset,',',node^.indexCount,')');
     ctx.Cmd.DrawIndexAuto(node^.indexOffset,node^.indexCount);
    end;
   ntClearDepth:
@@ -2331,6 +2344,8 @@ begin
  pm4_InitStream(ctx);
  //
 
+ //if not ctx.WaitConfirmOrSwitch then Exit;
+
  StartFrameCapture;
 
  ctx.BeginCmdBuffer;
@@ -2339,6 +2354,8 @@ begin
  ctx.Cmd.EndRenderPass;
 
  pm4_DispatchPrepare(ctx,node);
+
+ Writeln('DispatchDirect(',node^.DIM_X,',',node^.DIM_Y,',',node^.DIM_Z,')');
 
  ctx.Cmd.DispatchDirect(node^.DIM_X,node^.DIM_Y,node^.DIM_Z);
 

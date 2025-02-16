@@ -1509,6 +1509,12 @@ begin
  //
  if (Result.FMemory<>nil) then
  begin
+  if (Result.FMemory<>TvDeviceMemory(TAILQ_FIRST(@FDevs))) then
+  begin
+   TAILQ_REMOVE     (@FDevs,Result.FMemory,@Result.FMemory.entry);
+   TAILQ_INSERT_HEAD(@FDevs,Result.FMemory,@Result.FMemory.entry);
+  end;
+  //
   Result.FMemory.Acquire(nil); //fetch ref
  end;
  //
@@ -1538,7 +1544,7 @@ end;
 
 Function TvMemManager._shrink_dev_block(max:TVkDeviceSize;heap_index:Byte):TVkDeviceSize;
 var
- node,next:TvDeviceMemory;
+ node,prev:TvDeviceMemory;
 begin
  Result:=0;
 
@@ -1549,11 +1555,11 @@ begin
   if (Result>=max) then Exit;
  end;
 
- node:=TvDeviceMemory(TAILQ_FIRST(@FDevs));
+ node:=TvDeviceMemory(TAILQ_LAST(@FDevs));
 
  while (node<>nil) do
  begin
-  next:=TvDeviceMemory(TAILQ_NEXT(node,@node.entry));
+  prev:=TvDeviceMemory(TAILQ_PREV(node,@node.entry));
 
   if (node.FMemInfo.heap_index=heap_index) then
   if (node.FRefs<=1) then
@@ -1566,7 +1572,7 @@ begin
    if (Result>=max) then Break;
   end;
 
-  node:=next;
+  node:=prev;
  end;
 
 end;

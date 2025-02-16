@@ -498,6 +498,17 @@ begin
  end;
 end;
 
+const
+ DST_SEL_STR:PChar='I01RGBA';
+
+function _get_dst_sel_str(dstSel:TvDstSel):RawByteString; inline;
+begin
+ Result:=DST_SEL_STR[dstSel.x]+
+         DST_SEL_STR[dstSel.y]+
+         DST_SEL_STR[dstSel.z]+
+         DST_SEL_STR[dstSel.w];
+end;
+
 function TvImage2.FetchViewRaw(cmd:TvCustomCmdBuffer;const F:TvImageViewKey;usage:TVkFlags):TvImageView2;
 var
  key2:TvImageViewKey;
@@ -626,6 +637,11 @@ begin
   t.FHandle:=FView;
   t.Parent :=Self;
   t.key    :=key2;
+
+  t.SetObjectName('V_'+_get_dst_sel_str(t.key.dstSel)+
+                   '_L['+IntToStr(t.key.base_level)+'-'+IntToStr(t.key.last_level)+']'+
+                   '_A['+IntToStr(t.key.base_array)+'-'+IntToStr(t.key.last_array)+']'
+                 );
 
   t.Acquire(Self); //map ref
   FViews.Insert(@t.key);
@@ -1088,7 +1104,7 @@ begin
  end;
 
  t.SetObjectName(Ch+'_0x'+HexStr(QWORD(t.key.Addr),10)+
-                      '_'+IntToStr(t.key.params.width)+'x'+IntToStr(t.key.params.height)+
+                      '_'+IntToStr(t.key.params.width)+'x'+IntToStr(t.key.params.height)+'x'+IntToStr(t.key.params.depth)+
                      '_m'+IntToStr(t.key.params.mipLevels)+
                      '_a'+IntToStr(t.key.params.arrayLayers)+
                      '_t'+IntToStr(t.key.params.tiling.idx)+'|'+IntToStr(t.key.params.tiling.alt)
