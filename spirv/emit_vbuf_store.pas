@@ -6,6 +6,7 @@ interface
 
 uses
   sysutils,
+  spirv,
   ps4_pssl,
   srNode,
   srType,
@@ -30,6 +31,7 @@ type
   function  fetch_id(var lc:Tstore_cache;i:Byte):TsrRegNode;
   function  fetch_zero(var lc:Tstore_cache):TsrRegNode;
   function  fetch_one(var lc:Tstore_cache):TsrRegNode;
+  function  ClampTo(src:TsrRegNode;min_s,max_s:Single):TsrRegNode;
   procedure make_store_cv(var lc:Tstore_cache);
   procedure make_store_ce(var lc:Tstore_cache);
   procedure make_store_uv(var lc:Tstore_cache);
@@ -84,6 +86,18 @@ begin
  if (a<b) then Result:=a else Result:=b;
 end;
 
+function TEmit_vbuf_store.ClampTo(src:TsrRegNode;min_s,max_s:Single):TsrRegNode;
+var
+ min,max:TsrRegNode;
+begin
+ Result:=NewReg(dtFloat32);
+
+ min:=NewImm_s(dtFloat32,min_s);
+ max:=NewImm_s(dtFloat32,max_s);
+
+ _OpGlsl3(line,GlslOp.FClamp,Result,src,min,max);
+end;
+
 procedure TEmit_vbuf_store.make_store_cv(var lc:Tstore_cache);
 var
  rsl:TsrRegNode;
@@ -116,19 +130,20 @@ begin
          begin
           For i:=0 to lc.elem_count-1 do
           begin
-           lc.elm[i]:=OpFMulToS(lc.elm[i],255);
-           lc.elm[i]:=OpFToU(lc.elm[i],lc.elem_orig);
+           lc.elm[i]:=OpFMulToS(lc.elm[i],lc.elem_orig.High);
+           lc.elm[i]:=ClampTo  (lc.elm[i],0,lc.elem_orig.High);
+           lc.elm[i]:=OpFToU   (lc.elm[i],lc.elem_orig);
           end;
          end;
        else
-        Assert(false,'TODO CONVERT');
+        Assert(false,'TODO CONVERT:Float32->'+IntToStr(lc.info.NFMT));
       end;
 
      end;
    dtUint32,
    dtInt32  : //isInt
      begin
-      Assert(false,'TODO CONVERT');
+      Assert(false,'TODO CONVERT:Int32->'+IntToStr(lc.info.NFMT));
      end;
    else
     Assert(False);
@@ -205,7 +220,7 @@ begin
     elm:=lc.info.grp.Fetch(@lvl_0,@lvl_1,cflags(dtUnknow,lc.info.GLC,lc.info.SLC));
    end;
 
-   Assert(lc.elem_resl=lc.elem_orig,'TODO CONVERT');
+   Assert(lc.elem_resl=lc.elem_orig,'TODO CONVERT:make_store_ce');
 
    FetchStore(elm,lc.elm[i]);
 

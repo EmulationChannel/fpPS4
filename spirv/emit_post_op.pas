@@ -1494,6 +1494,8 @@ var
  src:array[0..1] of TsrRegNode;
  data:array[0..1] of QWORD;
 
+ mask:Byte;
+
  procedure _SetConst(dtype:TsrDataType;value:QWORD);
  begin
   dst.pWriter:=NewImm_q(dtype,value,node);
@@ -1516,11 +1518,24 @@ begin
   data[0]:=src[0].AsConst.GetData;
   data[1]:=src[1].AsConst.GetData;
 
-  _SetConst(dst.dtype,data[0] shr data[1]);
+  case src[0].dtype.BitSize of
+   32:mask:=31;
+   64:mask:=63;
+   else
+    Assert(false);
+  end;
+
+  Case node.OpId of
+   Op.OpShiftRightLogical   :_SetConst(dst.dtype,data[0] shr (data[1] and mask));
+   Op.OpShiftRightArithmetic:_SetConst(dst.dtype,SarInt64(Int64(data[0]),(data[1] and mask)));
+   else
+    Assert(false);
+  end;
  end else
  if (src[1].is_const) then
  begin
-  Result:=_OnShr_ext1(node,src[0].pWriter.specialize AsType<ntOp>,src[1].AsConst);
+  Result:=0;
+  //Result:=_OnShr_ext1(node,src[0].pWriter.specialize AsType<ntOp>,src[1].AsConst);
  end;
 end;
 

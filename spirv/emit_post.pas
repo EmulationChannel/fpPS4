@@ -789,8 +789,6 @@ begin
    Result:=Result+r4;
   until false;
 
-  PrivateList.RemoveAllStore;
-
   if data_layout then
   begin
    Result:=Result+PostAllocBuffer;
@@ -826,6 +824,8 @@ begin
    data_layout:=false;
    goto _pass;
   end;
+
+  PrivateList.RemoveAllStore;
 
   Result:=Result+EnumBlockOpBackward(@OnOpStep7,pFunc.pTop); //OnOpStep7 Remove Lines
 
